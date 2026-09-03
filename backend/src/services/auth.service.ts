@@ -46,7 +46,7 @@ export class AuthService {
         nim: dto.nim || null,
         universitas: dto.universitas || 'Telkom University',
         fotoProfil: dto.foto_profil || null,
-        role: dto.role || 'mahasiswa',
+        role: 'mahasiswa',
       },
     });
 

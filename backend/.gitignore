@@ -19,6 +19,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # Prisma
-# (Keep prisma/schema.prisma, ignore sqlite if any)
+src/generated/
 *.db
 *.db-journal

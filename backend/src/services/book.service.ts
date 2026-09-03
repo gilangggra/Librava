@@ -1,5 +1,6 @@
 import prisma from '../config/prisma';
 import { Book } from '../types';
+import { sanitizeText } from '../utils/sanitize';
 
 export interface CreateBookDTO {
   owner_id: number;
@@ -45,11 +46,11 @@ export class BookService {
     const created = await prisma.book.create({
       data: {
         ownerId: dto.owner_id,
-        judul: dto.judul,
-        penulis: dto.penulis,
-        penerbit: dto.penerbit || null,
+        judul: sanitizeText(dto.judul) || dto.judul,
+        penulis: sanitizeText(dto.penulis) || dto.penulis,
+        penerbit: sanitizeText(dto.penerbit) || null,
         isbn: dto.isbn || null,
-        deskripsi: dto.deskripsi || null,
+        deskripsi: sanitizeText(dto.deskripsi) || null,
         status: dto.status || 'Tersedia',
         fotoBuku: dto.foto_buku || null,
         kategori: dto.kategori || null,
@@ -141,11 +142,11 @@ export class BookService {
     }
 
     const data: any = {};
-    if (updateData.judul !== undefined) data.judul = updateData.judul;
-    if (updateData.penulis !== undefined) data.penulis = updateData.penulis;
-    if (updateData.penerbit !== undefined) data.penerbit = updateData.penerbit;
+    if (updateData.judul !== undefined) data.judul = sanitizeText(updateData.judul) || updateData.judul;
+    if (updateData.penulis !== undefined) data.penulis = sanitizeText(updateData.penulis) || updateData.penulis;
+    if (updateData.penerbit !== undefined) data.penerbit = sanitizeText(updateData.penerbit);
     if (updateData.isbn !== undefined) data.isbn = updateData.isbn;
-    if (updateData.deskripsi !== undefined) data.deskripsi = updateData.deskripsi;
+    if (updateData.deskripsi !== undefined) data.deskripsi = sanitizeText(updateData.deskripsi);
     if (updateData.status !== undefined) data.status = updateData.status;
     if (updateData.foto_buku !== undefined) data.fotoBuku = updateData.foto_buku;
     if (updateData.kategori !== undefined) data.kategori = updateData.kategori;
