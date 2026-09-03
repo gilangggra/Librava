@@ -1,0 +1,213 @@
+### ===================================================
+### LIBRAVA API TEST FILE (Gunakan extension REST Client di VS Code / Import ke Postman)
+### Base URL: http://localhost:5000/api
+### ===================================================
+
+@baseUrl = http://localhost:5000/api
+
+### 1. Cek Health Server
+GET {{baseUrl}}/health
+
+### 2. Cek Info API Root
+GET {{baseUrl}}/
+
+### ===================================================
+### 🔐 AUTENTIKASI
+### ===================================================
+
+### 3. Register User 1 (Andi - Pemilik Buku)
+# @name registerUser1
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "andi@telkomuniversity.ac.id",
+  "password": "password123",
+  "nama_lengkap": "Andi Mahasiswa",
+  "nim": "1301210001",
+  "universitas": "Telkom University",
+  "role": "mahasiswa"
+}
+
+### 4. Register User 2 (Budi - Pemohon Buku)
+# @name registerUser2
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "budi@telkomuniversity.ac.id",
+  "password": "password123",
+  "nama_lengkap": "Budi Mahasiswa",
+  "nim": "1301210002",
+  "universitas": "Telkom University",
+  "role": "mahasiswa"
+}
+
+### 5. Login User 1 (Andi)
+# @name loginUser1
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "andi@telkomuniversity.ac.id",
+  "password": "password123"
+}
+
+### Simpan token dari response login di bawah ini:
+@tokenAndi = {{loginUser1.response.body.data.token}}
+
+### 6. Get Profile User 1 (Andi)
+GET {{baseUrl}}/auth/profile
+Authorization: Bearer {{tokenAndi}}
+
+### 7. Login User 2 (Budi)
+# @name loginUser2
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "budi@telkomuniversity.ac.id",
+  "password": "password123"
+}
+
+@tokenBudi = {{loginUser2.response.body.data.token}}
+
+
+### ===================================================
+### 📚 BUKU
+### ===================================================
+
+### 8. Upload Buku oleh Andi (Algoritma Pemrograman)
+# @name createBook1
+POST {{baseUrl}}/books
+Authorization: Bearer {{tokenAndi}}
+Content-Type: application/json
+
+{
+  "judul": "Algoritma dan Pemrograman Modern",
+  "penulis": "Rinaldi Munir",
+  "penerbit": "Informatika Bandung",
+  "isbn": "978-602-8758-00-1",
+  "deskripsi": "Buku referensi lengkap untuk mata kuliah Alpro di Telkom University.",
+  "kategori": "Informatika",
+  "status": "Tersedia"
+}
+
+@bookIdAndi = {{createBook1.response.body.data.id}}
+
+### 9. Upload Buku oleh Budi (Buku untuk Barter)
+# @name createBook2
+POST {{baseUrl}}/books
+Authorization: Bearer {{tokenBudi}}
+Content-Type: application/json
+
+{
+  "judul": "Struktur Data dengan Python",
+  "penulis": "Indra Wijaya",
+  "penerbit": "Erlangga",
+  "isbn": "978-602-1234-56-7",
+  "deskripsi": "Buku dasar struktur data.",
+  "kategori": "Informatika",
+  "status": "Tersedia"
+}
+
+@bookIdBudi = {{createBook2.response.body.data.id}}
+
+### 10. Lihat Semua Buku (Pencarian & Filter)
+GET {{baseUrl}}/books?search=Algoritma&kategori=Informatika
+
+### 11. Lihat Detail Buku Tertentu
+GET {{baseUrl}}/books/{{bookIdAndi}}
+
+### 12. Lihat Buku Saya (Milik Budi)
+GET {{baseUrl}}/books/user/my-books
+Authorization: Bearer {{tokenBudi}}
+
+
+### ===================================================
+### 🔄 TRANSAKSI (PEMINJAMAN / BARTER)
+### ===================================================
+
+### 13. Budi Mengajukan Pinjam Buku Andi
+# @name createTransaction
+POST {{baseUrl}}/transactions
+Authorization: Bearer {{tokenBudi}}
+Content-Type: application/json
+
+{
+  "book_id": {{bookIdAndi}},
+  "tipe_transaksi": "BORROW",
+  "deposit_dummy": 50000,
+  "lokasi_pertemuan": "Perpustakaan Open Library Telkom University",
+  "waktu_pertemuan": "2026-09-01T10:00:00.000Z"
+}
+
+@transactionId = {{createTransaction.response.body.data.id}}
+
+### 14. Lihat Daftar Transaksi User (Budi)
+GET {{baseUrl}}/transactions
+Authorization: Bearer {{tokenBudi}}
+
+### 15. Lihat Detail Transaksi
+GET {{baseUrl}}/transactions/{{transactionId}}
+Authorization: Bearer {{tokenAndi}}
+
+### 16. Andi Menyetujui Transaksi (Accept Request)
+PUT {{baseUrl}}/transactions/{{transactionId}}/status
+Authorization: Bearer {{tokenAndi}}
+Content-Type: application/json
+
+{
+  "status": "DISETUJUI"
+}
+
+### 17. Tentukan Lokasi Pertemuan
+PUT {{baseUrl}}/transactions/{{transactionId}}/meeting
+Authorization: Bearer {{tokenAndi}}
+Content-Type: application/json
+
+{
+  "lokasi_pertemuan": "Gedung Cacuk B Lantai 1",
+  "waktu_pertemuan": "2026-09-02T14:00:00.000Z"
+}
+
+### 18. Konfirmasi Serah Terima Buku (Selesai)
+PUT {{baseUrl}}/transactions/{{transactionId}}/handover
+Authorization: Bearer {{tokenAndi}}
+
+
+### ===================================================
+### 💬 CHAT TRANSAKSI
+### ===================================================
+
+### 19. Budi Mengirim Pesan Chat ke Andi
+POST {{baseUrl}}/chats/{{transactionId}}
+Authorization: Bearer {{tokenBudi}}
+Content-Type: application/json
+
+{
+  "pesan": "Halo mas Andi, saya sudah di depan perpustakaan ya."
+}
+
+### 20. Andi Melihat Chat Masuk
+GET {{baseUrl}}/chats/{{transactionId}}
+Authorization: Bearer {{tokenAndi}}
+
+
+### ===================================================
+### ⭐ REVIEW & RATING
+### ===================================================
+
+### 21. Budi Memberikan Review untuk Andi
+POST {{baseUrl}}/reviews
+Authorization: Bearer {{tokenBudi}}
+Content-Type: application/json
+
+{
+  "transaction_id": {{transactionId}},
+  "rating": 5,
+  "komentar": "Kondisi bukunya sangat rapi dan ramah sekali. Terima kasih banyak!"
+}
+
+### 22. Lihat Rating & Review Profil Andi
+GET {{baseUrl}}/reviews/user/1

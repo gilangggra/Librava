@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int           @id @default(autoincrement())
+  email            String        @unique @db.VarChar(255)
+  passwordHash     String        @map("password_hash") @db.VarChar(255)
+  namaLengkap      String        @map("nama_lengkap") @db.VarChar(255)
+  nim              String?       @db.VarChar(50)
+  universitas      String        @default("Telkom University") @db.VarChar(100)
+  fotoProfil       String?       @map("foto_profil") @db.Text
+  role             String        @default("mahasiswa") @db.VarChar(20)
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  books            Book[]        @relation("BookOwner")
+  requestedTx      Transaction[] @relation("RequesterTransactions")
+  ownedTx          Transaction[] @relation("OwnerTransactions")
+  sentChats        Chat[]        @relation("SentChats")
+  receivedChats    Chat[]        @relation("ReceivedChats")
+  givenReviews     Review[]      @relation("GivenReviews")
+  receivedReviews  Review[]      @relation("ReceivedReviews")
+
+  @@map("users")
+}
+
+model Book {
+  id                  Int           @id @default(autoincrement())
+  ownerId             Int           @map("owner_id")
+  judul               String        @db.VarChar(255)
+  penulis             String        @db.VarChar(255)
+  penerbit            String?       @db.VarChar(255)
+  isbn                String?       @db.VarChar(50)
+  deskripsi           String?       @db.Text
+  status              String        @default("Tersedia") @db.VarChar(50)
+  fotoBuku            String?       @map("foto_buku") @db.Text
+  kategori            String?       @db.VarChar(100)
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  owner               User          @relation("BookOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  transactions        Transaction[] @relation("MainBookTransactions")
+  barterTransactions  Transaction[] @relation("BarterBookTransactions")
+
+  @@map("books")
+}
+
+model Transaction {
+  id              Int       @id @default(autoincrement())
+  requesterId     Int       @map("requester_id")
+  ownerId         Int       @map("owner_id")
+  bookId          Int       @map("book_id")
+  tipeTransaksi   String    @map("tipe_transaksi") @db.VarChar(20)
+  barterBookId    Int?      @map("barter_book_id")
+  status          String    @default("MENUNGGU_KONFIRMASI") @db.VarChar(50)
+  depositDummy    Decimal   @default(0) @map("deposit_dummy") @db.Decimal(12, 2)
+  lokasiPertemuan String?   @map("lokasi_pertemuan") @db.Text
+  waktuPertemuan  DateTime? @map("waktu_pertemuan")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  requester       User      @relation("RequesterTransactions", fields: [requesterId], references: [id])
+  owner           User      @relation("OwnerTransactions", fields: [ownerId], references: [id])
+  book            Book      @relation("MainBookTransactions", fields: [bookId], references: [id])
+  barterBook      Book?     @relation("BarterBookTransactions", fields: [barterBookId], references: [id])
+  chats           Chat[]
+  reviews         Review[]
+
+  @@map("transactions")
+}
+
+model Chat {
+  id            Int         @id @default(autoincrement())
+  transactionId Int         @map("transaction_id")
+  senderId      Int         @map("sender_id")
+  receiverId    Int         @map("receiver_id")
+  pesan         String      @db.Text
+  isRead        Boolean     @default(false) @map("is_read")
+  sentAt        DateTime    @default(now()) @map("sent_at")
+
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  sender        User        @relation("SentChats", fields: [senderId], references: [id])
+  receiver      User        @relation("ReceivedChats", fields: [receiverId], references: [id])
+
+  @@map("chats")
+}
+
+model Review {
+  id            Int         @id @default(autoincrement())
+  transactionId Int         @map("transaction_id")
+  reviewerId    Int         @map("reviewer_id")
+  revieweeId    Int         @map("reviewee_id")
+  rating        Int
+  komentar      String?     @db.Text
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  reviewer      User        @relation("GivenReviews", fields: [reviewerId], references: [id])
+  reviewee      User        @relation("ReceivedReviews", fields: [revieweeId], references: [id])
+
+  @@map("reviews")
+}
