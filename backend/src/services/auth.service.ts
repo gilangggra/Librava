@@ -66,6 +66,7 @@ export class AuthService {
         universitas: user.universitas,
         foto_profil: user.fotoProfil,
         role: user.role,
+        saldo_dummy: Number(user.saldoDummy ?? 100000),
         created_at: user.createdAt,
       },
       token,
@@ -111,6 +112,7 @@ export class AuthService {
         universitas: user.universitas,
         foto_profil: user.fotoProfil,
         role: user.role,
+        saldo_dummy: Number(user.saldoDummy ?? 100000),
         created_at: user.createdAt,
         updated_at: user.updatedAt,
       },
@@ -137,6 +139,7 @@ export class AuthService {
       universitas: user.universitas,
       foto_profil: user.fotoProfil,
       role: user.role,
+      saldo_dummy: Number(user.saldoDummy ?? 100000),
       created_at: user.createdAt,
       updated_at: user.updatedAt,
     };
@@ -166,6 +169,7 @@ export class AuthService {
       universitas: user.universitas,
       foto_profil: user.fotoProfil,
       role: user.role,
+      saldo_dummy: Number(user.saldoDummy ?? 100000),
       created_at: user.createdAt,
       updated_at: user.updatedAt,
     };

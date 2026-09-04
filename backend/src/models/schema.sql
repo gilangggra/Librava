@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     universitas VARCHAR(100) DEFAULT 'Telkom University',
     foto_profil TEXT,
     role VARCHAR(20) DEFAULT 'mahasiswa',
+    saldo_dummy NUMERIC(12, 2) DEFAULT 100000,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -35,6 +36,9 @@ CREATE TABLE IF NOT EXISTS transactions (
     barter_book_id INT REFERENCES books(id),
     status VARCHAR(50) DEFAULT 'MENUNGGU_KONFIRMASI',
     deposit_dummy NUMERIC(12, 2) DEFAULT 0,
+    durasi_hari INT DEFAULT 7,
+    due_date TIMESTAMP,
+    returned_at TIMESTAMP,
     lokasi_pertemuan TEXT,
     waktu_pertemuan TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

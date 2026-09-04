@@ -1,9 +1,11 @@
+import http from 'http';
 import dotenv from 'dotenv';
 dotenv.config();
 
 import app from './app';
 import prisma from './config/prisma';
 import { ensureDatabaseExists } from './config/database';
+import { initSocket } from './socket';
 
 const PORT = process.env.PORT || 5000;
 
@@ -16,8 +18,11 @@ async function bootstrap() {
     console.warn('Database connection warning:', error.message);
   }
 
-  const server = app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+  const server = http.createServer(app);
+  initSocket(server);
+
+  server.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT} with Socket.IO enabled`);
   });
 
   const shutdown = async () => {

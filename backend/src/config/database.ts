@@ -71,9 +71,12 @@ export const initDb = async (): Promise<void> => {
         universitas VARCHAR(100) DEFAULT 'Telkom University',
         foto_profil TEXT,
         role VARCHAR(20) DEFAULT 'mahasiswa',
+        saldo_dummy NUMERIC(12, 2) DEFAULT 100000,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS saldo_dummy NUMERIC(12, 2) DEFAULT 100000;
 
     CREATE TABLE IF NOT EXISTS books (
         id SERIAL PRIMARY KEY,
@@ -99,11 +102,18 @@ export const initDb = async (): Promise<void> => {
         barter_book_id INT REFERENCES books(id),
         status VARCHAR(50) DEFAULT 'MENUNGGU_KONFIRMASI',
         deposit_dummy NUMERIC(12, 2) DEFAULT 0,
+        durasi_hari INT DEFAULT 7,
+        due_date TIMESTAMP,
+        returned_at TIMESTAMP,
         lokasi_pertemuan TEXT,
         waktu_pertemuan TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    ALTER TABLE transactions ADD COLUMN IF NOT EXISTS durasi_hari INT DEFAULT 7;
+    ALTER TABLE transactions ADD COLUMN IF NOT EXISTS due_date TIMESTAMP;
+    ALTER TABLE transactions ADD COLUMN IF NOT EXISTS returned_at TIMESTAMP;
 
     CREATE TABLE IF NOT EXISTS chats (
         id SERIAL PRIMARY KEY,

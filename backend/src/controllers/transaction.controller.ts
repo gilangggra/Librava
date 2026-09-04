@@ -175,4 +175,27 @@ export class TransactionController {
       next(error);
     }
   }
+
+  static async confirmReturn(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      const userRole = req.user?.role || 'mahasiswa';
+      const id = parseInt(req.params.id as string, 10);
+
+      if (isNaN(id) || !userId) {
+        res.status(400).json({ success: false, message: 'ID transaksi tidak valid.' });
+        return;
+      }
+
+      const updated = await TransactionService.confirmReturn(id, userId, userRole);
+
+      res.status(200).json({
+        success: true,
+        message: 'Pengembalian buku berhasil dikonfirmasi. Transaksi selesai dan deposit telah dikembalikan.',
+        data: updated,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

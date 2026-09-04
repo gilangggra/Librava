@@ -16,6 +16,7 @@ model User {
   universitas      String        @default("Telkom University") @db.VarChar(100)
   fotoProfil       String?       @map("foto_profil") @db.Text
   role             String        @default("mahasiswa") @db.VarChar(20)
+  saldoDummy       Decimal       @default(100000) @map("saldo_dummy") @db.Decimal(12, 2)
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @default(now()) @updatedAt @map("updated_at")
 
@@ -60,6 +61,9 @@ model Transaction {
   barterBookId    Int?      @map("barter_book_id")
   status          String    @default("MENUNGGU_KONFIRMASI") @db.VarChar(50)
   depositDummy    Decimal   @default(0) @map("deposit_dummy") @db.Decimal(12, 2)
+  durasiHari      Int?      @default(7) @map("durasi_hari")
+  dueDate         DateTime? @map("due_date")
+  returnedAt      DateTime? @map("returned_at")
   lokasiPertemuan String?   @map("lokasi_pertemuan") @db.Text
   waktuPertemuan  DateTime? @map("waktu_pertemuan")
   createdAt       DateTime  @default(now()) @map("created_at")

@@ -1,4 +1,5 @@
 import express, { Application } from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -7,7 +8,11 @@ import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 
 const app: Application = express();
 
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 app.disable('x-powered-by');
 
 const allowedOrigins = process.env.CORS_ORIGIN
@@ -44,6 +49,9 @@ app.use('/api', generalLimiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Static file serving untuk folder uploads gambar
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 app.get('/', (req, res) => {
   res.status(200).json({
     name: 'Librava API',
@@ -53,6 +61,7 @@ app.get('/', (req, res) => {
       health: '/api/health',
       auth: '/api/auth',
       books: '/api/books',
+      uploads: '/uploads',
     },
   });
 });

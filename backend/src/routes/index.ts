@@ -5,6 +5,7 @@ import transactionRoutes from './transaction.routes';
 import chatRoutes from './chat.routes';
 import reviewRoutes from './review.routes';
 import adminRoutes from './admin.routes';
+import uploadRoutes from './upload.routes';
 
 const router = Router();
 
@@ -35,6 +36,7 @@ router.get('/', (req, res) => {
         update_status: 'PUT /api/transactions/:id/status',
         set_meeting: 'PUT /api/transactions/:id/meeting',
         handover: 'PUT /api/transactions/:id/handover',
+        return: 'PUT /api/transactions/:id/return',
       },
       chats: {
         list: 'GET /api/chats/:transactionId',
@@ -43,6 +45,9 @@ router.get('/', (req, res) => {
       reviews: {
         create: 'POST /api/reviews',
         user_reviews: 'GET /api/reviews/user/:userId',
+      },
+      uploads: {
+        image: 'POST /api/upload/image',
       },
       admin: {
         dashboard: 'GET /api/admin/dashboard',
@@ -66,5 +71,6 @@ router.use('/transactions', transactionRoutes);
 router.use('/chats', chatRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/admin', adminRoutes);
+router.use('/upload', uploadRoutes);
 
 export default router;

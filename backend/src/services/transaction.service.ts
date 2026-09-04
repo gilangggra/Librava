@@ -7,6 +7,7 @@ export interface CreateTransactionDTO {
   tipe_transaksi: TransactionType;
   barter_book_id?: number;
   deposit_dummy?: number;
+  durasi_hari?: number;
   lokasi_pertemuan?: string;
   waktu_pertemuan?: Date | string;
 }
@@ -20,6 +21,9 @@ const mapTransactionWithRelations = (tx: any): Transaction => ({
   barter_book_id: tx.barterBookId || undefined,
   status: tx.status as TransactionStatus,
   deposit_dummy: Number(tx.depositDummy || 0),
+  durasi_hari: tx.durasiHari || undefined,
+  due_date: tx.dueDate || undefined,
+  returned_at: tx.returnedAt || undefined,
   lokasi_pertemuan: tx.lokasiPertemuan || undefined,
   waktu_pertemuan: tx.waktuPertemuan || undefined,
   created_at: tx.createdAt,
@@ -88,26 +92,56 @@ export class TransactionService {
     }
 
     const owner_id = requestedBook.ownerId;
-    const deposit = dto.deposit_dummy || 0;
+    const deposit = Number(dto.deposit_dummy || 0);
 
-    const created = await prisma.transaction.create({
-      data: {
-        requesterId: dto.requester_id,
-        ownerId: owner_id,
-        bookId: dto.book_id,
-        tipeTransaksi: dto.tipe_transaksi,
-        barterBookId: dto.barter_book_id || null,
-        status: 'MENUNGGU_KONFIRMASI',
-        depositDummy: deposit,
-        lokasiPertemuan: dto.lokasi_pertemuan || null,
-        waktuPertemuan: dto.waktu_pertemuan ? new Date(dto.waktu_pertemuan) : null,
-      },
-      include: {
-        requester: true,
-        owner: true,
-        book: true,
-        barterBook: true,
-      },
+    // Verifikasi saldo dummy peminjam jika transaksi membutuhkan deposit
+    if (deposit > 0) {
+      const requester = await prisma.user.findUnique({
+        where: { id: dto.requester_id },
+      });
+      const currentSaldo = Number(requester?.saldoDummy || 0);
+      if (currentSaldo < deposit) {
+        const error: any = new Error('Saldo dummy Anda tidak mencukupi untuk membayar deposit transaksi ini.');
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+
+    const durasiHari = dto.durasi_hari || 7;
+    const dueDate = dto.tipe_transaksi === 'BORROW'
+      ? new Date(Date.now() + durasiHari * 24 * 60 * 60 * 1000)
+      : null;
+
+    const created = await prisma.$transaction(async (prismaTx) => {
+      // Hold deposit ke escrow jika ada
+      if (deposit > 0) {
+        await prismaTx.user.update({
+          where: { id: dto.requester_id },
+          data: { saldoDummy: { decrement: deposit } },
+        });
+      }
+
+      return prismaTx.transaction.create({
+        data: {
+          requesterId: dto.requester_id,
+          ownerId: owner_id,
+          bookId: dto.book_id,
+          tipeTransaksi: dto.tipe_transaksi,
+          barterBookId: dto.barter_book_id || null,
+          status: 'MENUNGGU_KONFIRMASI',
+          depositDummy: deposit,
+          durasiHari: durasiHari,
+          dueDate: dueDate,
+          lokasiPertemuan: dto.lokasi_pertemuan || null,
+          waktuPertemuan: dto.waktu_pertemuan ? new Date(dto.waktu_pertemuan) : null,
+        },
+        include: {
+          requester: true,
+          owner: true,
+          book: true,
+          barterBook: true,
+        },
+      });
     });
 
     return mapTransactionWithRelations(created);
@@ -196,9 +230,14 @@ export class TransactionService {
     }
 
     await prisma.$transaction(async (prismaTx) => {
+      const updateData: any = { status: newStatus };
+      if (newStatus === 'SELESAI') {
+        updateData.returnedAt = new Date();
+      }
+
       await prismaTx.transaction.update({
         where: { id },
-        data: { status: newStatus },
+        data: updateData,
       });
 
       if (newStatus === 'DISETUJUI') {
@@ -213,7 +252,8 @@ export class TransactionService {
             data: { status: 'Dibarter' },
           });
         }
-      } else if (['DITOLAK', 'DIBATALKAN', 'SELESAI'].includes(newStatus)) {
+      } else if (['DITOLAK', 'DIBATALKAN'].includes(newStatus)) {
+        // Kembalikan status buku jadi Tersedia
         await prismaTx.book.update({
           where: { id: tx.book_id },
           data: { status: 'Tersedia' },
@@ -223,6 +263,42 @@ export class TransactionService {
             where: { id: tx.barter_book_id },
             data: { status: 'Tersedia' },
           });
+        }
+
+        // Refund deposit dummy ke requester jika ada
+        if (tx.deposit_dummy > 0) {
+          await prismaTx.user.update({
+            where: { id: tx.requester_id },
+            data: { saldoDummy: { increment: tx.deposit_dummy } },
+          });
+        }
+      } else if (newStatus === 'SELESAI') {
+        if (tx.tipe_transaksi === 'BARTER') {
+          // SWAP KEPEMILIKAN: book_id milik requester, barter_book_id milik owner
+          await prismaTx.book.update({
+            where: { id: tx.book_id },
+            data: { ownerId: tx.requester_id, status: 'Tersedia' },
+          });
+          if (tx.barter_book_id) {
+            await prismaTx.book.update({
+              where: { id: tx.barter_book_id },
+              data: { ownerId: tx.owner_id, status: 'Tersedia' },
+            });
+          }
+        } else {
+          // BORROW SELESAI: Buku dikembalikan ke pemilik asli
+          await prismaTx.book.update({
+            where: { id: tx.book_id },
+            data: { status: 'Tersedia' },
+          });
+
+          // Refund deposit dummy ke requester saat buku selesai dikembalikan
+          if (tx.deposit_dummy > 0) {
+            await prismaTx.user.update({
+              where: { id: tx.requester_id },
+              data: { saldoDummy: { increment: tx.deposit_dummy } },
+            });
+          }
         }
       }
     });
@@ -252,6 +328,10 @@ export class TransactionService {
   }
 
   static async confirmHandover(id: number, userId: number, userRole: string): Promise<Transaction> {
+    return this.updateStatus(id, userId, userRole, 'SELESAI');
+  }
+
+  static async confirmReturn(id: number, userId: number, userRole: string): Promise<Transaction> {
     return this.updateStatus(id, userId, userRole, 'SELESAI');
   }
 }

@@ -20,6 +20,7 @@ export interface User {
   universitas?: string;
   foto_profil?: string;
   role: 'mahasiswa' | 'admin';
+  saldo_dummy?: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -60,6 +61,9 @@ export interface Transaction {
   barter_book_id?: number;
   status: TransactionStatus;
   deposit_dummy: number;
+  durasi_hari?: number;
+  due_date?: Date;
+  returned_at?: Date;
   lokasi_pertemuan?: string;
   waktu_pertemuan?: Date;
   created_at: Date;

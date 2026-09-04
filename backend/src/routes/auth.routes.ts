@@ -2,6 +2,8 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { AuthController } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth.middleware';
+import { validate } from '../middlewares/validate.middleware';
+import { registerSchema, loginSchema, updateProfileSchema } from '../schemas/auth.schema';
 
 const router = Router();
 
@@ -30,10 +32,9 @@ const registerLimiter = rateLimit({
   },
 });
 
-router.post('/register', registerLimiter, AuthController.register);
-router.post('/login', loginLimiter, AuthController.login);
+router.post('/register', registerLimiter, validate({ body: registerSchema }), AuthController.register);
+router.post('/login', loginLimiter, validate({ body: loginSchema }), AuthController.login);
 router.get('/profile', authenticate, AuthController.getProfile);
-router.put('/profile', authenticate, AuthController.updateProfile);
+router.put('/profile', authenticate, validate({ body: updateProfileSchema }), AuthController.updateProfile);
 
 export default router;
-
