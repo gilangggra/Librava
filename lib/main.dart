@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
+import 'features/books/presentation/providers/book_provider.dart';
 import 'features/landing/presentation/screens/landing_page.dart';
+import 'features/transactions/presentation/providers/transaction_provider.dart';
 
 void main() {
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => BookProvider()),
+        ChangeNotifierProvider(create: (_) => TransactionProvider()),
       ],
       child: const MyApp(),
     ),
