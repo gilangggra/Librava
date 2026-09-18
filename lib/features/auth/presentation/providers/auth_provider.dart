@@ -50,6 +50,27 @@ class AuthProvider extends ChangeNotifier {
     return true;
   }
 
+  Future<bool> updateProfil({
+    String? nama,
+    String? universitas,
+  }) async {
+    if (_currentUser == null) return false;
+
+    _isLoading = true;
+    notifyListeners();
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    _currentUser = _currentUser!.copyWith(
+      nama: (nama != null && nama.trim().isNotEmpty) ? nama.trim() : _currentUser!.nama,
+      universitas: (universitas != null && universitas.trim().isNotEmpty) ? universitas.trim() : _currentUser!.universitas,
+    );
+
+    _isLoading = false;
+    notifyListeners();
+    return true;
+  }
+
   void keluar() {
     _currentUser = null;
     notifyListeners();

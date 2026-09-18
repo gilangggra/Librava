@@ -1,162 +1,205 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/widgets/custom_button.dart';
 import '../../../auth/presentation/screens/login_page.dart';
 import '../../../auth/presentation/screens/register_page.dart';
 
-class LandingPage extends StatefulWidget {
+class LandingPage extends StatelessWidget {
   const LandingPage({super.key});
 
   @override
-  State<LandingPage> createState() => _LandingPageState();
-}
-
-class _LandingPageState extends State<LandingPage> {
-  @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final heroHeight = screenHeight * 0.58;
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return Column(
-            children: [
-              Expanded(
-                flex: 13,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.asset(
-                      'assets/images/bookshelf.jpg',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Color(0xFF2C2440),
-                                Color(0xFF5A52EB),
-                              ],
-                            ),
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.menu_book_rounded,
-                              size: 80,
-                              color: Colors.white54,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          stops: [0.0, 0.45, 0.78, 1.0],
-                          colors: [
-                            Color(0x335850E8),
-                            Color(0x775850E8),
-                            Color(0xD85A52EB),
-                            Color(0xFF5850E8),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    Positioned(
-                      left: 24,
-                      right: 24,
-                      bottom: 32,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Your next chapter\nstarts here',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 34,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textWhite,
-                              height: 1.18,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Discover books, share your collection,\nand connect with fellow readers',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textWhite.withValues(alpha: 0.92),
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Expanded(
-                flex: 7,
-                child: Container(
+      body: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: screenHeight,
+          ),
+          child: IntrinsicHeight(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: heroHeight > 460 ? heroHeight : 460,
                   width: double.infinity,
-                  color: AppColors.background,
-                  child: Center(
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24.0,
-                          vertical: 20.0,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(
+                        'assets/images/bookshelf.jpg',
+                        fit: BoxFit.cover,
+                      ),
+                      Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: [0.0, 0.40, 0.70, 1.0],
+                            colors: [
+                              Color(0x156356FF),
+                              Color(0x556356FF),
+                              Color(0xB56356FF),
+                              Color(0xFF6356FF),
+                            ],
+                          ),
                         ),
-                        child: Column(
+                      ),
+                      const Positioned(
+                        left: 24,
+                        right: 24,
+                        bottom: 24,
+                        child: Text(
+                          'Your next chapter\nstarts here',
+                          style: TextStyle(
+                            fontSize: 34,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textWhite,
+                            height: 1.15,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0,
+                      vertical: 20.0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Discover books, exchange with fellow\nstudents, and be part of a growing\nreading community',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF333045),
+                            height: 1.35,
+                          ),
+                        ),
+                        const Spacer(),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              elevation: 4,
+                              shadowColor: AppColors.primary.withValues(alpha: 0.4),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                PageRouteBuilder(
+                                  pageBuilder: (context, animation, secondaryAnimation) =>
+                                      const RegisterPage(),
+                                  transitionsBuilder:
+                                      (context, animation, secondaryAnimation, child) {
+                                    final tween = Tween<Offset>(
+                                      begin: const Offset(1.0, 0.0),
+                                      end: Offset.zero,
+                                    ).chain(CurveTween(curve: Curves.easeOut));
+                                    return SlideTransition(
+                                      position: animation.drive(tween),
+                                      child: child,
+                                    );
+                                  },
+                                  transitionDuration:
+                                      const Duration(milliseconds: 600),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              'Get started',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              elevation: 2,
+                              shadowColor: Colors.black.withValues(alpha: 0.15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const LoginPage(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              'Sign in',
+                              style: TextStyle(
+                                color: Color(0xFF1E1A34),
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            CustomButton(
-                              text: 'Get started',
-                              width: 230,
-                              height: 56,
-                              fontSize: 22,
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const RegisterPage(),
-                                  ),
-                                );
-                              },
+                            InkWell(
+                              borderRadius: BorderRadius.circular(24),
+                              onTap: () {},
+                              child: Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Image.asset(
+                                  'assets/images/google_logo.png',
+                                  width: 36,
+                                  height: 36,
+                                ),
+                              ),
                             ),
-                            const SizedBox(height: 18),
-                            CustomButton(
-                              text: 'Sign in',
-                              width: 200,
-                              height: 54,
-                              fontSize: 22,
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const LoginPage(),
-                                  ),
-                                );
-                              },
+                            const SizedBox(width: 28),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(24),
+                              onTap: () {},
+                              child: Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Image.asset(
+                                  'assets/images/github_logo.png',
+                                  width: 36,
+                                  height: 36,
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
