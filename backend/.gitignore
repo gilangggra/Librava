@@ -2,6 +2,8 @@
 node_modules/
 /.pnp
 .pnp.js
+uploads/*
+!uploads/.gitkeep
 
 # Production build output
 dist/
