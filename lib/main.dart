@@ -29,6 +29,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFEFEEFF),
         textTheme: GoogleFonts.poppinsTextTheme(
           Theme.of(context).textTheme,
         ),

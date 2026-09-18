@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../providers/auth_provider.dart';
 import '../widgets/custom_text_field.dart';
-import '../../../home/presentation/screens/home_page.dart';
-import 'forgot_password_page.dart';
 import 'register_page.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordHidden = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -27,30 +24,33 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  Future<void> _prosesLogin() async {
+  Future<void> _prosesResetPassword() async {
     if (_formKey.currentState?.validate() ?? true) {
-      final emailUser = _emailController.text.trim();
-      final passwordUser = _passwordController.text;
+      setState(() {
+        _isLoading = true;
+      });
 
-      final berhasil = await context.read<AuthProvider>().masuk(
-            email: emailUser,
-            password: passwordUser,
-          );
+      await Future.delayed(const Duration(milliseconds: 600));
 
-      if (berhasil && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const HomePage(),
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Password baru berhasil disimpan!'),
+            backgroundColor: AppColors.primary,
           ),
         );
+
+        Navigator.pop(context);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
@@ -116,7 +116,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 36),
                       const Text(
-                        'Welcome Back!',
+                        'New password',
                         style: TextStyle(
                           color: Color(0xFF130F26),
                           fontSize: 32,
@@ -126,7 +126,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Sign in to pick up where your last chapter ended',
+                        'Enter your email and create a new password for\nyour account.',
                         style: TextStyle(
                           color: Color(0xFF7E7A92),
                           fontSize: 16,
@@ -144,7 +144,7 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 20),
                       CustomTextField(
                         label: 'Password',
-                        hintText: 'Enter your password',
+                        hintText: 'Enter your new password',
                         controller: _passwordController,
                         obscureText: _isPasswordHidden,
                         suffixIcon: IconButton(
@@ -162,38 +162,8 @@ class _LoginPageState extends State<LoginPage> {
                           },
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(8),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const ForgotPasswordPage(),
-                              ),
-                            );
-                          },
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 4.0,
-                              vertical: 4.0,
-                            ),
-                            child: Text(
-                              'Forgot Password?',
-                              style: TextStyle(
-                                color: Color(0xFF1E1A34),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
                       const Spacer(),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 36),
                       SizedBox(
                         width: double.infinity,
                         height: 54,
@@ -206,8 +176,8 @@ class _LoginPageState extends State<LoginPage> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          onPressed: authProvider.isLoading ? null : _prosesLogin,
-                          child: authProvider.isLoading
+                          onPressed: _isLoading ? null : _prosesResetPassword,
+                          child: _isLoading
                               ? const SizedBox(
                                   width: 22,
                                   height: 22,
@@ -217,7 +187,7 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 )
                               : const Text(
-                                  'Login',
+                                  'Reset password',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 17,
@@ -226,49 +196,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      const Center(
-                        child: Text(
-                          'Or login with',
-                          style: TextStyle(
-                            color: Color(0xFF555268),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          InkWell(
-                            borderRadius: BorderRadius.circular(24),
-                            onTap: () {},
-                            child: Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: Image.asset(
-                                'assets/images/google_logo.png',
-                                width: 36,
-                                height: 36,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 28),
-                          InkWell(
-                            borderRadius: BorderRadius.circular(24),
-                            onTap: () {},
-                            child: Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: Image.asset(
-                                'assets/images/github_logo.png',
-                                width: 36,
-                                height: 36,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
