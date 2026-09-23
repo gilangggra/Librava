@@ -12,6 +12,7 @@ class TransactionModel {
   final String lokasiPertemuan;
   final String tanggal;
   final String tanggalPengembalian;
+  final String coverBuku;
 
   const TransactionModel({
     required this.id,
@@ -27,6 +28,7 @@ class TransactionModel {
     this.lokasiPertemuan = '',
     required this.tanggal,
     this.tanggalPengembalian = '',
+    this.coverBuku = 'assets/images/book_the_unknown.jpg',
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) {
@@ -44,6 +46,7 @@ class TransactionModel {
       lokasiPertemuan: json['lokasiPertemuan'] ?? '',
       tanggal: json['tanggal'] ?? '',
       tanggalPengembalian: json['tanggalPengembalian'] ?? '',
+      coverBuku: json['coverBuku'] ?? 'assets/images/book_the_unknown.jpg',
     );
   }
 
@@ -62,6 +65,7 @@ class TransactionModel {
       'lokasiPertemuan': lokasiPertemuan,
       'tanggal': tanggal,
       'tanggalPengembalian': tanggalPengembalian,
+      'coverBuku': coverBuku,
     };
   }
 
@@ -79,6 +83,7 @@ class TransactionModel {
     String? lokasiPertemuan,
     String? tanggal,
     String? tanggalPengembalian,
+    String? coverBuku,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -94,6 +99,7 @@ class TransactionModel {
       lokasiPertemuan: lokasiPertemuan ?? this.lokasiPertemuan,
       tanggal: tanggal ?? this.tanggal,
       tanggalPengembalian: tanggalPengembalian ?? this.tanggalPengembalian,
+      coverBuku: coverBuku ?? this.coverBuku,
     );
   }
 }

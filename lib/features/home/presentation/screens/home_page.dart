@@ -1,7 +1,12 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../books/presentation/screens/book_detail_page.dart';
+import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
+import '../../../chat/presentation/screens/chat_page.dart';
+import '../../../profile/presentation/screens/profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,6 +17,59 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  int _currentEventIndex = 0;
+  int _currentBorrowIndex = 0;
+  final PageController _eventPageController = PageController();
+  final PageController _borrowPageController = PageController();
+
+  final List<Map<String, dynamic>> _borrowedBooks = const [
+    {
+      'title': 'The Unknown',
+      'subtitle': 'Borrowing from Andi',
+      'status': "Waiting for owner's response",
+      'statusColor': Color(0xFFFFDD2D),
+      'image': 'assets/images/book_the_unknown.jpg',
+    },
+    {
+      'title': 'Fruit Fly',
+      'subtitle': 'Borrowed from Sarah',
+      'status': 'Due in 3 days',
+      'statusColor': Color(0xFF4C7BFE),
+      'image': 'assets/images/book_fruit_fly.jpg',
+    },
+    {
+      'title': 'Adversary to the Villain',
+      'subtitle': 'Bartered with Kevin',
+      'status': 'Barter completed',
+      'statusColor': Color(0xFF34C759),
+      'image': 'assets/images/book_adversary.jpg',
+    },
+  ];
+
+  final List<Map<String, String>> _events = const [
+    {
+      'title': 'Book Exchange Day',
+      'description': 'Exchange your favorite books with other students',
+      'image': 'assets/images/event_library.jpg',
+    },
+    {
+      'title': 'Reading Meetup',
+      'description': 'Meet fellow readers and share your favorite books.',
+      'image': 'assets/images/event_reading_meetup.jpg',
+    },
+    {
+      'title': 'Book Discussion',
+      'description': 'Share your thoughts and discuss books with fellow readers.',
+      'image': 'assets/images/event_book_discussion.jpg',
+    },
+  ];
+
+  @override
+  void dispose() {
+    _borrowPageController.dispose();
+    _eventPageController.dispose();
+    super.dispose();
+  }
 
   Widget _buildBookCover(String assetPath) {
     return ClipRRect(
@@ -42,6 +100,216 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildBorrowCard(Map<String, dynamic> item) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BookDetailPage(
+              title: item['title'] as String?,
+              author: item['subtitle'] as String?,
+              coverPath: item['image'] as String?,
+              status: item['status'] as String?,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 20.0, 32.0),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset(
+                  item['image'] as String,
+                  width: 104,
+                  height: 132,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 104,
+                      height: 132,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE7E3FF),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.book_rounded,
+                          color: AppColors.primary,
+                          size: 36,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item['title'] as String,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF130F26),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      item['subtitle'] as String,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontStyle: FontStyle.italic,
+                        color: Color(0xFF8A859E),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: item['statusColor'] as Color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            item['status'] as String,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF6B667F),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventCard(Map<String, String> event) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              event['image']!,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: const Color(0xFF2E2068),
+                );
+              },
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    const Color(0xFF6356FF).withValues(alpha: 0.90),
+                    const Color(0xFF6356FF).withValues(alpha: 0.75),
+                    const Color(0xFF6356FF).withValues(alpha: 0.20),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.45, 0.75, 1.0],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20.0, 18.0, 48.0, 18.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event['title']!,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      event['description']!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.92),
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+                InkWell(
+                  onTap: () {},
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8E5FE),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'VIEW EVENT',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildNavItem({
     required int index,
     required IconData activeIcon,
@@ -50,12 +318,42 @@ class _HomePageState extends State<HomePage> {
     final isSelected = _selectedIndex == index;
     return InkWell(
       onTap: () {
-        if (index == 2) {
+        if (index == 1) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation1, animation2) =>
+                  const MyBookPage(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        } else if (index == 2) {
           Navigator.pushReplacement(
             context,
             PageRouteBuilder(
               pageBuilder: (context, animation1, animation2) =>
                   const SearchPage(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        } else if (index == 3) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation1, animation2) =>
+                  const ChatPage(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        } else if (index == 4) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation1, animation2) =>
+                  const ProfilePage(),
               transitionDuration: Duration.zero,
               reverseTransitionDuration: Duration.zero,
             ),
@@ -75,7 +373,7 @@ class _HomePageState extends State<HomePage> {
         child: Center(
           child: Icon(
             isSelected ? activeIcon : inactiveIcon,
-            color: isSelected ? AppColors.primary : const Color(0xFF38335A),
+            color: isSelected ? AppColors.primary : const Color(0xFF52518D),
             size: 28,
           ),
         ),
@@ -138,115 +436,53 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 8),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                padding: const EdgeInsets.symmetric(horizontal: 10.0),
                 child: Stack(
                   clipBehavior: Clip.none,
                   alignment: Alignment.bottomCenter,
                   children: [
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(28),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 20,
-                            offset: const Offset(0, 6),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                      child: SizedBox(
+                        height: 204,
+                        child: PageView.builder(
+                          controller: _borrowPageController,
+                          itemCount: _borrowedBooks.length,
+                          scrollBehavior:
+                              const MaterialScrollBehavior().copyWith(
+                            dragDevices: {
+                              PointerDeviceKind.mouse,
+                              PointerDeviceKind.touch,
+                              PointerDeviceKind.trackpad,
+                            },
                           ),
-                        ],
+                          onPageChanged: (index) {
+                            setState(() {
+                              _currentBorrowIndex = index;
+                            });
+                          },
+                          itemBuilder: (context, index) {
+                            return _buildBorrowCard(_borrowedBooks[index]);
+                          },
+                        ),
                       ),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        alignment: Alignment.centerRight,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16.0, 16.0, 20.0, 32.0),
-                            child: Row(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: Image.asset(
-                                    'assets/images/book_the_unknown.jpg',
-                                    width: 104,
-                                    height: 132,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        width: 104,
-                                        height: 132,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFE7E3FF),
-                                          borderRadius: BorderRadius.circular(20),
-                                        ),
-                                        child: const Center(
-                                          child: Icon(
-                                            Icons.book_rounded,
-                                            color: AppColors.primary,
-                                            size: 36,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text(
-                                        'The Unknown',
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w800,
-                                          color: Color(0xFF130F26),
-                                          letterSpacing: -0.3,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      const Text(
-                                        'Borrowing from Andi',
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          fontStyle: FontStyle.italic,
-                                          color: Color(0xFF8A859E),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Row(
-                                        children: [
-                                          Container(
-                                            width: 16,
-                                            height: 16,
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xFFFFDD2D),
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          const Expanded(
-                                            child: Text(
-                                              "Waiting for owner's response",
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w500,
-                                                color: Color(0xFF6B667F),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                              ],
-                            ),
-                          ),
-                          Positioned(
-                            right: -14,
+                    ),
+                    if (_currentBorrowIndex > 0)
+                      Positioned(
+                        left: 0,
+                        top: 68,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              if (_borrowPageController.hasClients) {
+                                _borrowPageController.previousPage(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                              }
+                            },
                             child: Container(
                               width: 44,
                               height: 44,
@@ -255,22 +491,66 @@ class _HomePageState extends State<HomePage> {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.35),
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.35),
                                     blurRadius: 10,
                                     offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
-                              child: const Icon(
-                                Icons.chevron_right_rounded,
-                                color: Colors.white,
-                                size: 30,
+                              child: const Center(
+                                child: Icon(
+                                  Icons.chevron_left_rounded,
+                                  color: Colors.white,
+                                  size: 30,
+                                ),
                               ),
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                    if (_currentBorrowIndex < _borrowedBooks.length - 1)
+                      Positioned(
+                        right: 0,
+                        top: 68,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              if (_borrowPageController.hasClients) {
+                                _borrowPageController.nextPage(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                              }
+                            },
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.35),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Colors.white,
+                                  size: 30,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     Positioned(
                       bottom: 0,
                       child: Container(
@@ -322,137 +602,154 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 14),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                padding: const EdgeInsets.symmetric(horizontal: 10.0),
                 child: Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.centerRight,
+                  alignment: Alignment.center,
                   children: [
-                    Container(
-                      height: 175,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        color: const Color(0xFF2E2068),
-                        image: DecorationImage(
-                          image: const AssetImage('assets/images/event_library.jpg'),
-                          fit: BoxFit.cover,
-                          onError: (exception, stackTrace) {},
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                      child: SizedBox(
+                        height: 175,
+                        child: PageView.builder(
+                          controller: _eventPageController,
+                          itemCount: _events.length,
+                          scrollBehavior:
+                              const MaterialScrollBehavior().copyWith(
+                            dragDevices: {
+                              PointerDeviceKind.mouse,
+                              PointerDeviceKind.touch,
+                              PointerDeviceKind.trackpad,
+                            },
+                          ),
+                          onPageChanged: (index) {
+                            setState(() {
+                              _currentEventIndex = index;
+                            });
+                          },
+                          itemBuilder: (context, index) {
+                            return _buildEventCard(_events[index]);
+                          },
                         ),
                       ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              const Color(0xFF1C1344).withValues(alpha: 0.65),
-                              const Color(0xFF2E2068).withValues(alpha: 0.85),
-                            ],
-                          ),
-                        ),
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Book Exchange Day',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Exchange your favorite books with\nother students',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white.withValues(alpha: 0.9),
-                                height: 1.3,
-                              ),
-                            ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
+                    ),
+                    if (_currentEventIndex > 0)
+                      Positioned(
+                        left: 0,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              if (_eventPageController.hasClients) {
+                                _eventPageController.previousPage(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                              }
+                            },
+                            child: Container(
+                              width: 38,
+                              height: 38,
                               decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
+                                color: const Color(0xFFE8E5FE),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
-                              child: const Text(
-                                'VIEW EVENT',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
+                              child: const Center(
+                                child: Icon(
+                                  Icons.chevron_left_rounded,
                                   color: AppColors.primary,
-                                  letterSpacing: 0.5,
+                                  size: 26,
                                 ),
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      right: -10,
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE9E6FA),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+                    if (_currentEventIndex < _events.length - 1)
+                      Positioned(
+                        right: 0,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              if (_eventPageController.hasClients) {
+                                _eventPageController.nextPage(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                );
+                              }
+                            },
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE8E5FE),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: AppColors.primary,
+                                  size: 26,
+                                ),
+                              ),
                             ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.chevron_right,
-                          color: AppColors.primary,
-                          size: 22,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 9,
-                    height: 9,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    width: 9,
-                    height: 9,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFB1A7FF),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    width: 9,
-                    height: 9,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFCEC8FF),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
+                children: List.generate(
+                  _events.length,
+                  (index) {
+                    final isActive = _currentEventIndex == index;
+                    return MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          if (_eventPageController.hasClients) {
+                            _eventPageController.animateToPage(
+                              index,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                          }
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: 9,
+                          height: 9,
+                          decoration: BoxDecoration(
+                            color: isActive
+                                ? AppColors.primary
+                                : const Color(0xFFB8AEFF),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
               const SizedBox(height: 20),
               const Padding(

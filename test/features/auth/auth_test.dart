@@ -76,5 +76,32 @@ void main() {
       expect(provider.isLoggedIn, false);
       expect(provider.currentUser, isNull);
     });
+
+    test('masuk dengan akun yang didaftarkan mempertahankan nama lengkap asli', () async {
+      await provider.daftar(
+        nama: 'Ujang Knalpot',
+        email: 'ujang@example.com',
+        password: 'password123',
+      );
+      provider.keluar();
+
+      final loginSukses = await provider.masuk(
+        email: 'ujang@example.com',
+        password: 'password123',
+      );
+
+      expect(loginSukses, true);
+      expect(provider.currentUser?.nama, 'Ujang Knalpot');
+    });
+
+    test('resetPassword berhasil mengubah status loading dan mengembalikan true', () async {
+      final suksesReset = await provider.resetPassword(
+        email: 'ujang@example.com',
+        passwordBaru: 'newpassword123',
+      );
+
+      expect(suksesReset, true);
+      expect(provider.isLoading, false);
+    });
   });
 }

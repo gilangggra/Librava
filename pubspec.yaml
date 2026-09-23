@@ -33,6 +33,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   google_fonts: ^8.2.1
   provider: ^6.1.2
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:
@@ -65,6 +66,8 @@ flutter:
     - assets/images/book_atomic_habits.jpg
     - assets/images/book_midnight_lib.jpg
     - assets/images/event_library.jpg
+    - assets/images/event_reading_meetup.jpg
+    - assets/images/event_book_discussion.jpg
     - assets/images/bookshelf.jpg
     - assets/images/google_logo.png
     - assets/images/github_logo.png

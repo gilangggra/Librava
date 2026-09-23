@@ -28,13 +28,13 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _prosesDaftarAkun() async {
-    if (_formKey.currentState?.validate() ?? true) {
+    if (_formKey.currentState?.validate() ?? false) {
       final namaUser = _namaController.text.trim();
       final emailUser = _emailController.text.trim();
       final passwordUser = _passwordController.text;
 
       final berhasil = await context.read<AuthProvider>().daftar(
-            nama: namaUser.isEmpty ? 'Pengguna' : namaUser,
+            nama: namaUser,
             email: emailUser,
             password: passwordUser,
           );
@@ -43,9 +43,16 @@ class _RegisterPageState extends State<RegisterPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Akun untuk ${namaUser.isEmpty ? 'Pengguna' : namaUser} berhasil dibuat!',
+              'Akun untuk $namaUser berhasil dibuat! Silakan masuk.',
             ),
             backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LoginPage(initialEmail: emailUser),
           ),
         );
       }
@@ -144,6 +151,12 @@ class _RegisterPageState extends State<RegisterPage> {
                         hintText: 'Ujang Knalpot',
                         controller: _namaController,
                         keyboardType: TextInputType.name,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Nama lengkap tidak boleh kosong';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 20),
                       CustomTextField(
@@ -151,6 +164,15 @@ class _RegisterPageState extends State<RegisterPage> {
                         hintText: 'ujang@example.com',
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Email tidak boleh kosong';
+                          }
+                          if (!value.contains('@') || !value.contains('.')) {
+                            return 'Format email tidak valid';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 20),
                       CustomTextField(
@@ -158,6 +180,15 @@ class _RegisterPageState extends State<RegisterPage> {
                         hintText: 'At least 8 characters',
                         controller: _passwordController,
                         obscureText: _isPasswordHidden,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Kata sandi tidak boleh kosong';
+                          }
+                          if (value.length < 8) {
+                            return 'Kata sandi minimal 8 karakter';
+                          }
+                          return null;
+                        },
                         suffixIcon: IconButton(
                           icon: Icon(
                             _isPasswordHidden

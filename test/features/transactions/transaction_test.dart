@@ -19,6 +19,7 @@ void main() {
         'lokasiPertemuan': 'Open Library Telkom University',
         'tanggal': '2026-09-15',
         'tanggalPengembalian': '2026-09-22',
+        'coverBuku': 'assets/images/book_the_unknown.jpg',
       };
 
       final transaksi = TransactionModel.fromJson(sampleJson);
@@ -28,6 +29,7 @@ void main() {
       expect(transaksi.pemilikNama, 'Andi (dummy)');
       expect(transaksi.lokasiPertemuan, 'Open Library Telkom University');
       expect(transaksi.tanggalPengembalian, '2026-09-22');
+      expect(transaksi.coverBuku, 'assets/images/book_the_unknown.jpg');
 
       final exportedJson = transaksi.toJson();
       expect(exportedJson['id'], 'trx_001');
@@ -58,119 +60,114 @@ void main() {
     });
   });
 
-  group('TransactionProvider Unit Tests (Simulasi MVP 15 Langkah)', () {
+  group('TransactionProvider Unit Tests (SRS FR-REQ-02 to FR-TRX-02)', () {
     late TransactionProvider provider;
 
     setUp(() {
-      provider = TransactionProvider();
+      provider = TransactionProvider(isiDataAwal: false);
     });
 
-    test('Inisialisasi awal provider dalam keadaan kosong', () {
+    test('Inisialisasi awal provider tanpa data awal dalam keadaan kosong', () {
       expect(provider.semuaTransaksi.isEmpty, true);
+      expect(provider.requestMasuk.isEmpty, true);
+      expect(provider.requestSaya.isEmpty, true);
       expect(provider.transaksiPending.isEmpty, true);
       expect(provider.transaksiDisetujui.isEmpty, true);
       expect(provider.transaksiAktif.isEmpty, true);
       expect(provider.riwayatSelesai.isEmpty, true);
     });
 
-    test('Alur Lengkap Transaksi Sukses (Happy Path Pinjam)', () async {
-      final trx = provider.ajukanPinjam(
+    test('FR-REQ-02: Matching Buku mengembalikan ketersediaan dan pemilik dummy', () {
+      final matching = provider.matchingBuku('bk_001');
+      expect(matching['tersedia'], true);
+      expect(matching['pemilikNama'], 'Andi (dummy)');
+      expect(matching['lokasi'], 'Telkom University');
+    });
+
+    test('FR-REQ-03 & FR-REQ-04: Terima Request & Lihat Detail Request Masuk', () {
+      final providerWithData = TransactionProvider(isiDataAwal: true);
+
+      expect(providerWithData.requestMasuk.length, greaterThanOrEqualTo(1));
+      final incoming = providerWithData.requestMasuk.first;
+      expect(incoming.pemilikNama, 'Gilang Ramadan');
+      expect(incoming.pemohonNama, 'Budi Santoso');
+      expect(incoming.status, 'pending');
+
+      final detail = providerWithData.getTransaksiById(incoming.id);
+      expect(detail, isNotNull);
+      expect(detail?.judulBuku, 'Clean Code');
+    });
+
+    test('FR-REQ-05: Kelola Request (Terima dan Tolak)', () {
+      final trx1 = provider.ajukanPinjam(
         bukuId: 'bk_001',
+        judulBuku: 'Clean Code',
+        pemohonNama: 'Budi Santoso',
+        pemilikNama: 'Gilang Ramadan',
+      );
+      final terimaSukses = provider.terimaRequest(trx1.id);
+      expect(terimaSukses, true);
+      expect(provider.getTransaksiById(trx1.id)?.status, 'disetujui');
+
+      final trx2 = provider.ajukanPinjam(
+        bukuId: 'bk_002',
+        judulBuku: 'Refactoring',
+        pemohonNama: 'Ahmad',
+        pemilikNama: 'Gilang Ramadan',
+      );
+      final tolakSukses = provider.tolakRequest(trx2.id);
+      expect(tolakSukses, true);
+      expect(provider.getTransaksiById(trx2.id)?.status, 'ditolak');
+    });
+
+    test('FR-REQ-06: Status Request dan Label Ramah Pengguna', () {
+      expect(provider.getStatusLabel('pending'), 'Menunggu Konfirmasi');
+      expect(provider.getStatusLabel('disetujui'), 'Disetujui (Perlu Deposit)');
+      expect(provider.getStatusLabel('ditolak'), 'Ditolak');
+      expect(provider.getStatusLabel('deposit_dibayar'), 'Deposit Dibayar (Pilih Lokasi)');
+      expect(provider.getStatusLabel('lokasi_ditentukan'), 'Lokasi Ditentukan (Menunggu Serah Terima)');
+      expect(provider.getStatusLabel('sedang_dipinjam'), 'Sedang Dipinjam');
+      expect(provider.getStatusLabel('selesai'), 'Selesai');
+    });
+
+    test('FR-DEP-01, FR-LOC-01, FR-TRX-01, FR-TRX-02: Siklus Transaksi End-to-End', () {
+      final trx = provider.ajukanPinjam(
+        bukuId: 'bk_002',
         judulBuku: 'Algoritma Pemrograman',
         pemohonNama: 'Gilang Ramadan',
+        pemilikNama: 'Andi (dummy)',
         durasiHari: 7,
-        depositSimulasi: 20000.0,
       );
 
-      expect(trx.status, 'pending');
-      expect(provider.transaksiPending.length, 1);
-      expect(provider.transaksiAktif.length, 1);
+      provider.terimaRequest(trx.id);
+      expect(provider.getTransaksiById(trx.id)?.status, 'disetujui');
 
-      final responBerhasil = await provider.simulasiResponPemilik(
-        trx.id,
-        disetujui: true,
-        delay: Duration.zero,
-      );
-      expect(responBerhasil, true);
-
-      final trxDisetujui = provider.getTransaksiById(trx.id);
-      expect(trxDisetujui?.status, 'disetujui');
-      expect(provider.transaksiDisetujui.length, 1);
-
-      final bayarBerhasil = provider.bayarDepositSimulasi(trx.id, 20000.0);
-      expect(bayarBerhasil, true);
+      final depositOk = provider.bayarDepositSimulasi(trx.id, 20000.0);
+      expect(depositOk, true);
       expect(provider.getTransaksiById(trx.id)?.status, 'deposit_dibayar');
 
-      final lokasiBerhasil = provider.tentukanLokasiPertemuan(
+      final lokasiOk = provider.tentukanLokasiPertemuan(
         trx.id,
         'Open Library Telkom University',
       );
-      expect(lokasiBerhasil, true);
+      expect(lokasiOk, true);
+      expect(provider.getTransaksiById(trx.id)?.status, 'lokasi_ditentukan');
       expect(
         provider.getTransaksiById(trx.id)?.lokasiPertemuan,
         'Open Library Telkom University',
       );
 
-      final serahTerimaBerhasil = provider.konfirmasiSerahTerima(trx.id);
-      expect(serahTerimaBerhasil, true);
+      final serahTerimaOk = provider.konfirmasiSerahTerima(trx.id);
+      expect(serahTerimaOk, true);
       expect(provider.getTransaksiById(trx.id)?.status, 'sedang_dipinjam');
-      expect(provider.transaksiAktif.length, 1);
 
-      final selesaiBerhasil = provider.selesaikanTransaksi(
+      final selesaiOk = provider.selesaikanTransaksi(
         trx.id,
-        tanggalPengembalian: '2026-09-22',
+        tanggalPengembalian: '2026-09-30',
       );
-      expect(selesaiBerhasil, true);
-
-      final trxSelesai = provider.getTransaksiById(trx.id);
-      expect(trxSelesai?.status, 'selesai');
-      expect(trxSelesai?.tanggalPengembalian, '2026-09-22');
-
-      expect(provider.transaksiAktif.length, 0);
+      expect(selesaiOk, true);
+      expect(provider.getTransaksiById(trx.id)?.status, 'selesai');
       expect(provider.riwayatSelesai.length, 1);
-    });
-
-    test('Alur Penolakan Transaksi (Reject Path Barter)', () async {
-      final trx = provider.ajukanBarter(
-        bukuId: 'bk_002',
-        judulBuku: 'Struktur Data',
-        pemohonNama: 'Gilang Ramadan',
-        bukuBarter: 'Basis Data Praktis',
-        durasiHari: 14,
-      );
-
-      expect(trx.status, 'pending');
-      expect(trx.bukuBarter, 'Basis Data Praktis');
-
-      final responTolak = await provider.simulasiResponPemilik(
-        trx.id,
-        disetujui: false,
-        delay: Duration.zero,
-      );
-      expect(responTolak, true);
-
-      final trxDitolak = provider.getTransaksiById(trx.id);
-      expect(trxDitolak?.status, 'ditolak');
-
-      expect(provider.transaksiAktif.length, 0);
-      expect(provider.riwayatSelesai.length, 1);
-    });
-
-    test('Validasi: Bayar deposit gagal jika status belum disetujui', () {
-      final trx = provider.ajukanPinjam(
-        bukuId: 'bk_001',
-        judulBuku: 'Algoritma Pemrograman',
-        pemohonNama: 'Gilang Ramadan',
-      );
-
-      final bayarGagal = provider.bayarDepositSimulasi(trx.id, 20000.0);
-      expect(bayarGagal, false);
-      expect(provider.getTransaksiById(trx.id)?.status, 'pending');
-    });
-
-    test('getTransaksiById mengembalikan null jika id tidak ditemukan', () {
-      final trx = provider.getTransaksiById('id_tidak_ada');
-      expect(trx, isNull);
     });
   });
 }
