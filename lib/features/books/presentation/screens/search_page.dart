@@ -2,6 +2,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../home/presentation/screens/home_page.dart';
+import '../../../chat/presentation/screens/chat_page.dart';
+import '../../../profile/presentation/screens/profile_page.dart';
+import 'book_detail_page.dart';
+import 'my_book_page.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -20,31 +24,51 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
-  Widget _buildBookCover(String assetPath) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: Image.asset(
-        assetPath,
-        width: 108,
-        height: 165,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: 108,
-            height: 165,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE7E3FF),
-              borderRadius: BorderRadius.circular(18),
+  Widget _buildBookCover(
+    String assetPath, {
+    String? title,
+    String? author,
+    String? genre,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BookDetailPage(
+              coverPath: assetPath,
+              title: title,
+              author: author,
+              genre: genre,
             ),
-            child: const Center(
-              child: Icon(
-                Icons.book_rounded,
-                color: AppColors.primary,
-                size: 36,
+          ),
+        );
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Image.asset(
+          assetPath,
+          width: 108,
+          height: 165,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              width: 108,
+              height: 165,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE7E3FF),
+                borderRadius: BorderRadius.circular(18),
               ),
-            ),
-          );
-        },
+              child: const Center(
+                child: Icon(
+                  Icons.book_rounded,
+                  color: AppColors.primary,
+                  size: 36,
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -71,11 +95,26 @@ class _SearchPageState extends State<SearchPage> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             children: [
-              _buildBookCover('assets/images/book_the_unknown.jpg'),
+              _buildBookCover(
+                'assets/images/book_the_unknown.jpg',
+                title: 'The Unknown',
+                author: 'Riley Sager',
+                genre: 'Horror/Thriller',
+              ),
               const SizedBox(width: 14),
-              _buildBookCover('assets/images/book_fruit_fly.jpg'),
+              _buildBookCover(
+                'assets/images/book_fruit_fly.jpg',
+                title: 'Fruit Fly',
+                author: 'Dr. John Doe',
+                genre: 'Sains',
+              ),
               const SizedBox(width: 14),
-              _buildBookCover('assets/images/book_adversary.jpg'),
+              _buildBookCover(
+                'assets/images/book_adversary.jpg',
+                title: 'Adversary',
+                author: 'Jane Smith',
+                genre: 'Fiksi',
+              ),
             ],
           ),
         ),
@@ -98,6 +137,36 @@ class _SearchPageState extends State<SearchPage> {
             PageRouteBuilder(
               pageBuilder: (context, animation1, animation2) =>
                   const HomePage(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        } else if (index == 1) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation1, animation2) =>
+                  const MyBookPage(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        } else if (index == 3) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation1, animation2) =>
+                  const ChatPage(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        } else if (index == 4) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation1, animation2) =>
+                  const ProfilePage(),
               transitionDuration: Duration.zero,
               reverseTransitionDuration: Duration.zero,
             ),
@@ -141,7 +210,7 @@ class _SearchPageState extends State<SearchPage> {
               : Icon(
                   isSelected ? activeIcon : inactiveIcon,
                   color:
-                      isSelected ? AppColors.primary : const Color(0xFF38335A),
+                      isSelected ? AppColors.primary : const Color(0xFF52518D),
                   size: 28,
                 ),
         ),

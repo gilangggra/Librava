@@ -8,7 +8,12 @@ import 'forgot_password_page.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final String? initialEmail;
+
+  const LoginPage({
+    super.key,
+    this.initialEmail,
+  });
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -21,6 +26,14 @@ class _LoginPageState extends State<LoginPage> {
   bool _isPasswordHidden = true;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.initialEmail != null && widget.initialEmail!.isNotEmpty) {
+      _emailController.text = widget.initialEmail!;
+    }
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -28,7 +41,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _prosesLogin() async {
-    if (_formKey.currentState?.validate() ?? true) {
+    if (_formKey.currentState?.validate() ?? false) {
       final emailUser = _emailController.text.trim();
       final passwordUser = _passwordController.text;
 
@@ -38,6 +51,16 @@ class _LoginPageState extends State<LoginPage> {
           );
 
       if (berhasil && mounted) {
+        final namaUser =
+            context.read<AuthProvider>().currentUser?.nama ?? 'Sobat Librava';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Selamat datang kembali, $namaUser!'),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -140,6 +163,15 @@ class _LoginPageState extends State<LoginPage> {
                         hintText: 'ujang@example.com',
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Email tidak boleh kosong';
+                          }
+                          if (!value.contains('@') || !value.contains('.')) {
+                            return 'Format email tidak valid';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 20),
                       CustomTextField(
@@ -147,6 +179,15 @@ class _LoginPageState extends State<LoginPage> {
                         hintText: 'Enter your password',
                         controller: _passwordController,
                         obscureText: _isPasswordHidden,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Kata sandi tidak boleh kosong';
+                          }
+                          if (value.length < 6) {
+                            return 'Kata sandi minimal 6 karakter';
+                          }
+                          return null;
+                        },
                         suffixIcon: IconButton(
                           icon: Icon(
                             _isPasswordHidden

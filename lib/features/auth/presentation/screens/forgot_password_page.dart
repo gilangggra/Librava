@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/custom_text_field.dart';
+import 'login_page.dart';
 import 'register_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -15,7 +18,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordHidden = true;
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -25,32 +27,37 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   Future<void> _prosesResetPassword() async {
-    if (_formKey.currentState?.validate() ?? true) {
-      setState(() {
-        _isLoading = true;
-      });
+    if (_formKey.currentState?.validate() ?? false) {
+      final emailUser = _emailController.text.trim();
+      final passwordBaru = _passwordController.text;
 
-      await Future.delayed(const Duration(milliseconds: 600));
+      final berhasil = await context.read<AuthProvider>().resetPassword(
+            email: emailUser,
+            passwordBaru: passwordBaru,
+          );
 
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-
+      if (berhasil && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Password baru berhasil disimpan!'),
+            content: Text('Kata sandi berhasil diperbarui! Silakan masuk.'),
             backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
           ),
         );
 
-        Navigator.pop(context);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LoginPage(initialEmail: emailUser),
+          ),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
@@ -140,6 +147,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         hintText: 'ujang@example.com',
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Email tidak boleh kosong';
+                          }
+                          if (!value.contains('@') || !value.contains('.')) {
+                            return 'Format email tidak valid';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 20),
                       CustomTextField(
@@ -147,6 +163,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         hintText: 'Enter your new password',
                         controller: _passwordController,
                         obscureText: _isPasswordHidden,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Kata sandi baru tidak boleh kosong';
+                          }
+                          if (value.length < 8) {
+                            return 'Kata sandi baru minimal 8 karakter';
+                          }
+                          return null;
+                        },
                         suffixIcon: IconButton(
                           icon: Icon(
                             _isPasswordHidden
@@ -176,8 +201,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          onPressed: _isLoading ? null : _prosesResetPassword,
-                          child: _isLoading
+                          onPressed: authProvider.isLoading
+                              ? null
+                              : _prosesResetPassword,
+                          child: authProvider.isLoading
                               ? const SizedBox(
                                   width: 22,
                                   height: 22,
