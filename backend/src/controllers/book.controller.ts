@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { BookService } from '../services/book.service';
 import { AuthenticatedRequest } from '../types';
+import { queryBookSchema } from '../schemas/book.schema';
 
 export class BookController {
   static async createBook(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
@@ -45,15 +46,25 @@ export class BookController {
 
   static async getAllBooks(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { search, kategori, status, owner_id, limit, offset } = req.query;
+      const parsedQuery = queryBookSchema.safeParse(req.query);
+      if (!parsedQuery.success) {
+        res.status(400).json({ success: false, message: 'Parameter pencarian buku tidak valid.' });
+        return;
+      }
+
+      const { search, kategori, status, owner_id, limit = 20, offset = 0 } = parsedQuery.data;
+      if (limit < 1 || limit > 100 || offset < 0) {
+        res.status(400).json({ success: false, message: 'Limit harus 1-100 dan offset tidak boleh negatif.' });
+        return;
+      }
 
       const result = await BookService.getAllBooks({
-        search: search as string,
-        kategori: kategori as string,
-        status: status as string,
-        owner_id: owner_id ? parseInt(owner_id as string, 10) : undefined,
-        limit: limit ? parseInt(limit as string, 10) : 20,
-        offset: offset ? parseInt(offset as string, 10) : 0,
+        search,
+        kategori,
+        status,
+        owner_id,
+        limit,
+        offset,
       });
 
       res.status(200).json({
@@ -62,8 +73,8 @@ export class BookController {
         data: result.books,
         meta: {
           total: result.total,
-          limit: limit ? parseInt(limit as string, 10) : 20,
-          offset: offset ? parseInt(offset as string, 10) : 0,
+          limit,
+          offset,
         },
       });
     } catch (error) {

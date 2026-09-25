@@ -7,8 +7,8 @@ import { createBookSchema, updateBookSchema } from '../schemas/book.schema';
 const router = Router();
 
 router.get('/', BookController.getAllBooks);
-router.get('/:id', BookController.getBookById);
 router.get('/user/my-books', authenticate, BookController.getMyBooks);
+router.get('/:id', BookController.getBookById);
 router.post('/', authenticate, validate({ body: createBookSchema }), BookController.createBook);
 router.put('/:id', authenticate, validate({ body: updateBookSchema }), BookController.updateBook);
 router.delete('/:id', authenticate, BookController.deleteBook);

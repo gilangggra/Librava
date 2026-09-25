@@ -30,7 +30,7 @@ export const ensureDatabaseExists = async (): Promise<void> => {
       console.log(`Database "${dbName}" created.`);
     }
   } catch (err: any) {
-    console.warn(`Database check notice: ${err.message}`);
+    throw new Error(`Database check failed: ${err.message}`);
   } finally {
     await maintenanceClient.end().catch(() => {});
   }
@@ -114,6 +114,8 @@ export const initDb = async (): Promise<void> => {
     ALTER TABLE transactions ADD COLUMN IF NOT EXISTS durasi_hari INT DEFAULT 7;
     ALTER TABLE transactions ADD COLUMN IF NOT EXISTS due_date TIMESTAMP;
     ALTER TABLE transactions ADD COLUMN IF NOT EXISTS returned_at TIMESTAMP;
+    ALTER TABLE transactions ADD COLUMN IF NOT EXISTS requester_confirmed_at TIMESTAMP;
+    ALTER TABLE transactions ADD COLUMN IF NOT EXISTS owner_confirmed_at TIMESTAMP;
 
     CREATE TABLE IF NOT EXISTS chats (
         id SERIAL PRIMARY KEY,

@@ -643,13 +643,24 @@ async function executeTestSuite() {
     })
   );
 
-  // Complete Handover (Transition to SELESAI)
-  await runTest('TX-12', 'Transaction', 'PUT /transactions/:id/handover - Confirm handover complete (SELESAI)', 200, () =>
+  // Requester confirms handover; transaction remains DALAM_PROSES until owner confirms too.
+  await runTest('TX-12', 'Transaction', 'PUT /transactions/:id/handover - Requester confirms handover', 200, () =>
     fetch(`${BASE_URL}/transactions/${transactionId}/handover`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenA}`,
+      },
+    })
+  );
+
+  // Owner confirms handover and completes the transaction.
+  await runTest('TX-13', 'Transaction', 'PUT /transactions/:id/handover - Owner confirms handover (SELESAI)', 200, () =>
+    fetch(`${BASE_URL}/transactions/${transactionId}/handover`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenB}`,
       },
     })
   );

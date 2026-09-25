@@ -25,7 +25,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
         callback(null, true);
       } else {
-        callback(null, true);
+        callback(new Error('Origin tidak diizinkan oleh kebijakan CORS.'));
       }
     },
     credentials: true,

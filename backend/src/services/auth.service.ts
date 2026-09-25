@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma';
 import { UserPayload } from '../types';
+import { getJwtSecret } from '../config/security';
 
 export interface RegisterDTO {
   email: string;
@@ -176,7 +177,7 @@ export class AuthService {
   }
 
   private static generateToken(payload: UserPayload): string {
-    const secret = process.env.JWT_SECRET || 'librava_secret_jwt_key_2026_super_secure';
+    const secret = getJwtSecret();
     const expiresIn = (process.env.JWT_EXPIRES_IN || '7d') as jwt.SignOptions['expiresIn'];
     return jwt.sign(payload, secret, { expiresIn });
   }

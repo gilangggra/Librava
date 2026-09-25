@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { UserPayload } from '../types';
 import { ChatService } from '../services/chat.service';
 import prisma from '../config/prisma';
+import { getJwtSecret } from '../config/security';
 
 interface AuthenticatedSocket extends Socket {
   data: {
@@ -16,7 +17,9 @@ let ioInstance: SocketIOServer | null = null;
 export const initSocket = (httpServer: HttpServer): SocketIOServer => {
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: '*',
+      origin: (process.env.CORS_ORIGIN || 'http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000')
+        .split(',')
+        .map((origin) => origin.trim()),
       methods: ['GET', 'POST'],
       credentials: true,
     },
@@ -34,10 +37,8 @@ export const initSocket = (httpServer: HttpServer): SocketIOServer => {
       return next(new Error('Autentikasi gagal: Token tidak disertakan.'));
     }
 
-    const secret = process.env.JWT_SECRET || 'librava_secret_jwt_key_2026_super_secure';
-
     try {
-      const decoded = jwt.verify(token, secret) as UserPayload;
+      const decoded = jwt.verify(token, getJwtSecret()) as UserPayload;
       socket.data.user = decoded;
       next();
     } catch (err) {
