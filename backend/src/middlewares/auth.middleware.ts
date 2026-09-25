@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest, UserPayload } from '../types';
+import { getJwtSecret } from '../config/security';
 
 export const authenticate = (
   req: AuthenticatedRequest,
@@ -18,10 +19,8 @@ export const authenticate = (
   }
 
   const token = authHeader.split(' ')[1];
-  const jwtSecret = process.env.JWT_SECRET || 'librava_secret_jwt_key_2026_super_secure';
-
   try {
-    const decoded = jwt.verify(token as string, jwtSecret) as UserPayload;
+    const decoded = jwt.verify(token as string, getJwtSecret()) as UserPayload;
     req.user = decoded;
     next();
   } catch (error) {

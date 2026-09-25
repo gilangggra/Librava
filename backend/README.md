@@ -7,7 +7,7 @@ Backend REST API untuk **Librava** (Aplikasi Mobile Barter & Peminjaman Buku Ant
 - **Language**: TypeScript
 - **Framework**: Express.js
 - **Database**: PostgreSQL (`pg` connection pool)
-- **Security**: JWT (`jsonwebtoken`) & `bcryptjs`
+- **Security**: JWT (`jsonwebtoken`), `bcryptjs`, Helmet, CORS allowlist & rate limiting
 - **Dev Runner**: `tsx`
 
 ---
@@ -108,9 +108,63 @@ npm start
 | `POST` | `/api/transactions` | `Bearer Token` | Mengajukan pinjam (`BORROW`) / barter (`BARTER`) buku |
 | `GET` | `/api/transactions` | `Bearer Token` | Ambil daftar transaksi user (Query: `role=requester\|owner`, `status`) |
 | `GET` | `/api/transactions/:id` | `Bearer Token` | Ambil detail transaksi (beserta buku barter, deposit, & lokasi) |
-| `PUT` | `/api/transactions/:id/status` | `Bearer Token` | Update status: `DISETUJUI`, `DITOLAK`, `DIBATALKAN`, `SELESAI` |
-| `PUT` | `/api/transactions/:id/meeting` | `Bearer Token` | Menentukan `lokasi_pertemuan` & `waktu_pertemuan` |
-| `PUT` | `/api/transactions/:id/handover` | `Bearer Token` | Konfirmasi serah terima buku (menyelesaikan transaksi) |
+| `PUT` | `/api/transactions/:id/status` | `Bearer Token` | Owner approve/reject request; requester dapat membatalkan request pending |
+| `PUT` | `/api/transactions/:id/meeting` | `Bearer Token` | Menentukan `lokasi_pertemuan` & `waktu_pertemuan` setelah request disetujui |
+| `PUT` | `/api/transactions/:id/handover` | `Bearer Token` | Mencatat konfirmasi serah terima; status `SELESAI` setelah requester dan owner mengonfirmasi |
+
+#### Lifecycle transaksi
+
+```text
+MENUNGGU_KONFIRMASI -> DISETUJUI -> DALAM_PROSES -> SELESAI
+MENUNGGU_KONFIRMASI -> DITOLAK
+MENUNGGU_KONFIRMASI -> DIBATALKAN
+```
+
+Deposit dummy tidak dipotong saat request dibuat. Saldo ditahan secara atomic ketika owner menyetujui request dan dikembalikan setelah kedua pihak menyelesaikan handover.
+
+---
+
+### 7. ⚙️ Health, Database & Konfigurasi
+
+| Method | Endpoint | Deskripsi |
+|---|---|---|
+| `GET` | `/api/health` | Mengembalikan `200` jika API dan database dapat diakses; jika database gagal, mengembalikan `503` |
+
+`JWT_SECRET` wajib diatur di `.env` dan minimal 32 karakter. Jangan menggunakan secret contoh pada `.env.example` untuk deployment.
+
+Setelah perubahan schema Prisma, sinkronkan database sebelum menjalankan server:
+
+```bash
+npm run prisma:push
+```
+
+Server tidak akan membuka port apabila koneksi database gagal.
+
+### 8. 🚀 Deploy ke Render
+
+Repository ini menyediakan `render.yaml` di root project. Di Render pilih **New Blueprint Instance** lalu hubungkan repository ini. Blueprint akan membuat satu Web Service dengan:
+
+- Root directory: `backend`
+- Build: `npm ci && npm run prisma:generate && npm run build`
+- Start: `npm start`
+- Health check: `/api/health`
+
+Isi environment variable berikut di Render:
+
+```env
+DATABASE_URL=postgresql://...
+JWT_SECRET=random-secret-minimal-32-karakter
+CORS_ORIGIN=https://domain-frontend-kamu.com
+```
+
+Buat PostgreSQL managed terlebih dahulu di Render, lalu gunakan **Internal Database URL** sebagai `DATABASE_URL` pada Web Service. Untuk menjalankan sinkronisasi schema dari laptop, gunakan **External Database URL** sementara atau jalankan command dari Render Shell:
+
+```bash
+cd backend
+npm run prisma:push
+```
+
+Pada production backend tidak mencoba membuat database baru. Socket.IO tetap berjalan karena Render Web Service menggunakan proses server persistent. Folder `uploads/` tidak dianggap storage permanen; gunakan Cloudinary, Supabase Storage, atau Cloudflare R2 untuk file gambar production.
 
 ---
 

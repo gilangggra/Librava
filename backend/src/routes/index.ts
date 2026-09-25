@@ -6,6 +6,7 @@ import chatRoutes from './chat.routes';
 import reviewRoutes from './review.routes';
 import adminRoutes from './admin.routes';
 import uploadRoutes from './upload.routes';
+import prisma from '../config/prisma';
 
 const router = Router();
 
@@ -58,11 +59,21 @@ router.get('/', (req, res) => {
   });
 });
 
-router.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-  });
+router.get('/health', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.status(200).json({
+      status: 'OK',
+      database: 'connected',
+      timestamp: new Date().toISOString(),
+    });
+  } catch {
+    res.status(503).json({
+      status: 'UNAVAILABLE',
+      database: 'disconnected',
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 router.use('/auth', authRoutes);

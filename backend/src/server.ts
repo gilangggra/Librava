@@ -11,11 +11,15 @@ const PORT = process.env.PORT || 5000;
 
 async function bootstrap() {
   try {
-    await ensureDatabaseExists();
+    if (process.env.NODE_ENV !== 'production') {
+      await ensureDatabaseExists();
+    }
     await prisma.$connect();
     console.log('Connected to PostgreSQL via Prisma ORM');
   } catch (error: any) {
-    console.warn('Database connection warning:', error.message);
+    console.error('Database connection failed:', error.message);
+    process.exitCode = 1;
+    return;
   }
 
   const server = http.createServer(app);

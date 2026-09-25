@@ -18,7 +18,8 @@ backend/
 ├── src/
 │   ├── config/
 │   │   ├── database.ts         # Connection pool PostgreSQL & auto-init schema tabel
-│   │   └── prisma.ts           # Init Prisma Client v7 dengan adapter PrismaPg & dotenv
+│   │   ├── prisma.ts           # Init Prisma Client v7 dengan adapter PrismaPg & dotenv
+│   │   └── security.ts         # Validasi JWT_SECRET wajib dan panjang minimum
 │   ├── controllers/
 │   │   ├── admin.controller.ts
 │   │   ├── auth.controller.ts
@@ -51,7 +52,7 @@ backend/
 │   ├── types/
 │   │   └── index.ts            # TS interfaces
 │   ├── app.ts                  # Setup Express, CORS, JSON body parser
-│   └── server.ts               # Bootstrap server, cek koneksi DB, auto table init
+│   └── server.ts               # Bootstrap server dan validasi koneksi DB
 ├── .env
 ├── .env.example
 ├── package.json                # Scripts: dev, build, start, prisma:*, test:qa
@@ -86,9 +87,22 @@ backend/
 - `POST /api/transactions` — ajukan pinjam (`BORROW`) atau barter (`BARTER`). Validasi ketersediaan buku dan kepemilikan buku yang mau dibarter.
 - `GET /api/transactions` — list transaksi user, filter `role=requester|owner` dan `status`.
 - `GET /api/transactions/:id` — detail lengkap: kedua pihak, buku yang ditukar, deposit dummy, jadwal/lokasi.
-- `PUT /api/transactions/:id/status` — pemilik approve/reject (`DISETUJUI`, `DITOLAK`, `DIBATALKAN`), status buku ikut ke-update otomatis (`Dipinjam`/`Dibarter`/`Tersedia`).
-- `PUT /api/transactions/:id/meeting` — set lokasi & jadwal serah terima, status jadi `DALAM_PROSES`.
-- `PUT /api/transactions/:id/handover` — konfirmasi serah terima selesai, status `SELESAI`.
+- `PUT /api/transactions/:id/status` — owner hanya dapat approve/reject request pending; requester dapat membatalkan request pending. Status buku ikut diperbarui secara atomic.
+- `PUT /api/transactions/:id/meeting` — set lokasi & jadwal setelah request disetujui, lalu status menjadi `DALAM_PROSES`.
+- `PUT /api/transactions/:id/handover` — mencatat konfirmasi requester atau owner. Status baru menjadi `SELESAI` setelah kedua pihak mengonfirmasi.
+- `PUT /api/transactions/:id/return` — menggunakan mekanisme konfirmasi dua pihak yang sama untuk menyelesaikan transaksi.
+
+#### Lifecycle transaksi dan deposit
+
+Transisi status yang diizinkan:
+
+```text
+MENUNGGU_KONFIRMASI -> DISETUJUI -> DALAM_PROSES -> SELESAI
+MENUNGGU_KONFIRMASI -> DITOLAK
+MENUNGGU_KONFIRMASI -> DIBATALKAN
+```
+
+Deposit tidak ditarik saat request dibuat. Pada approval, saldo requester dikurangi menggunakan conditional update (`saldo_dummy >= deposit`) di dalam transaksi database. Jika saldo tidak cukup, approval dibatalkan. Deposit dikembalikan satu kali ketika kedua pihak mengonfirmasi handover.
 
 ### Chat per Transaksi (`/api/chats`)
 
@@ -110,18 +124,17 @@ backend/
 
 ## 4. QA Test Suite (`test_qa_suite.ts`)
 
-52 kasus uji E2E, dibagi jadi beberapa kelompok:
+53 kasus uji E2E, dibagi jadi beberapa kelompok:
 
-1. **Smoke & health check** — `/api/health`, `/api/`, handling 404.
+1. **Smoke & health check** — `/api/health` memverifikasi koneksi database, `/api/`, handling 404.
 2. **Autentikasi & validasi** — register, cegah email duplikat, tolak password kosong, cek token JWT yang di-tamper/forge, cek profil.
 3. **RBAC** — dashboard & monitoring admin diblokir buat mahasiswa (403).
 4. **Katalog buku** — CRUD, filter kategori, search, paginasi, proteksi edit/hapus oleh non-pemilik (anti-IDOR).
-5. **State machine transaksi** — cegah pinjam buku sendiri, cek kepemilikan buku barter, siklus status `MENUNGGU_KONFIRMASI` → `DISETUJUI` → `DALAM_PROSES` → `SELESAI`, dan status buku ikut ter-update di DB.
+5. **State machine transaksi** — cegah pinjam buku sendiri, cek kepemilikan buku barter, enforce siklus status `MENUNGGU_KONFIRMASI` → `DISETUJUI` → `DALAM_PROSES` → `SELESAI`, konfirmasi handover dua pihak, dan status buku ikut ter-update di DB.
 6. **Chat** — cuma partisipan transaksi yang bisa baca/kirim pesan, pihak luar diblokir (403).
 7. **Rating & reputasi** — rating 1-5, cek transaksi harus selesai dulu, cegah review ganda, kalkulasi rata-rata reputasi.
 8. **Teardown** — hak hapus aset cuma buat pemilik sah.
 
----
 
 ## 5. Cara Menjalankan
 
@@ -129,36 +142,49 @@ backend/
    ```bash
    docker run --name librava-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=librava_db -p 5432:5432 -d postgres
    ```
-2. Jalankan server (dev):
+2. Sinkronkan schema Prisma:
+   ```bash
+   cd backend
+   npm run prisma:push
+   ```
+3. Jalankan server (dev):
    ```bash
    cd backend
    npm run dev
    ```
-3. Jalankan QA suite (52 test cases):
+4. Jalankan QA suite (52 test cases):
    ```bash
    cd backend
    npm run test:qa
    ```
-4. Jalankan Security Audit & Penetration Testing (OWASP Top 10):
+5. Jalankan Security Audit & Penetration Testing (OWASP Top 10):
    ```bash
    cd backend
    npm run test:security
    ```
-5. Buka Prisma Studio:
+6. Buka Prisma Studio:
    ```bash
    npm run prisma:studio
    ```
-6. API base URL: `http://localhost:5000/api`
+7. API base URL: `http://localhost:5000/api`
+
+Konfigurasi minimal `.env`:
+
+
+Server gagal start jika database tidak tersedia. Endpoint `/api/health` mengembalikan `503` jika koneksi database putus.
 
 ---
 
 ## 6. Keamanan & Hardening (Cybersecurity)
 
-Backend telah diaudit dan diperkuat sesuai standar **OWASP API Security Top 10**:
+Backend menerapkan kontrol berikut sebagai bagian dari hardening **OWASP API Security Top 10**:
 
 1. **Anti-Mass Assignment / Privilege Escalation**: Endpoint registrasi publik `/api/auth/register` secara ketat mengunci `role: 'mahasiswa'`. Role admin tidak dapat diinjeksi via payload publik.
-2. **Brute-Force & DoS Protection**: Dilengkapi `express-rate-limit` pada `/api/auth/login` (maksimal 5x percobaan gagal per 15 menit per IP) dan rate limit global pada `/api`.
+2. **Brute-Force & DoS Protection**: Dilengkapi `express-rate-limit` pada `/api/auth/login` (maksimal 5x percobaan gagal per 15 menit per IP) dan rate limit global pada `/api`. Tidak ada bypass header di application code.
 3. **Security Headers (Helmet)**: Dilengkapi `helmet()` yang menyematkan proteksi browser standar (`X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, HSTS, dan menonaktifkan header bocoran `X-Powered-By: Express`).
 4. **Anti-Stored XSS**: Input teks buku (`judul`, `penulis`, `deskripsi`) disanitasi menggunakan utilitas pembersih tag script berbahaya (`src/utils/sanitize.ts`).
 5. **Anti-SQL Injection**: 100% query basis data menggunakan parameterized abstract syntax tree via **Prisma ORM 7**.
 6. **Anti-IDOR (Broken Object Level Authorization)**: Hak akses terhadap buku, chat transaksi, dan rating divalidasi ketat di level Service (`HTTP 403 Forbidden`).
+7. **JWT Secret Policy**: JWT ditolak jika `JWT_SECRET` tidak tersedia atau kurang dari 32 karakter; tidak ada fallback secret production.
+8. **CORS Allowlist**: HTTP API dan Socket.IO hanya menerima origin yang terdaftar di `CORS_ORIGIN`.
+9. **Atomic Transaction Rules**: Approval, penahanan deposit, refund, dan perubahan status diproses dalam transaksi database dengan guard terhadap concurrent update.

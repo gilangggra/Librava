@@ -64,6 +64,8 @@ model Transaction {
   durasiHari      Int?      @default(7) @map("durasi_hari")
   dueDate         DateTime? @map("due_date")
   returnedAt      DateTime? @map("returned_at")
+  requesterConfirmedAt DateTime? @map("requester_confirmed_at")
+  ownerConfirmedAt     DateTime? @map("owner_confirmed_at")
   lokasiPertemuan String?   @map("lokasi_pertemuan") @db.Text
   waktuPertemuan  DateTime? @map("waktu_pertemuan")
   createdAt       DateTime  @default(now()) @map("created_at")

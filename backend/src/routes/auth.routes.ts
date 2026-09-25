@@ -11,7 +11,6 @@ const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === 'test' ? 1000 : 5,
   skipSuccessfulRequests: true,
-  skip: (req) => req.headers['x-bypass-rate-limit'] === 'librava_qa_secret',
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -23,7 +22,6 @@ const loginLimiter = rateLimit({
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: process.env.NODE_ENV === 'test' ? 1000 : 50,
-  skip: (req) => req.headers['x-bypass-rate-limit'] === 'librava_qa_secret',
   standardHeaders: true,
   legacyHeaders: false,
   message: {

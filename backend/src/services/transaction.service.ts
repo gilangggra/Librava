@@ -94,33 +94,12 @@ export class TransactionService {
     const owner_id = requestedBook.ownerId;
     const deposit = Number(dto.deposit_dummy || 0);
 
-    // Verifikasi saldo dummy peminjam jika transaksi membutuhkan deposit
-    if (deposit > 0) {
-      const requester = await prisma.user.findUnique({
-        where: { id: dto.requester_id },
-      });
-      const currentSaldo = Number(requester?.saldoDummy || 0);
-      if (currentSaldo < deposit) {
-        const error: any = new Error('Saldo dummy Anda tidak mencukupi untuk membayar deposit transaksi ini.');
-        error.statusCode = 400;
-        throw error;
-      }
-    }
-
     const durasiHari = dto.durasi_hari || 7;
     const dueDate = dto.tipe_transaksi === 'BORROW'
       ? new Date(Date.now() + durasiHari * 24 * 60 * 60 * 1000)
       : null;
 
     const created = await prisma.$transaction(async (prismaTx) => {
-      // Hold deposit ke escrow jika ada
-      if (deposit > 0) {
-        await prismaTx.user.update({
-          where: { id: dto.requester_id },
-          data: { saldoDummy: { decrement: deposit } },
-        });
-      }
-
       return prismaTx.transaction.create({
         data: {
           requesterId: dto.requester_id,
@@ -215,30 +194,56 @@ export class TransactionService {
   ): Promise<Transaction> {
     const tx = await this.getTransactionById(id, userId, userRole);
 
+    const allowedTransitions: Record<string, TransactionStatus[]> = {
+      MENUNGGU_KONFIRMASI: ['DISETUJUI', 'DITOLAK', 'DIBATALKAN'],
+    };
+
     if (userRole !== 'admin') {
       if (['DISETUJUI', 'DITOLAK'].includes(newStatus) && tx.owner_id !== userId) {
         const error: any = new Error('Hanya pemilik buku yang dapat menyetujui atau menolak transaksi.');
         error.statusCode = 403;
         throw error;
       }
-
-      if (newStatus === 'DIBATALKAN' && tx.status !== 'MENUNGGU_KONFIRMASI') {
-        const error: any = new Error('Transaksi yang sudah diproses tidak dapat dibatalkan.');
-        error.statusCode = 400;
+      if (newStatus === 'DIBATALKAN' && tx.requester_id !== userId) {
+        const error: any = new Error('Hanya pemohon yang dapat membatalkan transaksi.');
+        error.statusCode = 403;
         throw error;
       }
     }
 
+    if (!allowedTransitions[tx.status]?.includes(newStatus)) {
+      const error: any = new Error(`Transisi status ${tx.status} ke ${newStatus} tidak diizinkan.`);
+      error.statusCode = 400;
+      throw error;
+    }
+
     await prisma.$transaction(async (prismaTx) => {
       const updateData: any = { status: newStatus };
-      if (newStatus === 'SELESAI') {
-        updateData.returnedAt = new Date();
+
+      if (newStatus === 'DISETUJUI' && tx.deposit_dummy > 0) {
+        const deducted = await prismaTx.user.updateMany({
+          where: {
+            id: tx.requester_id,
+            saldoDummy: { gte: tx.deposit_dummy },
+          },
+          data: { saldoDummy: { decrement: tx.deposit_dummy } },
+        });
+        if (deducted.count !== 1) {
+          const error: any = new Error('Saldo dummy requester tidak mencukupi untuk deposit.');
+          error.statusCode = 400;
+          throw error;
+        }
       }
 
-      await prismaTx.transaction.update({
-        where: { id },
+      const statusUpdated = await prismaTx.transaction.updateMany({
+        where: { id, status: tx.status },
         data: updateData,
       });
+      if (statusUpdated.count !== 1) {
+        const error: any = new Error('Status transaksi sudah berubah oleh proses lain.');
+        error.statusCode = 409;
+        throw error;
+      }
 
       if (newStatus === 'DISETUJUI') {
         const bookStatus = tx.tipe_transaksi === 'BORROW' ? 'Dipinjam' : 'Dibarter';
@@ -265,41 +270,6 @@ export class TransactionService {
           });
         }
 
-        // Refund deposit dummy ke requester jika ada
-        if (tx.deposit_dummy > 0) {
-          await prismaTx.user.update({
-            where: { id: tx.requester_id },
-            data: { saldoDummy: { increment: tx.deposit_dummy } },
-          });
-        }
-      } else if (newStatus === 'SELESAI') {
-        if (tx.tipe_transaksi === 'BARTER') {
-          // SWAP KEPEMILIKAN: book_id milik requester, barter_book_id milik owner
-          await prismaTx.book.update({
-            where: { id: tx.book_id },
-            data: { ownerId: tx.requester_id, status: 'Tersedia' },
-          });
-          if (tx.barter_book_id) {
-            await prismaTx.book.update({
-              where: { id: tx.barter_book_id },
-              data: { ownerId: tx.owner_id, status: 'Tersedia' },
-            });
-          }
-        } else {
-          // BORROW SELESAI: Buku dikembalikan ke pemilik asli
-          await prismaTx.book.update({
-            where: { id: tx.book_id },
-            data: { status: 'Tersedia' },
-          });
-
-          // Refund deposit dummy ke requester saat buku selesai dikembalikan
-          if (tx.deposit_dummy > 0) {
-            await prismaTx.user.update({
-              where: { id: tx.requester_id },
-              data: { saldoDummy: { increment: tx.deposit_dummy } },
-            });
-          }
-        }
       }
     });
 
@@ -313,7 +283,12 @@ export class TransactionService {
     lokasi: string,
     waktu?: Date | string
   ): Promise<Transaction> {
-    await this.getTransactionById(id, userId, userRole);
+    const tx = await this.getTransactionById(id, userId, userRole);
+    if (tx.status !== 'DISETUJUI') {
+      const error: any = new Error('Lokasi pertemuan hanya dapat ditentukan setelah transaksi disetujui.');
+      error.statusCode = 400;
+      throw error;
+    }
 
     await prisma.transaction.update({
       where: { id },
@@ -328,10 +303,54 @@ export class TransactionService {
   }
 
   static async confirmHandover(id: number, userId: number, userRole: string): Promise<Transaction> {
-    return this.updateStatus(id, userId, userRole, 'SELESAI');
+    return this.confirmCompletion(id, userId, userRole);
   }
 
   static async confirmReturn(id: number, userId: number, userRole: string): Promise<Transaction> {
-    return this.updateStatus(id, userId, userRole, 'SELESAI');
+    return this.confirmCompletion(id, userId, userRole);
+  }
+
+  private static async confirmCompletion(id: number, userId: number, userRole: string): Promise<Transaction> {
+    const tx = await this.getTransactionById(id, userId, userRole);
+    if (tx.status !== 'DALAM_PROSES') {
+      const error: any = new Error('Serah terima hanya dapat dikonfirmasi saat transaksi dalam proses.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await prisma.$transaction(async (prismaTx) => {
+      const now = new Date();
+      const confirmationData = tx.requester_id === userId
+        ? { requesterConfirmedAt: now }
+        : { ownerConfirmedAt: now };
+
+      await prismaTx.transaction.update({ where: { id }, data: confirmationData });
+
+      const confirmed = await prismaTx.transaction.findUniqueOrThrow({ where: { id } });
+      if (!confirmed.requesterConfirmedAt || !confirmed.ownerConfirmedAt) return;
+
+      await prismaTx.transaction.update({
+        where: { id },
+        data: { status: 'SELESAI', returnedAt: now },
+      });
+
+      if (tx.tipe_transaksi === 'BARTER') {
+        await prismaTx.book.update({ where: { id: tx.book_id }, data: { ownerId: tx.requester_id, status: 'Tersedia' } });
+        if (tx.barter_book_id) {
+          await prismaTx.book.update({ where: { id: tx.barter_book_id }, data: { ownerId: tx.owner_id, status: 'Tersedia' } });
+        }
+      } else {
+        await prismaTx.book.update({ where: { id: tx.book_id }, data: { status: 'Tersedia' } });
+      }
+
+      if (tx.deposit_dummy > 0) {
+        await prismaTx.user.update({
+          where: { id: tx.requester_id },
+          data: { saldoDummy: { increment: tx.deposit_dummy } },
+        });
+      }
+    });
+
+    return this.getTransactionById(id, userId, userRole);
   }
 }

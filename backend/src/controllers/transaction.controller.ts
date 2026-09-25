@@ -123,14 +123,17 @@ export class TransactionController {
       const userId = req.user?.id;
       const userRole = req.user?.role || 'mahasiswa';
       const id = parseInt(req.params.id as string, 10);
-      const { lokasi_pertemuan, waktu_pertemuan } = req.body;
+      const { lokasi_pertemuan, lokasi, waktu_pertemuan, waktu } = req.body;
 
       if (isNaN(id) || !userId) {
         res.status(400).json({ success: false, message: 'ID transaksi tidak valid.' });
         return;
       }
 
-      if (!lokasi_pertemuan) {
+      const meetingLocation = lokasi_pertemuan || lokasi;
+      const meetingTime = waktu_pertemuan || waktu;
+
+      if (!meetingLocation) {
         res.status(400).json({ success: false, message: 'Lokasi pertemuan wajib diisi.' });
         return;
       }
@@ -139,8 +142,8 @@ export class TransactionController {
         id,
         userId,
         userRole,
-        lokasi_pertemuan,
-        waktu_pertemuan
+        meetingLocation,
+        meetingTime
       );
 
       res.status(200).json({
