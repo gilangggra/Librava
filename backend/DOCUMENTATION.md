@@ -14,7 +14,8 @@
 ```text
 backend/
 ├── prisma/
-│   └── schema.prisma           # Schema Prisma 7 (provider prisma-client, output generated)
+│   ├── schema.prisma           # Schema Prisma 7 (provider prisma-client, output generated)
+│   └── seed.ts                 # Database seeder: users (admin + mahasiswa), books, transactions, chats, reviews
 ├── src/
 │   ├── config/
 │   │   ├── database.ts         # Connection pool PostgreSQL & auto-init schema tabel
@@ -55,9 +56,10 @@ backend/
 │   └── server.ts               # Bootstrap server dan validasi koneksi DB
 ├── .env
 ├── .env.example
-├── package.json                # Scripts: dev, build, start, prisma:*, test:qa
+├── package.json                # Scripts: dev, build, start, prisma:*, db:seed, test:*
 ├── prisma.config.ts             # Config Prisma 7 CLI & datasource migrations
-├── test_qa_suite.ts             # QA suite E2E (52 kasus uji)
+├── test_qa_suite.ts             # QA suite E2E (53 test cases)
+├── test_security_audit.ts       # Penetration testing OWASP API Security Top 10
 ├── tsconfig.json                # Node16 target
 └── README.md
 ```
@@ -122,21 +124,56 @@ Deposit tidak ditarik saat request dibuat. Pada approval, saldo requester dikura
 
 ---
 
-## 4. QA Test Suite (`test_qa_suite.ts`)
+## 4. Database Seeding (`prisma/seed.ts`)
 
-53 kasus uji E2E, dibagi jadi beberapa kelompok:
+Seed script menginisialisasi data demo ke semua tabel menggunakan Prisma upsert (aman dijalankan berulang kali tanpa duplikat).
+
+### Data yang di-seed
+
+| Tabel | Jumlah | Detail |
+|---|---|---|
+| **Users** | 5 | 1 admin (`admin@librava.com`) + 4 mahasiswa (Budi, Sari, Andi, Rina) |
+| **Books** | 8 | Clean Code, Pragmatic Programmer, Algoritma Python, Filosofi Teras, Sistem Basis Data, Atomic Habits, Laskar Pelangi, Jaringan Komputer |
+| **Transactions** | 4 | SELESAI, DALAM_PROSES, DISETUJUI, MENUNGGU_KONFIRMASI |
+| **Chats** | 14 | Percakapan realistis di setiap transaksi |
+| **Reviews** | 2 | Rating 5★ pada transaksi yang sudah SELESAI |
+
+### Credentials (password sama: `password123456`)
+
+| Role | Email |
+|---|---|
+| Admin | `admin@librava.com` |
+| Mahasiswa | `budi@student.telkomuniversity.ac.id` |
+| Mahasiswa | `sari@student.telkomuniversity.ac.id` |
+| Mahasiswa | `andi@student.telkomuniversity.ac.id` |
+| Mahasiswa | `rina@student.telkomuniversity.ac.id` |
+
+### Cara menjalankan
+
+```bash
+DATABASE_URL='postgresql://...' npm run db:seed
+```
+
+---
+
+## 5. QA Test Suite (`test_qa_suite.ts`)
+
+Suite E2E terdiri dari **53 test cases** yang dibagi jadi 8 kelompok:
 
 1. **Smoke & health check** — `/api/health` memverifikasi koneksi database, `/api/`, handling 404.
 2. **Autentikasi & validasi** — register, cegah email duplikat, tolak password kosong, cek token JWT yang di-tamper/forge, cek profil.
-3. **RBAC** — dashboard & monitoring admin diblokir buat mahasiswa (403).
+3. **RBAC** — dashboard & monitoring admin diblokir buat mahasiswa (403), admin yang sudah di-seed bisa login dan akses dashboard/transaksi admin.
 4. **Katalog buku** — CRUD, filter kategori, search, paginasi, proteksi edit/hapus oleh non-pemilik (anti-IDOR).
 5. **State machine transaksi** — cegah pinjam buku sendiri, cek kepemilikan buku barter, enforce siklus status `MENUNGGU_KONFIRMASI` → `DISETUJUI` → `DALAM_PROSES` → `SELESAI`, konfirmasi handover dua pihak, dan status buku ikut ter-update di DB.
 6. **Chat** — cuma partisipan transaksi yang bisa baca/kirim pesan, pihak luar diblokir (403).
 7. **Rating & reputasi** — rating 1-5, cek transaksi harus selesai dulu, cegah review ganda, kalkulasi rata-rata reputasi.
 8. **Teardown** — hak hapus aset cuma buat pemilik sah.
 
+Target test dapat diubah dengan `API_BASE_URL`; default-nya tetap `http://localhost:5000`. Credential admin dikonfigurasi melalui `ADMIN_EMAIL` dan `ADMIN_PASSWORD`. Jika tidak tersedia, test admin dilewati (SKIP), bukan dianggap gagal.
 
-## 5. Cara Menjalankan
+---
+
+## 6. Cara Menjalankan
 
 1. Nyalakan PostgreSQL:
    ```bash
@@ -147,40 +184,48 @@ Deposit tidak ditarik saat request dibuat. Pada approval, saldo requester dikura
    cd backend
    npm run prisma:push
    ```
-3. Jalankan server (dev):
+3. Seed database (opsional, untuk demo data):
+   ```bash
+   DATABASE_URL='postgresql://...' npm run db:seed
+   ```
+4. Jalankan server (dev):
    ```bash
    cd backend
    npm run dev
    ```
-4. Jalankan QA suite (52 test cases):
+5. Jalankan QA suite:
    ```bash
-   cd backend
    npm run test:qa
    ```
-5. Jalankan Security Audit & Penetration Testing (OWASP Top 10):
+6. Jalankan QA suite dengan admin credentials:
    ```bash
-   cd backend
+   ADMIN_EMAIL='admin@librava.com' ADMIN_PASSWORD='password123456' npm run test:qa
+   ```
+7. Jalankan Security Audit & Penetration Testing (OWASP Top 10):
+   ```bash
    npm run test:security
    ```
-6. Buka Prisma Studio:
+8. Buka Prisma Studio:
    ```bash
    npm run prisma:studio
    ```
-7. API base URL: `http://localhost:5000/api`
+9. API base URL: `http://localhost:5000/api`
 
-Konfigurasi minimal `.env`:
+Untuk menjalankan test terhadap Railway:
 
-
-Server gagal start jika database tidak tersedia. Endpoint `/api/health` mengembalikan `503` jika koneksi database putus.
+```bash
+API_BASE_URL=https://librava-production.up.railway.app ADMIN_EMAIL='admin@librava.com' ADMIN_PASSWORD='password123456' npm run test:qa
+API_BASE_URL=https://librava-production.up.railway.app npm run test:security
+```
 
 ---
 
-## 6. Keamanan & Hardening (Cybersecurity)
+## 7. Keamanan & Hardening (Cybersecurity)
 
 Backend menerapkan kontrol berikut sebagai bagian dari hardening **OWASP API Security Top 10**:
 
 1. **Anti-Mass Assignment / Privilege Escalation**: Endpoint registrasi publik `/api/auth/register` secara ketat mengunci `role: 'mahasiswa'`. Role admin tidak dapat diinjeksi via payload publik.
-2. **Brute-Force & DoS Protection**: Dilengkapi `express-rate-limit` pada `/api/auth/login` (maksimal 5x percobaan gagal per 15 menit per IP) dan rate limit global pada `/api`. Tidak ada bypass header di application code.
+2. **Brute-Force & DoS Protection**: Dilengkapi rate limit global pada `/api`. Audit production terakhir masih menemukan bahwa rate limit khusus pada percobaan login perlu diperketat; ini menjadi pekerjaan lanjutan sebelum production hardening dianggap selesai.
 3. **Security Headers (Helmet)**: Dilengkapi `helmet()` yang menyematkan proteksi browser standar (`X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, HSTS, dan menonaktifkan header bocoran `X-Powered-By: Express`).
 4. **Anti-Stored XSS**: Input teks buku (`judul`, `penulis`, `deskripsi`) disanitasi menggunakan utilitas pembersih tag script berbahaya (`src/utils/sanitize.ts`).
 5. **Anti-SQL Injection**: 100% query basis data menggunakan parameterized abstract syntax tree via **Prisma ORM 7**.
@@ -188,3 +233,29 @@ Backend menerapkan kontrol berikut sebagai bagian dari hardening **OWASP API Sec
 7. **JWT Secret Policy**: JWT ditolak jika `JWT_SECRET` tidak tersedia atau kurang dari 32 karakter; tidak ada fallback secret production.
 8. **CORS Allowlist**: HTTP API dan Socket.IO hanya menerima origin yang terdaftar di `CORS_ORIGIN`.
 9. **Atomic Transaction Rules**: Approval, penahanan deposit, refund, dan perubahan status diproses dalam transaksi database dengan guard terhadap concurrent update.
+
+---
+
+## 8. Changelog
+
+### 26 September 2026
+
+**Database Seeding**
+- Menambahkan `prisma/seed.ts` — seed script lengkap untuk semua tabel (Users, Books, Transactions, Chats, Reviews) dengan data demo realistis konteks Telkom University.
+- Menambahkan script `db:seed` di `package.json` (`tsx prisma/seed.ts`).
+- Menghapus `scripts/ensure-admin.ts` — fungsinya sudah ter-cover oleh seed script yang lebih lengkap.
+- Menghapus script `admin:ensure` dari `package.json`.
+
+**QA Test Suite — Production Validation**
+- QA suite dijalankan terhadap Railway production: **53/53 PASS (100%)** dengan admin credentials.
+- Semua 8 suite berjalan penuh termasuk RBAC admin (RBAC-03, RBAC-04) yang sebelumnya di-SKIP karena belum ada akun admin.
+- Total execution time: ~3.6 detik.
+
+**Security Audit**
+- Security audit (`test_security_audit.ts`) berjalan sukses terhadap production.
+- SQL injection, IDOR, mass assignment, XSS, dan security headers lolos audit.
+
+**Hasil Validasi Production (26 September 2026)**
+- Railway `/api/health`: `200 OK`, database `connected` via Supabase.
+- QA suite: **53/53 PASS** dengan credential admin dari seed.
+- Security audit: semua cek keamanan OWASP lolos.
