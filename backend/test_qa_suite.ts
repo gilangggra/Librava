@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 /**
  * ============================================================================
  * LIBRAVA BACKEND — COMPREHENSIVE QA AUTOMATED TEST SUITE
@@ -26,7 +28,7 @@ interface TestCaseResult {
   errorDetail?: string;
 }
 
-const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = `${process.env.API_BASE_URL || 'http://localhost:5000'}/api`;
 const results: TestCaseResult[] = [];
 
 const nativeFetch = globalThis.fetch;
@@ -258,19 +260,23 @@ async function executeTestSuite() {
     tokenC = regCRes.body.data.token || '';
   }
 
-  // Authenticate Seeded Admin User (Admin cannot be created via public register)
-  const loginAdminRes = await runTest('AUTH-06', 'Auth', 'POST /auth/login - Authenticate Official Admin User', 200, () =>
-    fetch(`${BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'superadmin@librava.ac.id',
-        password: 'AdminPassword123!',
-      }),
-    })
-  );
-  if (loginAdminRes.body?.data?.token) {
-    tokenAdmin = loginAdminRes.body.data.token;
+  // Admin cannot be created via public register. Run admin checks only when
+  // explicit test credentials are provided for the target environment.
+  const configuredAdminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (configuredAdminEmail && adminPassword) {
+    const loginAdminRes = await runTest('AUTH-06', 'Auth', 'POST /auth/login - Authenticate configured Admin User', 200, () =>
+      fetch(`${BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: configuredAdminEmail, password: adminPassword }),
+      })
+    );
+    if (loginAdminRes.body?.data?.token) {
+      tokenAdmin = loginAdminRes.body.data.token;
+    }
+  } else {
+    console.log('  ⏭ SKIP AUTH-06: ADMIN_EMAIL and ADMIN_PASSWORD are not configured.');
   }
 
   // Login User A
@@ -365,19 +371,23 @@ async function executeTestSuite() {
     })
   );
 
-  // Admin user accesses Admin Dashboard
-  await runTest('RBAC-03', 'RBAC', 'GET /admin/dashboard - Admin granted 200 OK with analytics data', 200, () =>
-    fetch(`${BASE_URL}/admin/dashboard`, {
-      headers: { Authorization: `Bearer ${tokenAdmin}` },
-    })
-  );
+  if (tokenAdmin) {
+    // Admin user accesses Admin Dashboard
+    await runTest('RBAC-03', 'RBAC', 'GET /admin/dashboard - Configured admin granted 200 OK with analytics data', 200, () =>
+      fetch(`${BASE_URL}/admin/dashboard`, {
+        headers: { Authorization: `Bearer ${tokenAdmin}` },
+      })
+    );
 
-  // Admin user accesses Admin Transactions list
-  await runTest('RBAC-04', 'RBAC', 'GET /admin/transactions - Admin granted 200 OK with system transactions', 200, () =>
-    fetch(`${BASE_URL}/admin/transactions`, {
-      headers: { Authorization: `Bearer ${tokenAdmin}` },
-    })
-  );
+    // Admin user accesses Admin Transactions list
+    await runTest('RBAC-04', 'RBAC', 'GET /admin/transactions - Configured admin granted 200 OK with system transactions', 200, () =>
+      fetch(`${BASE_URL}/admin/transactions`, {
+        headers: { Authorization: `Bearer ${tokenAdmin}` },
+      })
+    );
+  } else {
+    console.log('  ⏭ SKIP RBAC-03/RBAC-04: no authenticated admin token.');
+  }
 
   // =========================================================================
   // SUITE 4: BOOK MANAGEMENT & CRUD
