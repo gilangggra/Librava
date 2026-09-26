@@ -10,6 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
     "test:qa": "tsx test_qa_suite.ts",
     "test:security": "tsx test_security_audit.ts"
   },

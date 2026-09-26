@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { io as ClientIO } from 'socket.io-client';
 
-const BASE_URL = 'http://localhost:5000/api';
-const SOCKET_URL = 'http://localhost:5000';
+const BASE_URL = `${process.env.API_BASE_URL || 'http://localhost:5000'}/api`;
+const SOCKET_URL = process.env.API_BASE_URL || 'http://localhost:5000';
 
 async function runNewFeatureTests() {
   console.log('\n======================================================');
@@ -129,30 +129,51 @@ async function runNewFeatureTests() {
   }).then((r) => r.json());
   const txId = borrowTx.data.id;
 
-  // Check User 1 saldo after deposit hold (should be 100000 - 30000 = 70000)
+  // Deposit is held only when the owner approves the transaction.
   const profileAfterHold = await fetch(`${BASE_URL}/auth/profile`, {
     headers: { Authorization: `Bearer ${token1}` },
   }).then((r) => r.json());
 
-  if (profileAfterHold.data.saldo_dummy === 70000) {
-    console.log('  ✔ PASS: Escrow Deposit successfully deducted Rp 30.000 from borrower (Current: Rp 70.000).');
+  if (profileAfterHold.data.saldo_dummy === 100000) {
+    console.log('  ✔ PASS: Deposit is not deducted before owner approval.');
   } else {
-    console.log(`  ✖ FAIL: Saldo was not properly held in escrow: ${profileAfterHold.data.saldo_dummy}`);
+    console.log(`  ✖ FAIL: Deposit was deducted before approval: ${profileAfterHold.data.saldo_dummy}`);
   }
 
-  // Complete borrow and return book via /return
+  // Owner approves and the deposit is atomically held.
   await fetch(`${BASE_URL}/transactions/${txId}/status`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token2}` },
     body: JSON.stringify({ status: 'DISETUJUI' }),
   });
 
-  await fetch(`${BASE_URL}/transactions/${txId}/return`, {
+  const profileAfterApproval = await fetch(`${BASE_URL}/auth/profile`, {
+    headers: { Authorization: `Bearer ${token1}` },
+  }).then((r) => r.json());
+
+  if (profileAfterApproval.data.saldo_dummy === 70000) {
+    console.log('  ✔ PASS: Escrow deposit deducted after owner approval (Current: Rp 70.000).');
+  } else {
+    console.log(`  ✖ FAIL: Deposit was not deducted after approval: ${profileAfterApproval.data.saldo_dummy}`);
+  }
+
+  // Complete the handover with meeting details and both-party confirmation.
+  await fetch(`${BASE_URL}/transactions/${txId}/meeting`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token2}` },
+    body: JSON.stringify({ lokasi_pertemuan: 'Perpustakaan', waktu_pertemuan: new Date().toISOString() }),
+  });
+
+  await fetch(`${BASE_URL}/transactions/${txId}/handover`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token2}` },
   });
+  await fetch(`${BASE_URL}/transactions/${txId}/handover`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token1}` },
+  });
 
-  // Check User 1 saldo after refund (should be back to 100000)
+  // Check User 1 saldo after both parties complete handover.
   const profileAfterRefund = await fetch(`${BASE_URL}/auth/profile`, {
     headers: { Authorization: `Bearer ${token1}` },
   }).then((r) => r.json());
@@ -196,7 +217,17 @@ async function runNewFeatureTests() {
     body: JSON.stringify({ status: 'DISETUJUI' }),
   });
 
-  // Complete handover (SELESAI) -> should trigger ownership swap!
+  // Set meeting and complete handover with both parties before checking ownership.
+  await fetch(`${BASE_URL}/transactions/${barterTx.data.id}/meeting`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token2}` },
+    body: JSON.stringify({ lokasi_pertemuan: 'Perpustakaan', waktu_pertemuan: new Date().toISOString() }),
+  });
+
+  await fetch(`${BASE_URL}/transactions/${barterTx.data.id}/handover`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token1}` },
+  });
   await fetch(`${BASE_URL}/transactions/${barterTx.data.id}/handover`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token2}` },
@@ -238,7 +269,7 @@ async function runNewFeatureTests() {
   });
 
   console.log('\n======================================================');
-  console.log('🎉 ALL NEW FEATURES TESTED & VERIFIED SUCCESSFULLY!');
+  console.log('✅ NEW FEATURE TEST EXECUTION COMPLETED.');
   console.log('======================================================\n');
 }
 
