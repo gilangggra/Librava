@@ -111,15 +111,14 @@ Seed script (`prisma/seed.ts`) menginisialisasi data demo ke semua tabel. Aman d
 | **Chats** | 14 | Percakapan realistis di setiap transaksi |
 | **Reviews** | 2 | Rating 5★ pada transaksi SELESAI |
 
-### Credentials (password sama: `password123456`)
+### Credentials
+
+Credential admin hanya disimpan di environment lokal atau secret manager. Jangan menulis password asli di dokumentasi, repository, issue, atau chat.
 
 | Role | Email |
 |---|---|
-| 👑 Admin | `admin@librava.com` |
-| 🎓 Mahasiswa | `budi@student.telkomuniversity.ac.id` |
-| 🎓 Mahasiswa | `sari@student.telkomuniversity.ac.id` |
-| 🎓 Mahasiswa | `andi@student.telkomuniversity.ac.id` |
-| 🎓 Mahasiswa | `rina@student.telkomuniversity.ac.id` |
+| 👑 Admin | `<admin-email>` |
+| 🎓 Mahasiswa | `<user-email>` |
 
 ---
 
@@ -212,12 +211,12 @@ Deposit dummy tidak dipotong saat request dibuat. Saldo ditahan secara atomic ke
 npm run test:qa
 
 # Lokal dengan admin
-ADMIN_EMAIL='admin@librava.com' ADMIN_PASSWORD='password123456' npm run test:qa
+ADMIN_EMAIL='admin-email-kamu' ADMIN_PASSWORD='password-admin-kamu' npm run test:qa
 
 # Production (Railway)
 API_BASE_URL=https://librava-production.up.railway.app \
-ADMIN_EMAIL='admin@librava.com' \
-ADMIN_PASSWORD='password123456' \
+ADMIN_EMAIL='admin-email-kamu' \
+ADMIN_PASSWORD='password-admin-kamu' \
 npm run test:qa
 ```
 
@@ -261,8 +260,9 @@ Gunakan connection string **Session Pooler** dari Supabase. Railway menyediakan 
 
 **URL Production:**
 ```
-https://librava-production.up.railway.app
-https://librava-production.up.railway.app/api/health
+REST API: https://librava-production.up.railway.app/api
+Socket.IO: https://librava-production.up.railway.app
+Health: https://librava-production.up.railway.app/api/health
 ```
 
 ---

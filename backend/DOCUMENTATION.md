@@ -132,21 +132,20 @@ Seed script menginisialisasi data demo ke semua tabel menggunakan Prisma upsert 
 
 | Tabel | Jumlah | Detail |
 |---|---|---|
-| **Users** | 5 | 1 admin (`admin@librava.com`) + 4 mahasiswa (Budi, Sari, Andi, Rina) |
+| **Users** | Demo data | 1 admin + mahasiswa demo tanpa credential ditulis di dokumentasi |
 | **Books** | 8 | Clean Code, Pragmatic Programmer, Algoritma Python, Filosofi Teras, Sistem Basis Data, Atomic Habits, Laskar Pelangi, Jaringan Komputer |
 | **Transactions** | 4 | SELESAI, DALAM_PROSES, DISETUJUI, MENUNGGU_KONFIRMASI |
 | **Chats** | 14 | Percakapan realistis di setiap transaksi |
 | **Reviews** | 2 | Rating 5★ pada transaksi yang sudah SELESAI |
 
-### Credentials (password sama: `password123456`)
+### Credentials
+
+Credential demo/admin tidak ditulis di dokumentasi. Simpan email dan password hanya di environment lokal atau secret manager.
 
 | Role | Email |
 |---|---|
-| Admin | `admin@librava.com` |
-| Mahasiswa | `budi@student.telkomuniversity.ac.id` |
-| Mahasiswa | `sari@student.telkomuniversity.ac.id` |
-| Mahasiswa | `andi@student.telkomuniversity.ac.id` |
-| Mahasiswa | `rina@student.telkomuniversity.ac.id` |
+| Admin | `<admin-email>` |
+| Mahasiswa | `<user-email>` |
 
 ### Cara menjalankan
 
@@ -197,9 +196,9 @@ Target test dapat diubah dengan `API_BASE_URL`; default-nya tetap `http://localh
    ```bash
    npm run test:qa
    ```
-6. Jalankan QA suite dengan admin credentials:
+6. Jalankan QA suite dengan admin credentials lokal:
    ```bash
-   ADMIN_EMAIL='admin@librava.com' ADMIN_PASSWORD='password123456' npm run test:qa
+   ADMIN_EMAIL='admin-email-kamu' ADMIN_PASSWORD='password-admin-kamu' npm run test:qa
    ```
 7. Jalankan Security Audit & Penetration Testing (OWASP Top 10):
    ```bash
@@ -209,12 +208,20 @@ Target test dapat diubah dengan `API_BASE_URL`; default-nya tetap `http://localh
    ```bash
    npm run prisma:studio
    ```
-9. API base URL: `http://localhost:5000/api`
+9. API base URL lokal: `http://localhost:5000/api`
+
+URL production Railway:
+
+```text
+REST API: https://librava-production.up.railway.app/api
+Socket.IO: https://librava-production.up.railway.app
+Health: https://librava-production.up.railway.app/api/health
+```
 
 Untuk menjalankan test terhadap Railway:
 
 ```bash
-API_BASE_URL=https://librava-production.up.railway.app ADMIN_EMAIL='admin@librava.com' ADMIN_PASSWORD='password123456' npm run test:qa
+API_BASE_URL=https://librava-production.up.railway.app ADMIN_EMAIL='admin-email-kamu' ADMIN_PASSWORD='password-admin-kamu' npm run test:qa
 API_BASE_URL=https://librava-production.up.railway.app npm run test:security
 ```
 
