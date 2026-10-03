@@ -50,6 +50,59 @@ class TransactionModel {
     );
   }
 
+  factory TransactionModel.fromApiJson(Map<String, dynamic> json) {
+    final rawStatus = (json['status'] as String? ?? 'MENUNGGU_KONFIRMASI');
+    final String normalizedStatus;
+    switch (rawStatus) {
+      case 'MENUNGGU_KONFIRMASI':
+        normalizedStatus = 'pending';
+        break;
+      case 'DISETUJUI':
+        normalizedStatus = 'disetujui';
+        break;
+      case 'DITOLAK':
+        normalizedStatus = 'ditolak';
+        break;
+      case 'DIBATALKAN':
+        normalizedStatus = 'dibatalkan';
+        break;
+      case 'DALAM_PROSES':
+        normalizedStatus = 'lokasi_ditentukan';
+        break;
+      case 'SELESAI':
+        normalizedStatus = 'selesai';
+        break;
+      default:
+        normalizedStatus = rawStatus.toLowerCase();
+    }
+
+    final rawTipe = (json['tipe_transaksi'] as String? ?? 'BORROW');
+    final String jenis = rawTipe == 'BARTER' ? 'barter' : 'pinjam';
+
+    final createdAt = json['created_at'] as String?;
+    final tanggal = createdAt != null ? createdAt.split('T').first : '';
+
+    final returnedAt = json['returned_at'] as String?;
+    final tanggalPengembalian = returnedAt != null ? returnedAt.split('T').first : '';
+
+    return TransactionModel(
+      id: json['id']?.toString() ?? '',
+      bukuId: json['book_id']?.toString() ?? '',
+      judulBuku: json['book_judul'] as String? ?? '',
+      pemohonNama: json['requester_nama'] as String? ?? '',
+      pemilikNama: json['owner_nama'] as String? ?? '',
+      jenisTransaksi: jenis,
+      durasiHari: (json['durasi_hari'] as num?)?.toInt() ?? 7,
+      bukuBarter: json['barter_book_judul'] as String? ?? '',
+      depositSimulasi: (json['deposit_dummy'] as num?)?.toDouble() ?? 0.0,
+      status: normalizedStatus,
+      lokasiPertemuan: json['lokasi_pertemuan'] as String? ?? '',
+      tanggal: tanggal,
+      tanggalPengembalian: tanggalPengembalian,
+      coverBuku: json['book_foto'] as String? ?? 'assets/images/book_the_unknown.jpg',
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

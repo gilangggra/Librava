@@ -1,10 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
+import '../../data/services/chat_api_service.dart';
 
 class ChatBubbleMessage {
   final String id;
@@ -80,11 +83,13 @@ class BubbleTailPainter extends CustomPainter {
 class ChatRoomPage extends StatefulWidget {
   final String userName;
   final bool isOnline;
+  final String? transactionId;
 
   const ChatRoomPage({
     super.key,
     this.userName = 'User Test',
     this.isOnline = true,
+    this.transactionId,
   });
 
   @override
@@ -95,6 +100,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   final int _selectedIndex = 3;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ChatApiService _apiService = ChatApiService();
 
   final List<ChatBubbleMessage> _messages = [
     const ChatBubbleMessage(
@@ -116,6 +122,60 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       isOutgoing: true,
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+  }
+
+  Future<void> _loadMessages() async {
+    final txId = int.tryParse(widget.transactionId ?? '');
+    if (txId == null) return;
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+      if (token == null || token.isEmpty) return;
+
+      final currentUserId = authProvider.currentUser?.id ?? '';
+      final currentUserName = authProvider.currentUser?.nama ?? '';
+
+      final apiMessages = await _apiService.getMessages(
+        token: token,
+        transactionId: txId,
+      );
+
+      if (apiMessages.isNotEmpty && mounted) {
+        setState(() {
+          _messages.clear();
+          for (final m in apiMessages) {
+            final isOut = (currentUserId.isNotEmpty &&
+                    m.senderId == currentUserId) ||
+                (currentUserName.isNotEmpty &&
+                    m.senderNama == currentUserName);
+            String formattedTime = '12.00';
+            if (m.sentAt.isNotEmpty) {
+              try {
+                final dt = DateTime.parse(m.sentAt).toLocal();
+                final hour = dt.hour.toString().padLeft(2, '0');
+                final min = dt.minute.toString().padLeft(2, '0');
+                formattedTime = '$hour.$min';
+              } catch (_) {}
+            }
+            _messages.add(
+              ChatBubbleMessage(
+                id: m.id,
+                text: m.pesan,
+                time: formattedTime,
+                isOutgoing: isOut,
+              ),
+            );
+          }
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -154,6 +214,21 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         );
       }
     });
+
+    final txId = int.tryParse(widget.transactionId ?? '');
+    if (txId != null) {
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final token = authProvider.token;
+        if (token != null && token.isNotEmpty) {
+          _apiService.sendMessage(
+            token: token,
+            transactionId: txId,
+            pesan: text,
+          );
+        }
+      } catch (_) {}
+    }
   }
 
   Widget _buildChatBubble(ChatBubbleMessage message) {

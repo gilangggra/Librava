@@ -55,6 +55,16 @@ class _RegisterPageState extends State<RegisterPage> {
             builder: (context) => LoginPage(initialEmail: emailUser),
           ),
         );
+      } else if (mounted) {
+        final pesanError = context.read<AuthProvider>().errorMessage ??
+            'Registrasi gagal. Silakan coba lagi.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(pesanError),
+            backgroundColor: const Color(0xFFFF4D4F),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }

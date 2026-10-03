@@ -4,7 +4,7 @@ dotenv.config();
 
 import app from './app';
 import prisma from './config/prisma';
-import { ensureDatabaseExists } from './config/database';
+import { ensureDatabaseExists, initDb } from './config/database';
 import { initSocket } from './socket';
 
 const PORT = process.env.PORT || 5000;
@@ -14,6 +14,7 @@ async function bootstrap() {
     if (process.env.NODE_ENV !== 'production') {
       await ensureDatabaseExists();
     }
+    await initDb();
     await prisma.$connect();
     console.log('Connected to PostgreSQL via Prisma ORM');
   } catch (error: any) {

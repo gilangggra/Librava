@@ -7,6 +7,9 @@ class BookModel {
   final bool tersedia;
   final double rating;
   final String deskripsi;
+  final String? fotoBuku;
+  final String? pemilikNama;
+  final String? pemilikUniversitas;
 
   const BookModel({
     required this.id,
@@ -17,6 +20,9 @@ class BookModel {
     this.tersedia = true,
     this.rating = 0.0,
     this.deskripsi = '',
+    this.fotoBuku,
+    this.pemilikNama,
+    this.pemilikUniversitas,
   });
 
   factory BookModel.fromJson(Map<String, dynamic> json) {
@@ -29,6 +35,24 @@ class BookModel {
       tersedia: json['tersedia'] ?? true,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       deskripsi: json['deskripsi'] ?? '',
+    );
+  }
+
+  factory BookModel.fromApiJson(Map<String, dynamic> json) {
+    final statusStr = json['status'] as String? ?? 'Tersedia';
+    final tersedia = statusStr == 'Tersedia';
+    return BookModel(
+      id: json['id']?.toString() ?? '',
+      judul: json['judul'] as String? ?? '',
+      penulis: json['penulis'] as String? ?? '',
+      kategori: json['kategori'] as String? ?? 'Umum',
+      tahunTerbit: 0,
+      tersedia: tersedia,
+      rating: 0.0,
+      deskripsi: json['deskripsi'] as String? ?? '',
+      fotoBuku: json['foto_buku'] as String?,
+      pemilikNama: json['owner_nama'] as String?,
+      pemilikUniversitas: json['owner_universitas'] as String?,
     );
   }
 
@@ -54,6 +78,9 @@ class BookModel {
     bool? tersedia,
     double? rating,
     String? deskripsi,
+    String? fotoBuku,
+    String? pemilikNama,
+    String? pemilikUniversitas,
   }) {
     return BookModel(
       id: id ?? this.id,
@@ -64,6 +91,9 @@ class BookModel {
       tersedia: tersedia ?? this.tersedia,
       rating: rating ?? this.rating,
       deskripsi: deskripsi ?? this.deskripsi,
+      fotoBuku: fotoBuku ?? this.fotoBuku,
+      pemilikNama: pemilikNama ?? this.pemilikNama,
+      pemilikUniversitas: pemilikUniversitas ?? this.pemilikUniversitas,
     );
   }
 

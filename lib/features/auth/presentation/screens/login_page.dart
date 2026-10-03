@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../admin/presentation/providers/admin_provider.dart';
+import '../../../admin/presentation/screens/admin_dashboard_page.dart';
+import '../../../books/presentation/providers/book_provider.dart';
+import '../../../home/presentation/screens/home_page.dart';
+import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/custom_text_field.dart';
-import '../../../home/presentation/screens/home_page.dart';
 import 'forgot_password_page.dart';
 import 'register_page.dart';
 
@@ -51,11 +55,28 @@ class _LoginPageState extends State<LoginPage> {
           );
 
       if (berhasil && mounted) {
-        final namaUser =
-            context.read<AuthProvider>().currentUser?.nama ?? 'Sobat Librava';
+        final auth = context.read<AuthProvider>();
+        final namaUser = auth.currentUser?.nama ?? 'Sobat Librava';
+        final bool isAdmin = auth.currentUser?.role == 'admin';
+
+        if (auth.token != null) {
+          try {
+            if (isAdmin) {
+              context.read<AdminProvider>().fetchDashboard(auth.token!);
+            } else {
+              context.read<BookProvider>().fetchBooksFromApi();
+              context.read<TransactionProvider>().fetchTransaksi(auth.token!);
+            }
+          } catch (_) {}
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Selamat datang kembali, $namaUser!'),
+            content: Text(
+              isAdmin
+                  ? 'Selamat datang di Panel Admin, $namaUser!'
+                  : 'Selamat datang kembali, $namaUser!',
+            ),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
           ),
@@ -64,7 +85,18 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const HomePage(),
+            builder: (context) =>
+                isAdmin ? const AdminDashboardPage() : const HomePage(),
+          ),
+        );
+      } else if (mounted) {
+        final errorText = context.read<AuthProvider>().errorMessage ??
+            'Email atau kata sandi salah. Silakan periksa kembali.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorText),
+            backgroundColor: const Color(0xFFFF4D4F),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }

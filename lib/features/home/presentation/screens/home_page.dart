@@ -1,12 +1,19 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../books/domain/models/book_model.dart';
+import '../../../books/presentation/providers/book_provider.dart';
 import '../../../books/presentation/screens/book_detail_page.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
+import '../../../transactions/presentation/providers/transaction_provider.dart';
+import '../../../transactions/presentation/screens/transaction_detail_page.dart';
+import 'request_list_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,11 +29,27 @@ class _HomePageState extends State<HomePage> {
   final PageController _eventPageController = PageController();
   final PageController _borrowPageController = PageController();
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        context.read<BookProvider>().fetchBooksFromApi();
+      } catch (_) {}
+      try {
+        final auth = context.read<AuthProvider>();
+        if (auth.token != null) {
+          context.read<TransactionProvider>().fetchTransaksi(auth.token!);
+        }
+      } catch (_) {}
+    });
+  }
+
   final List<Map<String, dynamic>> _borrowedBooks = const [
     {
       'title': 'The Unknown',
       'subtitle': 'Borrowing from Andi',
-      'status': "Waiting for owner's response",
+      'status': 'Waiting for owner’s response',
       'statusColor': Color(0xFFFFDD2D),
       'image': 'assets/images/book_the_unknown.jpg',
     },
@@ -45,6 +68,55 @@ class _HomePageState extends State<HomePage> {
       'image': 'assets/images/book_adversary.jpg',
     },
   ];
+
+  String _getCoverForBook(BookModel book) {
+    if (book.fotoBuku != null && book.fotoBuku!.isNotEmpty) {
+      return book.fotoBuku!;
+    }
+    final j = book.judul.toLowerCase();
+    if (j.contains('atomic')) return 'assets/images/book_atomic_habits.jpg';
+    if (j.contains('midnight')) return 'assets/images/book_midnight_lib.jpg';
+    if (j.contains('clean code') || j.contains('pragmatic')) {
+      return 'assets/images/bookshelf.jpg';
+    }
+    if (j.contains('basis data') || j.contains('python') || j.contains('jaringan')) {
+      return 'assets/images/book_fruit_fly.jpg';
+    }
+    if (j.contains('laskar') || j.contains('filosofi')) {
+      return 'assets/images/book_adversary.jpg';
+    }
+    return 'assets/images/book_the_unknown.jpg';
+  }
+
+  List<Map<String, dynamic>> _getBorrowedBooks(
+      TransactionProvider? trxProvider) {
+    if (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty) {
+      return trxProvider.semuaTransaksi.map((t) {
+        return {
+          'id': t.id,
+          'title': t.judulBuku,
+          'subtitle':
+              '${t.jenisTransaksi == "barter" ? "Bartered with" : "Borrowing from"} ${t.pemilikNama}',
+          'status': t.status == 'pending'
+              ? 'Waiting for owner’s response'
+              : t.status == 'disetujui'
+                  ? 'Approved'
+                  : t.status == 'selesai'
+                      ? 'Barter completed'
+                      : t.status,
+          'statusColor': t.status == 'pending'
+              ? const Color(0xFFFFDD2D)
+              : t.status == 'disetujui'
+                  ? const Color(0xFF4C7BFE)
+                  : const Color(0xFF34C759),
+          'image': t.coverBuku.isNotEmpty
+              ? t.coverBuku
+              : 'assets/images/book_the_unknown.jpg',
+        };
+      }).toList();
+    }
+    return _borrowedBooks;
+  }
 
   final List<Map<String, String>> _events = const [
     {
@@ -71,31 +143,82 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  Widget _buildBookCover(String assetPath) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: Image.asset(
-        assetPath,
-        width: 108,
-        height: 165,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: 108,
-            height: 165,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE7E3FF),
-              borderRadius: BorderRadius.circular(18),
+  Widget _buildBookCover(String assetPath, {BookModel? book}) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BookDetailPage(
+              book: book,
+              coverPath: assetPath,
+              title: book?.judul ??
+                  (assetPath.contains('unknown')
+                      ? 'The Unknown'
+                      : assetPath.contains('fruit')
+                          ? 'Fruit Fly'
+                          : 'Adversary to the Villain'),
+              author: book?.penulis ??
+                  (assetPath.contains('unknown')
+                      ? 'Riley Sager'
+                      : assetPath.contains('fruit')
+                          ? 'Dr. John Doe'
+                          : 'Jane Smith'),
+              genre: book?.kategori ?? 'Umum',
             ),
-            child: const Center(
-              child: Icon(
-                Icons.book_rounded,
-                color: AppColors.primary,
-                size: 36,
+          ),
+        );
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: assetPath.startsWith('http://') ||
+                assetPath.startsWith('https://')
+            ? Image.network(
+                assetPath,
+                width: 108,
+                height: 165,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 108,
+                    height: 165,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE7E3FF),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.book_rounded,
+                        color: AppColors.primary,
+                        size: 36,
+                      ),
+                    ),
+                  );
+                },
+              )
+            : Image.asset(
+                assetPath,
+                width: 108,
+                height: 165,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 108,
+                    height: 165,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE7E3FF),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.book_rounded,
+                        color: AppColors.primary,
+                        size: 36,
+                      ),
+                    ),
+                  );
+                },
               ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -106,11 +229,16 @@ class _HomePageState extends State<HomePage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => BookDetailPage(
-              title: item['title'] as String?,
-              author: item['subtitle'] as String?,
-              coverPath: item['image'] as String?,
-              status: item['status'] as String?,
+            builder: (_) => TransactionDetailPage(
+              transactionId: item['id'] as String?,
+              bookTitle: item['title'] as String,
+              bookAuthor: item['title'] == 'The Unknown'
+                  ? 'Riley Sager'
+                  : item['title'] == 'Fruit Fly'
+                      ? 'Dr. John Doe'
+                      : 'Jane Smith',
+              coverPath: item['image'] as String,
+              status: item['status'] as String,
             ),
           ),
         );
@@ -129,7 +257,7 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 20.0, 32.0),
+          padding: const EdgeInsets.fromLTRB(16.0, 14.0, 16.0, 26.0),
           child: Row(
             children: [
               ClipRRect(
@@ -158,7 +286,7 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,28 +294,34 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Text(
                       item['title'] as String,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF130F26),
                         letterSpacing: -0.3,
+                        height: 1.15,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       item['subtitle'] as String,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 13.5,
                         fontStyle: FontStyle.italic,
                         color: Color(0xFF8A859E),
+                        height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Container(
-                          width: 16,
-                          height: 16,
+                          width: 14,
+                          height: 14,
                           decoration: BoxDecoration(
                             color: item['statusColor'] as Color,
                             shape: BoxShape.circle,
@@ -197,8 +331,10 @@ class _HomePageState extends State<HomePage> {
                         Expanded(
                           child: Text(
                             item['status'] as String,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 12.5,
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF6B667F),
                             ),
@@ -209,7 +345,7 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
             ],
           ),
         ),
@@ -383,6 +519,15 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    BookProvider? bookProvider;
+    TransactionProvider? trxProvider;
+    try {
+      bookProvider = Provider.of<BookProvider>(context);
+    } catch (_) {}
+    try {
+      trxProvider = Provider.of<TransactionProvider>(context);
+    } catch (_) {}
+    final borrowedList = _getBorrowedBooks(trxProvider);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -407,29 +552,40 @@ class _HomePageState extends State<HomePage> {
                         letterSpacing: -0.5,
                       ),
                     ),
-                    Stack(
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.all(4.0),
-                          child: Icon(
-                            Icons.notifications_none_rounded,
-                            size: 30,
-                            color: Color(0xFF555268),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const RequestListPage(),
                           ),
-                        ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: Container(
-                            width: 9,
-                            height: 9,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
+                        );
+                      },
+                      child: Stack(
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.all(4.0),
+                            child: Icon(
+                              Icons.notifications_none_rounded,
+                              size: 30,
+                              color: Color(0xFF555268),
                             ),
                           ),
-                        ),
-                      ],
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: Container(
+                              width: 9,
+                              height: 9,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -444,10 +600,10 @@ class _HomePageState extends State<HomePage> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14.0),
                       child: SizedBox(
-                        height: 204,
+                        height: 220,
                         child: PageView.builder(
                           controller: _borrowPageController,
-                          itemCount: _borrowedBooks.length,
+                          itemCount: borrowedList.length,
                           scrollBehavior:
                               const MaterialScrollBehavior().copyWith(
                             dragDevices: {
@@ -462,7 +618,7 @@ class _HomePageState extends State<HomePage> {
                             });
                           },
                           itemBuilder: (context, index) {
-                            return _buildBorrowCard(_borrowedBooks[index]);
+                            return _buildBorrowCard(borrowedList[index]);
                           },
                         ),
                       ),
@@ -470,7 +626,7 @@ class _HomePageState extends State<HomePage> {
                     if (_currentBorrowIndex > 0)
                       Positioned(
                         left: 0,
-                        top: 68,
+                        top: 74,
                         child: MouseRegion(
                           cursor: SystemMouseCursors.click,
                           child: GestureDetector(
@@ -509,10 +665,10 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       ),
-                    if (_currentBorrowIndex < _borrowedBooks.length - 1)
+                    if (_currentBorrowIndex < borrowedList.length - 1)
                       Positioned(
                         right: 0,
-                        top: 68,
+                        top: 74,
                         child: MouseRegion(
                           cursor: SystemMouseCursors.click,
                           child: GestureDetector(
@@ -573,7 +729,29 @@ class _HomePageState extends State<HomePage> {
                               borderRadius: BorderRadius.circular(22),
                             ),
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            final currentBook = borrowedList[
+                                _currentBorrowIndex < borrowedList.length
+                                    ? _currentBorrowIndex
+                                    : 0];
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => TransactionDetailPage(
+                                  transactionId:
+                                      currentBook['id'] as String?,
+                                  bookTitle: currentBook['title'] as String,
+                                  bookAuthor: currentBook['title'] == 'The Unknown'
+                                      ? 'Riley Sager'
+                                      : currentBook['title'] == 'Fruit Fly'
+                                          ? 'Dr. John Doe'
+                                          : 'Jane Smith',
+                                  coverPath: currentBook['image'] as String,
+                                  status: currentBook['status'] as String,
+                                ),
+                              ),
+                            );
+                          },
                           child: const Text(
                             'View transaction',
                             style: TextStyle(
@@ -769,13 +947,24 @@ class _HomePageState extends State<HomePage> {
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  children: [
-                    _buildBookCover('assets/images/book_the_unknown.jpg'),
-                    const SizedBox(width: 14),
-                    _buildBookCover('assets/images/book_fruit_fly.jpg'),
-                    const SizedBox(width: 14),
-                    _buildBookCover('assets/images/book_adversary.jpg'),
-                  ],
+                  children: (bookProvider != null &&
+                          bookProvider.allBooks.isNotEmpty)
+                      ? bookProvider.allBooks.map((b) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 14.0),
+                            child: _buildBookCover(
+                              _getCoverForBook(b),
+                              book: b,
+                            ),
+                          );
+                        }).toList()
+                      : [
+                          _buildBookCover('assets/images/book_the_unknown.jpg'),
+                          const SizedBox(width: 14),
+                          _buildBookCover('assets/images/book_fruit_fly.jpg'),
+                          const SizedBox(width: 14),
+                          _buildBookCover('assets/images/book_adversary.jpg'),
+                        ],
                 ),
               ),
               const SizedBox(height: 24),

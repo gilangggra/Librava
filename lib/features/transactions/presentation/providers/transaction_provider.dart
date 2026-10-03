@@ -1,11 +1,18 @@
 import 'package:flutter/foundation.dart';
+import '../../data/services/transaction_api_service.dart';
 import '../../domain/models/transaction_model.dart';
 
 class TransactionProvider extends ChangeNotifier {
+  final TransactionApiService _apiService;
   final List<TransactionModel> _daftarTransaksi = [];
   bool _isLoading = false;
+  String? _errorMessage;
+  String? _currentUserId;
 
-  TransactionProvider({bool isiDataAwal = true}) {
+  TransactionProvider({
+    TransactionApiService? apiService,
+    bool isiDataAwal = true,
+  }) : _apiService = apiService ?? TransactionApiService() {
     if (isiDataAwal) {
       _inisialisasiDataAwal();
     }
@@ -59,20 +66,36 @@ class TransactionProvider extends ChangeNotifier {
   }
 
   bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
 
   List<TransactionModel> get semuaTransaksi =>
       List.unmodifiable(_daftarTransaksi);
 
   List<TransactionModel> get requestMasuk {
+    if (_currentUserId != null) {
+      return _daftarTransaksi
+          .where((trx) => trx.pemilikNama != trx.pemohonNama &&
+              !_isRequester(trx))
+          .toList();
+    }
     return _daftarTransaksi
         .where((trx) => trx.pemilikNama == 'Gilang Ramadan')
         .toList();
   }
 
   List<TransactionModel> get requestSaya {
+    if (_currentUserId != null) {
+      return _daftarTransaksi
+          .where((trx) => _isRequester(trx))
+          .toList();
+    }
     return _daftarTransaksi
         .where((trx) => trx.pemohonNama == 'Gilang Ramadan')
         .toList();
+  }
+
+  bool _isRequester(TransactionModel trx) {
+    return trx.pemohonNama != trx.pemilikNama;
   }
 
   List<TransactionModel> get transaksiPending {
@@ -120,6 +143,8 @@ class TransactionProvider extends ChangeNotifier {
         return 'Disetujui (Perlu Deposit)';
       case 'ditolak':
         return 'Ditolak';
+      case 'dibatalkan':
+        return 'Dibatalkan';
       case 'deposit_dibayar':
         return 'Deposit Dibayar (Pilih Lokasi)';
       case 'lokasi_ditentukan':
@@ -130,6 +155,202 @@ class TransactionProvider extends ChangeNotifier {
         return 'Selesai';
       default:
         return status;
+    }
+  }
+
+  Future<void> fetchTransaksi(String token) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final list = await _apiService.getTransactions(token: token);
+      _daftarTransaksi.clear();
+      _daftarTransaksi.addAll(list);
+    } catch (_) {
+      if (_daftarTransaksi.isEmpty) {
+        _inisialisasiDataAwal();
+      }
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<TransactionModel?> fetchTransaksiById(
+      String token, String id) async {
+    try {
+      final intId = int.tryParse(id);
+      if (intId == null) return getTransaksiById(id);
+      final trx = await _apiService.getTransactionById(
+          token: token, id: intId);
+      final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
+      if (idx != -1) {
+        _daftarTransaksi[idx] = trx;
+      } else {
+        _daftarTransaksi.add(trx);
+      }
+      notifyListeners();
+      return trx;
+    } catch (_) {
+      return getTransaksiById(id);
+    }
+  }
+
+  Future<TransactionModel?> ajukanPinjamApi({
+    required String token,
+    required int bookId,
+    double depositDummy = 20000.0,
+    int durasiHari = 7,
+    String judulBuku = '',
+    String pemilikNama = '',
+    String coverBuku = 'assets/images/book_the_unknown.jpg',
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final trx = await _apiService.createTransaction(
+        token: token,
+        bookId: bookId,
+        tipeTransaksi: 'BORROW',
+        depositDummy: depositDummy,
+      );
+      _daftarTransaksi.insert(0, trx);
+      _isLoading = false;
+      notifyListeners();
+      return trx;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<TransactionModel?> ajukanBarterApi({
+    required String token,
+    required int bookId,
+    required int barterBookId,
+    String judulBuku = '',
+    String pemilikNama = '',
+    String coverBuku = 'assets/images/book_the_unknown.jpg',
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final trx = await _apiService.createTransaction(
+        token: token,
+        bookId: bookId,
+        tipeTransaksi: 'BARTER',
+        barterBookId: barterBookId,
+      );
+      _daftarTransaksi.insert(0, trx);
+      _isLoading = false;
+      notifyListeners();
+      return trx;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<bool> updateStatusApi(String token, String id, String backendStatus) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final intId = int.tryParse(id);
+      if (intId == null) {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+      final updated = await _apiService.updateStatus(
+        token: token,
+        id: intId,
+        status: backendStatus,
+      );
+      final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
+      if (idx != -1) {
+        _daftarTransaksi[idx] = updated;
+      }
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> setMeetingApi(
+      String token, String id, String lokasi, String? waktu) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final intId = int.tryParse(id);
+      if (intId == null) {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+      final updated = await _apiService.setMeeting(
+        token: token,
+        id: intId,
+        lokasiPertemuan: lokasi,
+        waktuPertemuan: waktu,
+      );
+      final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
+      if (idx != -1) {
+        _daftarTransaksi[idx] = updated;
+      }
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> confirmHandoverApi(String token, String id) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final intId = int.tryParse(id);
+      if (intId == null) {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+      final updated = await _apiService.confirmHandover(
+        token: token,
+        id: intId,
+      );
+      final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
+      if (idx != -1) {
+        _daftarTransaksi[idx] = updated;
+      }
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 
