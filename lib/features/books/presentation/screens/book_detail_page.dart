@@ -2,11 +2,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../../domain/models/book_model.dart';
+import '../providers/book_provider.dart';
 import 'my_book_page.dart';
 import 'search_page.dart';
 
@@ -207,12 +209,37 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: () {
-                        context.read<TransactionProvider>().ajukanPinjam(
-                              bukuId: widget.book?.id ?? 'bk_unknown',
-                              judulBuku: _title,
-                              pemohonNama: 'Gilang Ramadan',
-                              durasiHari: durasiTerpilih,
-                            );
+                        String pemohon = 'Gilang Ramadan';
+                        String? token;
+                        try {
+                          final auth = context.read<AuthProvider>();
+                          if (auth.currentUser?.nama != null) {
+                            pemohon = auth.currentUser!.nama;
+                          }
+                          token = auth.token;
+                        } catch (_) {}
+
+                        final rawBookId = widget.book?.id ?? 'bk_unknown';
+                        final intBookId = int.tryParse(rawBookId);
+
+                        if (token != null && intBookId != null) {
+                          context.read<TransactionProvider>().ajukanPinjamApi(
+                                token: token,
+                                bookId: intBookId,
+                                durasiHari: durasiTerpilih,
+                                judulBuku: _title,
+                                pemilikNama: widget.book?.pemilikNama ?? 'Pemilik Buku',
+                                coverBuku: _coverPath,
+                              );
+                        } else {
+                          context.read<TransactionProvider>().ajukanPinjam(
+                                bukuId: rawBookId,
+                                judulBuku: _title,
+                                pemohonNama: pemohon,
+                                durasiHari: durasiTerpilih,
+                              );
+                        }
+
                         Navigator.pop(ctx);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -249,13 +276,46 @@ class _BookDetailPageState extends State<BookDetailPage> {
   }
 
   void _bukaModalBarter(BuildContext context) {
-    String bukuBarterTerpilih = 'Clean Code';
-    final List<String> daftarKoleksi = [
-      'Clean Code',
-      'Design Patterns',
-      'The Unknown',
-      'Fruit Fly',
-    ];
+    List<BookModel> koleksi = [];
+    try {
+      final bp = context.read<BookProvider>();
+      koleksi = bp.koleksiSaya;
+    } catch (_) {}
+
+    if (koleksi.isEmpty) {
+      koleksi = const [
+        BookModel(
+          id: '1',
+          judul: 'Clean Code',
+          penulis: 'Robert C. Martin',
+          kategori: 'Teknologi',
+          tahunTerbit: 2008,
+        ),
+        BookModel(
+          id: '2',
+          judul: 'Design Patterns',
+          penulis: 'Erich Gamma',
+          kategori: 'Teknologi',
+          tahunTerbit: 1994,
+        ),
+        BookModel(
+          id: '3',
+          judul: 'The Unknown',
+          penulis: 'Riley Sager',
+          kategori: 'Horror',
+          tahunTerbit: 2022,
+        ),
+        BookModel(
+          id: '4',
+          judul: 'Fruit Fly',
+          penulis: 'Sarah Jenkins',
+          kategori: 'Sains',
+          tahunTerbit: 2021,
+        ),
+      ];
+    }
+
+    BookModel bukuBarterTerpilih = koleksi.first;
 
     showModalBottomSheet(
       context: context,
@@ -318,10 +378,11 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: daftarKoleksi.map((buku) {
-                      final isSelected = bukuBarterTerpilih == buku;
+                    children: koleksi.map((buku) {
+                      final isSelected = bukuBarterTerpilih.id == buku.id ||
+                          bukuBarterTerpilih.judul == buku.judul;
                       return ChoiceChip(
-                        label: Text(buku),
+                        label: Text(buku.judul),
                         selected: isSelected,
                         selectedColor: AppColors.primary,
                         backgroundColor: const Color(0xFFF2F1FA),
@@ -345,17 +406,44 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     height: 50,
                     child: ElevatedButton(
                       onPressed: () {
-                        context.read<TransactionProvider>().ajukanBarter(
-                              bukuId: widget.book?.id ?? 'bk_unknown',
-                              judulBuku: _title,
-                              pemohonNama: 'Gilang Ramadan',
-                              bukuBarter: bukuBarterTerpilih,
-                            );
+                        String pemohon = 'Gilang Ramadan';
+                        String? token;
+                        try {
+                          final auth = context.read<AuthProvider>();
+                          if (auth.currentUser?.nama != null) {
+                            pemohon = auth.currentUser!.nama;
+                          }
+                          token = auth.token;
+                        } catch (_) {}
+
+                        final rawBookId = widget.book?.id ?? 'bk_unknown';
+                        final intBookId = int.tryParse(rawBookId);
+                        final intBarterBookId =
+                            int.tryParse(bukuBarterTerpilih.id) ?? 1;
+
+                        if (token != null && intBookId != null) {
+                          context.read<TransactionProvider>().ajukanBarterApi(
+                                token: token,
+                                bookId: intBookId,
+                                barterBookId: intBarterBookId,
+                                judulBuku: _title,
+                                pemilikNama: widget.book?.pemilikNama ?? 'Pemilik Buku',
+                                coverBuku: _coverPath,
+                              );
+                        } else {
+                          context.read<TransactionProvider>().ajukanBarter(
+                                bukuId: rawBookId,
+                                judulBuku: _title,
+                                pemohonNama: pemohon,
+                                bukuBarter: bukuBarterTerpilih.judul,
+                              );
+                        }
+
                         Navigator.pop(ctx);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Permohonan barter $_title dengan $bukuBarterTerpilih diajukan!',
+                              'Permohonan barter $_title dengan ${bukuBarterTerpilih.judul} diajukan!',
                             ),
                             backgroundColor: AppColors.primary,
                           ),
@@ -615,29 +703,54 @@ class _BookDetailPageState extends State<BookDetailPage> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
-                          child: Image.asset(
-                            _coverPath,
-                            width: 140,
-                            height: 205,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 140,
-                                height: 205,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE7E3FF),
-                                  borderRadius: BorderRadius.circular(20),
+                          child: _coverPath.startsWith('http://') ||
+                                  _coverPath.startsWith('https://')
+                              ? Image.network(
+                                  _coverPath,
+                                  width: 140,
+                                  height: 205,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 140,
+                                      height: 205,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE7E3FF),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.book_rounded,
+                                          color: AppColors.primary,
+                                          size: 48,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                )
+                              : Image.asset(
+                                  _coverPath,
+                                  width: 140,
+                                  height: 205,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 140,
+                                      height: 205,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE7E3FF),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.book_rounded,
+                                          color: AppColors.primary,
+                                          size: 48,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.book_rounded,
-                                    color: AppColors.primary,
-                                    size: 48,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
                         ),
                       ),
                       const SizedBox(height: 16),

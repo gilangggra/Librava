@@ -117,6 +117,9 @@ class AuthApiService {
     String? nim,
     String? universitas,
     String? fotoProfil,
+    String? username,
+    String? bio,
+    String? phone,
   }) async {
     final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.authProfile}');
     final Map<String, dynamic> updateData = {};
@@ -131,6 +134,16 @@ class AuthApiService {
     }
     if (fotoProfil != null && fotoProfil.isNotEmpty) {
       updateData['foto_profil'] = fotoProfil;
+    }
+    if (username != null && username.isNotEmpty) {
+      updateData['username'] = username;
+    }
+    if (bio != null && bio.isNotEmpty) {
+      updateData['bio'] = bio;
+    }
+    if (phone != null && phone.isNotEmpty) {
+      updateData['phone'] = phone;
+      updateData['nomor_telepon'] = phone;
     }
 
     final response = await _client
@@ -149,6 +162,29 @@ class AuthApiService {
     } else {
       final errorMessage =
           responseData['message'] ?? 'Gagal update profil (${response.statusCode})';
+      throw Exception(errorMessage);
+    }
+  }
+
+  Future<UserModel> getUserProfileById(String id, {String? token}) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.authProfile}/$id');
+    final response = await _client
+        .get(
+          url,
+          headers: token != null
+              ? ApiConstants.headers(token)
+              : {'Content-Type': 'application/json'},
+        )
+        .timeout(const Duration(seconds: 8));
+
+    final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = responseData['data'] as Map<String, dynamic>;
+      return UserModel.fromJson(data['user'] ?? data);
+    } else {
+      final errorMessage =
+          responseData['message'] ?? 'Gagal memuat profil (${response.statusCode})';
       throw Exception(errorMessage);
     }
   }

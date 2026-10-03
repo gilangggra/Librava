@@ -1,10 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
+import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../../domain/models/chat_item_model.dart';
 import 'chat_room_page.dart';
 
@@ -71,15 +74,64 @@ class _ChatPageState extends State<ChatPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final token = authProvider.token;
+        if (token != null) {
+          try {
+            final trxProvider =
+                Provider.of<TransactionProvider>(context, listen: false);
+            trxProvider.fetchTransaksi(token);
+          } catch (_) {}
+        }
+      } catch (_) {}
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  List<ChatItemModel> get _filteredChats {
+  List<ChatItemModel> _getDisplayChats(
+      AuthProvider? authProvider, TransactionProvider? trxProvider) {
+    if (trxProvider == null || trxProvider.semuaTransaksi.isEmpty) {
+      return _chats;
+    }
+    final currentUserName = authProvider?.currentUser?.nama ?? '';
+    final List<ChatItemModel> list = [];
+    for (final trx in trxProvider.semuaTransaksi) {
+      final partnerName = trx.pemilikNama == currentUserName
+          ? trx.pemohonNama
+          : trx.pemilikNama;
+      final partnerDisplay =
+          partnerName.isNotEmpty ? partnerName : 'Mitra Librava';
+      final isBarter = trx.jenisTransaksi.toLowerCase() == 'barter';
+      final lastMsg = isBarter
+          ? 'Barter buku: ${trx.judulBuku}'
+          : 'Peminjaman: ${trx.judulBuku}';
+      list.add(
+        ChatItemModel(
+          id: trx.id,
+          name: partnerDisplay,
+          lastMessage: lastMsg,
+          date: trx.tanggal.isNotEmpty ? trx.tanggal : '08/21',
+          isOnline: true,
+          hasUnread: trx.status == 'pending',
+        ),
+      );
+    }
+    return list;
+  }
+
+  List<ChatItemModel> _filterChats(List<ChatItemModel> sourceList) {
     final query = _searchController.text.trim().toLowerCase();
-    if (query.isEmpty) return _chats;
-    return _chats
+    if (query.isEmpty) return sourceList;
+    return sourceList
         .where((c) =>
             c.name.toLowerCase().contains(query) ||
             c.lastMessage.toLowerCase().contains(query))
@@ -96,6 +148,7 @@ class _ChatPageState extends State<ChatPage> {
             builder: (context) => ChatRoomPage(
               userName: chat.name,
               isOnline: chat.isOnline,
+              transactionId: chat.id,
             ),
           ),
         );
@@ -279,7 +332,18 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredList = _filteredChats;
+    AuthProvider? authProvider;
+    try {
+      authProvider = context.watch<AuthProvider>();
+    } catch (_) {}
+
+    TransactionProvider? trxProvider;
+    try {
+      trxProvider = context.watch<TransactionProvider>();
+    } catch (_) {}
+
+    final allChats = _getDisplayChats(authProvider, trxProvider);
+    final filteredList = _filterChats(allChats);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -378,12 +442,21 @@ class _ChatPageState extends State<ChatPage> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                itemCount: filteredList.length,
-                itemBuilder: (context, index) {
-                  return _buildChatCard(filteredList[index]);
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  final token = authProvider?.token;
+                  if (token != null && trxProvider != null) {
+                    await trxProvider.fetchTransaksi(token);
+                  }
                 },
+                child: ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  itemCount: filteredList.length,
+                  itemBuilder: (context, index) {
+                    return _buildChatCard(filteredList[index]);
+                  },
+                ),
               ),
             ),
           ],

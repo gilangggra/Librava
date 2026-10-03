@@ -36,16 +36,26 @@ export const ensureDatabaseExists = async (): Promise<void> => {
   }
 };
 
-const pool = new Pool({
-  host: dbHost,
-  port: dbPort,
-  user: dbUser,
-  password: dbPassword,
-  database: dbName,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
+      }
+    : {
+        host: dbHost,
+        port: dbPort,
+        user: dbUser,
+        password: dbPassword,
+        database: dbName,
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+      }
+);
 
 export const query = async <T extends QueryResultRow = any>(
   text: string,
@@ -77,6 +87,9 @@ export const initDb = async (): Promise<void> => {
     );
 
     ALTER TABLE users ADD COLUMN IF NOT EXISTS saldo_dummy NUMERIC(12, 2) DEFAULT 100000;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(100) DEFAULT 'User';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT 'A casual reader';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS nomor_telepon VARCHAR(50) DEFAULT '+62 8959982898';
 
     CREATE TABLE IF NOT EXISTS books (
         id SERIAL PRIMARY KEY,

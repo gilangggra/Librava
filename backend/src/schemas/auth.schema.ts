@@ -21,4 +21,8 @@ export const updateProfileSchema = z.object({
   universitas: z.string().max(100).optional(),
   foto_profil: z.string().optional().nullable(),
   password: z.string().min(6, 'Password minimal 6 karakter.').optional(),
+  username: z.string().max(100).optional(),
+  bio: z.string().max(500).optional(),
+  nomor_telepon: z.string().max(50).optional(),
+  phone: z.string().max(50).optional(),
 });

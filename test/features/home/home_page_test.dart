@@ -57,4 +57,21 @@ void main() {
     expect(find.text('Borrowed from Sarah'), findsOneWidget);
     expect(find.text('Due in 3 days'), findsOneWidget);
   });
+
+  testWidgets('Menekan tombol View transaction di HomePage membuka TransactionDetailPage',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: HomePage(),
+      ),
+    );
+
+    await tester.ensureVisible(find.text('View transaction'));
+    await tester.tap(find.text('View transaction'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Waiting for owner’s response'), findsOneWidget);
+    expect(find.text('Transaction Info'), findsOneWidget);
+    expect(find.text('Owner information'), findsOneWidget);
+  });
 }

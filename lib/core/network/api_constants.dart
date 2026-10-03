@@ -15,6 +15,9 @@ class ApiConstants {
   static const String transactions = '/transactions';
   static const String chats = '/chats';
   static const String reviews = '/reviews';
+  static const String adminDashboard = '/admin/dashboard';
+  static const String adminUsers = '/admin/users';
+  static const String adminTransactions = '/admin/transactions';
 
   static Map<String, String> headers([String? token]) {
     final Map<String, String> headerMap = {

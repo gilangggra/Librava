@@ -4,10 +4,15 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/screens/login_page.dart';
+import '../../../books/presentation/providers/book_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
+import '../../../transactions/domain/models/transaction_model.dart';
+import '../../../transactions/presentation/providers/transaction_provider.dart';
+import '../../../transactions/presentation/screens/transaction_detail_page.dart';
+import 'edit_profile_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -18,7 +23,30 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final int _selectedIndex = 4;
-  String _phoneNumber = '+62 8959982898';
+  final String _phoneNumber = '+62 8959982898';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final token = authProvider.token;
+        if (token != null) {
+          try {
+            final trxProvider =
+                Provider.of<TransactionProvider>(context, listen: false);
+            trxProvider.fetchTransaksi(token);
+          } catch (_) {}
+          try {
+            final bookProvider =
+                Provider.of<BookProvider>(context, listen: false);
+            bookProvider.fetchMyBooks(token);
+          } catch (_) {}
+        }
+      } catch (_) {}
+    });
+  }
 
   void _bukaModalPengaturan(BuildContext context) {
     showModalBottomSheet(
@@ -79,129 +107,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  void _bukaModalEditProfil(BuildContext context) {
-    final authProvider = context.read<AuthProvider>();
-    final namaController = TextEditingController(
-      text: authProvider.currentUser?.nama ?? 'Ujang Knalpot',
-    );
-    final phoneController = TextEditingController(text: _phoneNumber);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDCD9EB),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Edit Profil',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF130F26),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Nama Lengkap',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF130F26),
-                ),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: namaController,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: const Color(0xFFF3F2F8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'Nomor Telepon',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF130F26),
-                ),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: phoneController,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: const Color(0xFFF3F2F8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onPressed: () {
-                    authProvider.updateProfil(nama: namaController.text.trim());
-                    setState(() {
-                      _phoneNumber = phoneController.text.trim();
-                    });
-                    Navigator.pop(ctx);
-                  },
-                  child: const Text(
-                    'Simpan Perubahan',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildInfoRow(String label, String value) {
     return Column(
@@ -219,12 +124,17 @@ class _ProfilePageState extends State<ProfilePage> {
                   color: Color(0xFF7E7A92),
                 ),
               ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF423D60),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  value,
+                  textAlign: TextAlign.end,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF423D60),
+                  ),
                 ),
               ),
             ],
@@ -276,96 +186,190 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _buildCoverWidget(String coverPath) {
+    if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
+      return Image.network(
+        coverPath,
+        width: 56,
+        height: 68,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: 56,
+            height: 68,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE7E3FF),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.book_rounded,
+                color: AppColors.primary,
+                size: 24,
+              ),
+            ),
+          );
+        },
+      );
+    }
+    return Image.asset(
+      coverPath,
+      width: 56,
+      height: 68,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          width: 56,
+          height: 68,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE7E3FF),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.book_rounded,
+              color: AppColors.primary,
+              size: 24,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _getCoverForTransaction(TransactionModel trx) {
+    if (trx.coverBuku.isNotEmpty &&
+        trx.coverBuku != 'assets/images/book_the_unknown.jpg') {
+      return trx.coverBuku;
+    }
+    final j = trx.judulBuku.toLowerCase();
+    if (j.contains('atomic')) return 'assets/images/book_atomic_habits.jpg';
+    if (j.contains('midnight')) return 'assets/images/book_midnight_lib.jpg';
+    if (j.contains('clean code') || j.contains('pragmatic')) {
+      return 'assets/images/bookshelf.jpg';
+    }
+    if (j.contains('basis data') ||
+        j.contains('python') ||
+        j.contains('jaringan')) {
+      return 'assets/images/book_fruit_fly.jpg';
+    }
+    if (j.contains('laskar') || j.contains('filosofi')) {
+      return 'assets/images/book_adversary.jpg';
+    }
+    return 'assets/images/book_the_unknown.jpg';
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'selesai':
+        return const Color(0xFF52C41A);
+      case 'sedang_dipinjam':
+        return const Color(0xFF4C7BFE);
+      case 'ditolak':
+      case 'dibatalkan':
+        return const Color(0xFFFF4D4F);
+      case 'pending':
+      case 'menunggu_konfirmasi':
+      default:
+        return const Color(0xFFFFDD2D);
+    }
+  }
+
+  String _getStatusText(TransactionModel trx) {
+    switch (trx.status.toLowerCase()) {
+      case 'selesai':
+        return 'Selesai';
+      case 'sedang_dipinjam':
+        return 'Sedang Dipinjam';
+      case 'disetujui':
+        return 'Disetujui';
+      case 'deposit_dibayar':
+        return 'Deposit Dibayar';
+      case 'lokasi_ditentukan':
+        return 'Lokasi Ditentukan';
+      case 'ditolak':
+        return 'Ditolak';
+      case 'dibatalkan':
+        return 'Dibatalkan';
+      case 'pending':
+      default:
+        return "Waiting for owner's response";
+    }
+  }
+
   Widget _buildRecentItem({
     required String image,
     required String title,
     required String subtitle,
     required Color statusColor,
     required String status,
+    VoidCallback? onTap,
   }) {
-    return Row(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Image.asset(
-            image,
-            width: 56,
-            height: 68,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: 56,
-                height: 68,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE7E3FF),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.book_rounded,
-                    color: AppColors.primary,
-                    size: 24,
-                  ),
-                ),
-              );
-            },
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: _buildCoverWidget(image),
           ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF130F26),
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontStyle: FontStyle.italic,
-                  color: Color(0xFF8A859E),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      shape: BoxShape.circle,
-                    ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF130F26),
                   ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      status,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF6B667F),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                    color: Color(0xFF8A859E),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        status,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF6B667F),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-        const Icon(
-          Icons.chevron_right_rounded,
-          color: Color(0xFF4C7BFE),
-          size: 28,
-        ),
-      ],
+          const Icon(
+            Icons.chevron_right_rounded,
+            color: Color(0xFF4C7BFE),
+            size: 28,
+          ),
+        ],
+      ),
     );
   }
 
@@ -440,10 +444,129 @@ class _ProfilePageState extends State<ProfilePage> {
     final namaUser = authProvider.currentUser?.nama ?? 'Ujang Knalpot';
     final emailUser = authProvider.currentUser?.email ?? 'ujang@example.com';
 
+    TransactionProvider? trxProvider;
+    try {
+      trxProvider = context.watch<TransactionProvider>();
+    } catch (_) {}
+
+    BookProvider? bookProvider;
+    try {
+      bookProvider = context.watch<BookProvider>();
+    } catch (_) {}
+
+    final booksReadStat =
+        (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
+            ? trxProvider.semuaTransaksi
+                .where((t) => t.status == 'selesai')
+                .length
+                .toString()
+            : '12';
+    final booksBorrowedStat =
+        (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
+            ? trxProvider.semuaTransaksi
+                .where((t) => t.jenisTransaksi == 'pinjam')
+                .length
+                .toString()
+            : '3';
+    final favoritesStat =
+        (bookProvider != null && bookProvider.koleksiSaya.isNotEmpty)
+            ? bookProvider.koleksiSaya.length.toString()
+            : '5';
+
+    final List<Widget> recentWidgets = [];
+    final transactions = trxProvider?.semuaTransaksi ?? [];
+    if (transactions.isNotEmpty) {
+      final recentList = transactions.take(5).toList();
+      for (int i = 0; i < recentList.length; i++) {
+        final trx = recentList[i];
+        final subtitleText = trx.jenisTransaksi == 'barter'
+            ? 'Barter with ${trx.pemilikNama}'
+            : (trx.pemilikNama == namaUser
+                ? 'Lent to ${trx.pemohonNama}'
+                : 'Borrowing from ${trx.pemilikNama}');
+        recentWidgets.add(
+          _buildRecentItem(
+            image: _getCoverForTransaction(trx),
+            title: trx.judulBuku,
+            subtitle: subtitleText,
+            statusColor: _getStatusColor(trx.status),
+            status: _getStatusText(trx),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TransactionDetailPage(
+                    transactionId: trx.id,
+                    bookTitle: trx.judulBuku,
+                    bookAuthor: trx.pemilikNama,
+                    coverPath: _getCoverForTransaction(trx),
+                    status: trx.status,
+                    depositAmount: '${trx.depositSimulasi.toInt()} Rupiah',
+                    ownerName: trx.pemilikNama,
+                    type: trx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+        if (i < recentList.length - 1) {
+          recentWidgets.add(
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12.0),
+              child: Divider(
+                color: Color(0xFFEBE8F4),
+                thickness: 1,
+                height: 1,
+              ),
+            ),
+          );
+        }
+      }
+    } else {
+      recentWidgets.addAll([
+        _buildRecentItem(
+          image: 'assets/images/book_the_unknown.jpg',
+          title: 'The Unknown',
+          subtitle: 'Borrowing from Andi',
+          statusColor: const Color(0xFFFFDD2D),
+          status: "Waiting for owner's response",
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 12.0),
+          child: Divider(
+            color: Color(0xFFEBE8F4),
+            thickness: 1,
+            height: 1,
+          ),
+        ),
+        _buildRecentItem(
+          image: 'assets/images/book_fruit_fly.jpg',
+          title: 'Fruit Fly',
+          subtitle: 'Borrowed from Sarah',
+          statusColor: const Color(0xFF4C7BFE),
+          status: 'Due in 3 days',
+        ),
+      ]);
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: RefreshIndicator(
+          onRefresh: () async {
+            final token = authProvider.token;
+            if (token != null) {
+              if (trxProvider != null) {
+                await trxProvider.fetchTransaksi(token);
+              }
+              if (bookProvider != null) {
+                await bookProvider.fetchMyBooks(token);
+              }
+            }
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -521,18 +644,18 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            const Text(
-                              'User',
-                              style: TextStyle(
+                            Text(
+                              authProvider.currentUser?.username ?? 'User',
+                              style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xFF130F26),
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'A casual reader',
-                              style: TextStyle(
+                            Text(
+                              authProvider.currentUser?.bio ?? 'A casual reader',
+                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w400,
                                 color: Color(0xFF7E7A92),
@@ -541,7 +664,10 @@ class _ProfilePageState extends State<ProfilePage> {
                             const SizedBox(height: 20),
                             _buildInfoRow('Name', namaUser),
                             _buildInfoRow('Email', emailUser),
-                            _buildInfoRow('Phone', _phoneNumber),
+                            _buildInfoRow(
+                              'Phone',
+                              authProvider.currentUser?.phone ?? _phoneNumber,
+                            ),
                           ],
                         ),
                       ),
@@ -570,7 +696,14 @@ class _ProfilePageState extends State<ProfilePage> {
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          onPressed: () => _bukaModalEditProfil(context),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const EditProfilePage(),
+                              ),
+                            );
+                          },
                           child: const Text(
                             'Edit profile',
                             style: TextStyle(
@@ -618,7 +751,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       children: [
                         _buildStatItem(
                           icon: CupertinoIcons.book,
-                          value: '12',
+                          value: booksReadStat,
                           label: 'Books Read',
                         ),
                         const VerticalDivider(
@@ -629,7 +762,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         _buildStatItem(
                           icon: CupertinoIcons.arrow_2_squarepath,
-                          value: '3',
+                          value: booksBorrowedStat,
                           label: 'Books Borrowed',
                         ),
                         const VerticalDivider(
@@ -640,7 +773,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         _buildStatItem(
                           icon: CupertinoIcons.bookmark,
-                          value: '5',
+                          value: favoritesStat,
                           label: 'Favorites',
                         ),
                       ],
@@ -677,30 +810,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   padding: const EdgeInsets.all(16),
                   child: Column(
-                    children: [
-                      _buildRecentItem(
-                        image: 'assets/images/book_the_unknown.jpg',
-                        title: 'The Unknown',
-                        subtitle: 'Borrowing from Andi',
-                        statusColor: const Color(0xFFFFDD2D),
-                        status: "Waiting for owner's response",
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12.0),
-                        child: Divider(
-                          color: Color(0xFFEBE8F4),
-                          thickness: 1,
-                          height: 1,
-                        ),
-                      ),
-                      _buildRecentItem(
-                        image: 'assets/images/book_fruit_fly.jpg',
-                        title: 'Fruit Fly',
-                        subtitle: 'Borrowed from Sarah',
-                        statusColor: const Color(0xFF4C7BFE),
-                        status: 'Due in 3 days',
-                      ),
-                    ],
+                    children: recentWidgets,
                   ),
                 ),
               ),
@@ -709,6 +819,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
       ),
+    ),
       bottomNavigationBar: Container(
         height: 72,
         decoration: const BoxDecoration(

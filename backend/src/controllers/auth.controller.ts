@@ -90,6 +90,29 @@ export class AuthController {
     }
   }
 
+  static async getProfileById(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = parseInt(req.params.id as string, 10);
+      if (isNaN(id)) {
+        res.status(400).json({
+          success: false,
+          message: 'ID pengguna tidak valid.',
+        });
+        return;
+      }
+
+      const profile = await AuthService.getProfile(id);
+
+      res.status(200).json({
+        success: true,
+        message: 'Berhasil mengambil profil pengguna.',
+        data: profile,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async updateProfile(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user?.id;

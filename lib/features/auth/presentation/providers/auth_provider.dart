@@ -9,7 +9,6 @@ class AuthProvider extends ChangeNotifier {
   String? _token;
   bool _isLoading = false;
   String? _errorMessage;
-  final Map<String, UserModel> _registeredUsers = {};
 
   AuthProvider({AuthApiService? apiService})
       : _apiService = apiService ?? AuthApiService();
@@ -19,6 +18,18 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoggedIn => _currentUser != null;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+
+  String _ambilPesanError(Object error, String pesanDefault) {
+    final teks = error.toString();
+    if (teks.startsWith('Exception: ')) {
+      final pesanServer = teks.replaceFirst('Exception: ', '').trim();
+      if (pesanServer.isNotEmpty) {
+        return pesanServer;
+      }
+      return pesanDefault;
+    }
+    return 'Tidak dapat terhubung ke server. Coba lagi nanti.';
+  }
 
   Future<bool> daftar({
     required String nama,
@@ -41,23 +52,16 @@ class AuthProvider extends ChangeNotifier {
       );
       _currentUser = response.user;
       _token = response.token;
-      _registeredUsers[email.toLowerCase()] = response.user;
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      final newUser = UserModel(
-        id: 'usr_${DateTime.now().millisecondsSinceEpoch}',
-        nama: nama,
-        email: email,
-        nim: nim,
-        universitas: universitas ?? 'Telkom University',
-      );
-      _registeredUsers[email.toLowerCase()] = newUser;
-      _currentUser = newUser;
+      _errorMessage = _ambilPesanError(e, 'Registrasi gagal. Silakan coba lagi.');
+      _currentUser = null;
+      _token = null;
       _isLoading = false;
       notifyListeners();
-      return true;
+      return false;
     }
   }
 
@@ -76,21 +80,21 @@ class AuthProvider extends ChangeNotifier {
       );
       _currentUser = response.user;
       _token = response.token;
-      _registeredUsers[email.toLowerCase()] = response.user;
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      final userTerdaftar = _registeredUsers[email.toLowerCase()];
-      _currentUser = userTerdaftar ??
-          UserModel(
-            id: 'usr_101',
-            nama: email.split('@').first,
-            email: email,
-          );
+      final pesan = e.toString().toLowerCase();
+      if (pesan.contains('email atau password salah')) {
+        _errorMessage = 'Email atau kata sandi salah. Silakan periksa kembali.';
+      } else {
+        _errorMessage = _ambilPesanError(e, 'Login gagal. Silakan coba lagi.');
+      }
+      _currentUser = null;
+      _token = null;
       _isLoading = false;
       notifyListeners();
-      return true;
+      return false;
     }
   }
 
@@ -111,6 +115,10 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> updateProfil({
     String? nama,
+    String? email,
+    String? username,
+    String? bio,
+    String? phone,
     String? universitas,
     String? nim,
     String? fotoProfil,
@@ -129,8 +137,13 @@ class AuthProvider extends ChangeNotifier {
           universitas: universitas,
           nim: nim,
           fotoProfil: fotoProfil,
+          username: username,
+          bio: bio,
+          phone: phone,
         );
-        _currentUser = updatedUser;
+        _currentUser = updatedUser.copyWith(
+          email: email,
+        );
         _isLoading = false;
         notifyListeners();
         return true;
@@ -143,6 +156,18 @@ class AuthProvider extends ChangeNotifier {
       nama: (nama != null && nama.trim().isNotEmpty)
           ? nama.trim()
           : _currentUser!.nama,
+      email: (email != null && email.trim().isNotEmpty)
+          ? email.trim()
+          : _currentUser!.email,
+      username: (username != null && username.trim().isNotEmpty)
+          ? username.trim()
+          : _currentUser!.username,
+      bio: (bio != null && bio.trim().isNotEmpty)
+          ? bio.trim()
+          : _currentUser!.bio,
+      phone: (phone != null && phone.trim().isNotEmpty)
+          ? phone.trim()
+          : _currentUser!.phone,
       universitas: (universitas != null && universitas.trim().isNotEmpty)
           ? universitas.trim()
           : _currentUser!.universitas,
@@ -164,5 +189,23 @@ class AuthProvider extends ChangeNotifier {
     _token = null;
     _errorMessage = null;
     notifyListeners();
+  }
+
+  Future<void> segarkanProfil() async {
+    if (_token != null && _token!.isNotEmpty) {
+      try {
+        final profile = await _apiService.getProfile(_token!);
+        _currentUser = profile;
+        notifyListeners();
+      } catch (_) {}
+    }
+  }
+
+  Future<UserModel?> ambilProfilPenggunaLain(String userId) async {
+    try {
+      return await _apiService.getUserProfileById(userId, token: _token);
+    } catch (_) {
+      return null;
+    }
   }
 }
