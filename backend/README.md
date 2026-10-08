@@ -17,7 +17,7 @@ Backend REST API untuk **Librava** (Aplikasi Mobile Barter & Peminjaman Buku Ant
 ```text
 backend/
 ├── prisma/
-│   ├── schema.prisma              # Schema Prisma 7
+│   ├── schema.prisma              # Schema Prisma 7 (users, books, events, registrations, ratings, tx, chat, review)
 │   └── seed.ts                    # Database seeder (semua tabel)
 ├── src/
 │   ├── config/
@@ -25,39 +25,63 @@ backend/
 │   │   ├── prisma.ts              # Prisma Client v7 + PrismaPg adapter
 │   │   └── security.ts            # Validasi JWT_SECRET
 │   ├── controllers/
-│   │   ├── admin.controller.ts
-│   │   ├── auth.controller.ts
-│   │   ├── book.controller.ts
-│   │   ├── chat.controller.ts
-│   │   ├── review.controller.ts
-│   │   └── transaction.controller.ts
+│   │   ├── admin.controller.ts    # Dashboard, user list, moderasi buku
+│   │   ├── auth.controller.ts     # Register, login, Google OAuth, profile
+│   │   ├── book-rating.controller.ts # Rating & ulasan buku
+│   │   ├── book.controller.ts     # CRUD buku & filter status/kategori
+│   │   ├── chat.controller.ts     # Riwayat pesan chat
+│   │   ├── event.controller.ts    # CRUD event admin & registrasi mahasiswa
+│   │   ├── review.controller.ts   # Rating transaksi peer-to-peer
+│   │   └── transaction.controller.ts # Lifecycle peminjaman & barter
+│   ├── generated/
+│   │   └── prisma/                # Generated Prisma Client v7
 │   ├── middlewares/
 │   │   ├── auth.middleware.ts     # JWT Verification & Role Authorization
-│   │   └── error.middleware.ts    # Global Error Handler & 404
+│   │   ├── error.middleware.ts    # Global Error Handler & 404
+│   │   ├── upload.middleware.ts   # Multer file upload handler
+│   │   └── validate.middleware.ts # Zod schema validation middleware
 │   ├── models/
 │   │   └── schema.sql             # PostgreSQL DDL
 │   ├── routes/
-│   │   ├── admin.routes.ts
-│   │   ├── auth.routes.ts
-│   │   ├── book.routes.ts
-│   │   ├── chat.routes.ts
-│   │   ├── review.routes.ts
-│   │   ├── transaction.routes.ts
+│   │   ├── admin.routes.ts        # Routes admin monitoring & moderasi
+│   │   ├── auth.routes.ts         # Routes auth (termasuk /google)
+│   │   ├── book.routes.ts         # Routes katalog buku & ratings
+│   │   ├── chat.routes.ts         # Routes chat transaksi
+│   │   ├── event.routes.ts        # Routes event kampus
+│   │   ├── review.routes.ts       # Routes ulasan transaksi
+│   │   ├── transaction.routes.ts  # Routes transaksi
+│   │   ├── upload.routes.ts       # Routes upload cover & avatar
 │   │   └── index.ts               # Main Route Aggregator
+│   ├── schemas/
+│   │   ├── auth.schema.ts         # Zod schemas auth & Google login
+│   │   ├── book.schema.ts         # Zod schemas buku
+│   │   ├── chat.schema.ts         # Zod schemas chat
+│   │   ├── event.schema.ts        # Zod schemas event & registrasi
+│   │   ├── review.schema.ts       # Zod schemas ulasan transaksi
+│   │   └── transaction.schema.ts  # Zod schemas transaksi
 │   ├── services/
-│   │   ├── admin.service.ts
-│   │   ├── auth.service.ts
-│   │   ├── book.service.ts
-│   │   ├── chat.service.ts
-│   │   ├── review.service.ts
-│   │   └── transaction.service.ts
+│   │   ├── admin.service.ts       # Service statistik & moderasi buku
+│   │   ├── auth.service.ts        # Service auth, JWT & Google verify
+│   │   ├── book-rating.service.ts # Service rating buku & agregasi
+│   │   ├── book.service.ts        # Service buku & katalog publik
+│   │   ├── chat.service.ts        # Service chat transaksi
+│   │   ├── event.service.ts       # Service event & pendaftaran kuota
+│   │   ├── review.service.ts      # Service review transaksi
+│   │   └── transaction.service.ts # Service transaksi peminjaman/barter
+│   ├── socket/
+│   │   └── index.ts               # Socket.IO realtime server handler
 │   ├── types/
 │   │   └── index.ts               # TypeScript Interfaces
+│   ├── utils/
+│   │   └── sanitize.ts            # Anti-XSS HTML text sanitizer
 │   ├── app.ts                     # Express App Configuration
-│   └── server.ts                  # Server Bootstrap
+│   ├── server.ts                  # Server Bootstrap
+│   └── test_api_e2e.ts            # E2E test runner
+├── uploads/                       # Folder static file uploads
 ├── .env
 ├── .env.example
 ├── package.json
+├── prisma.config.ts
 ├── test_qa_suite.ts               # QA suite E2E (53 test cases)
 ├── test_security_audit.ts         # OWASP API Security Top 10
 └── tsconfig.json

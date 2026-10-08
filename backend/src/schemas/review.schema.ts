@@ -8,3 +8,8 @@ export const createReviewSchema = z.object({
     .max(5, 'Rating harus bernilai antara 1 dan 5.'),
   komentar: z.string().max(1000).optional().nullable(),
 });
+
+export const reviewSchema = z.object({
+  rating: z.number().int().min(1, 'Rating harus bernilai antara 1 dan 5.').max(5, 'Rating harus bernilai antara 1 dan 5.'),
+  komentar: z.string().max(2000).optional().nullable(),
+});

@@ -30,6 +30,9 @@ model User {
   receivedChats    Chat[]        @relation("ReceivedChats")
   givenReviews     Review[]      @relation("GivenReviews")
   receivedReviews  Review[]      @relation("ReceivedReviews")
+  events           Event[]       @relation("EventCreator")
+  eventRegistrations EventRegistration[]
+  bookRatings      BookRating[]
 
   @@map("users")
 }
@@ -47,12 +50,70 @@ model Book {
   kategori            String?       @db.VarChar(100)
   createdAt           DateTime      @default(now()) @map("created_at")
   updatedAt           DateTime      @default(now()) @updatedAt @map("updated_at")
+  statusModerasi      String        @default("PENDING") @map("status_moderasi") @db.VarChar(30)
+  catatanModerasi     String?       @map("catatan_moderasi") @db.Text
 
   owner               User          @relation("BookOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   transactions        Transaction[] @relation("MainBookTransactions")
   barterTransactions  Transaction[] @relation("BarterBookTransactions")
+  ratings             BookRating[]
 
+  @@index([ownerId])
+  @@index([statusModerasi])
   @@map("books")
+}
+
+model Event {
+  id              Int      @id @default(autoincrement())
+  judul           String   @db.VarChar(255)
+  deskripsi       String   @db.Text
+  kategori        String?  @db.VarChar(100)
+  lokasi          String   @db.VarChar(255)
+  tanggalMulai    DateTime @map("tanggal_mulai")
+  tanggalSelesai  DateTime? @map("tanggal_selesai")
+  kuota           Int      @default(100)
+  fotoEvent       String?  @map("foto_event") @db.Text
+  createdById     Int      @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  createdBy       User     @relation("EventCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  registrations   EventRegistration[]
+
+  @@index([tanggalMulai])
+  @@index([kategori])
+  @@index([createdById])
+}
+
+model EventRegistration {
+  id           Int      @id @default(autoincrement())
+  eventId      Int      @map("event_id")
+  userId       Int      @map("user_id")
+  registeredAt DateTime @default(now()) @map("registered_at")
+
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+}
+
+model BookRating {
+  id        Int      @id @default(autoincrement())
+  bookId    Int      @map("book_id")
+  userId    Int      @map("user_id")
+  rating    Int
+  komentar  String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, userId])
+  @@index([bookId])
+  @@index([userId])
 }
 
 model Transaction {

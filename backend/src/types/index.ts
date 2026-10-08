@@ -36,6 +36,8 @@ export interface Book {
   status: 'Tersedia' | 'Dipinjam' | 'Dibarter' | 'Tidak Tersedia';
   foto_buku?: string;
   kategori?: string;
+  status_moderasi?: 'PENDING' | 'DISETUJUI' | 'DITOLAK';
+  catatan_moderasi?: string;
   created_at: Date;
   updated_at: Date;
   owner_nama?: string;

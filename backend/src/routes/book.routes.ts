@@ -3,11 +3,16 @@ import { BookController } from '../controllers/book.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/validate.middleware';
 import { createBookSchema, updateBookSchema } from '../schemas/book.schema';
+import { reviewSchema } from '../schemas/review.schema';
+import { BookRatingController } from '../controllers/book-rating.controller';
 
 const router = Router();
 
 router.get('/', BookController.getAllBooks);
 router.get('/user/my-books', authenticate, BookController.getMyBooks);
+router.get('/:id/reviews', BookRatingController.getReviews);
+router.post('/:id/reviews', authenticate, validate({ body: reviewSchema }), BookRatingController.upsert);
+router.delete('/:id/reviews', authenticate, BookRatingController.remove);
 router.get('/:id', BookController.getBookById);
 router.post('/', authenticate, validate({ body: createBookSchema }), BookController.createBook);
 router.put('/:id', authenticate, validate({ body: updateBookSchema }), BookController.updateBook);

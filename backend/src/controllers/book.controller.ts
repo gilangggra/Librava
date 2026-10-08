@@ -65,6 +65,7 @@ export class BookController {
         owner_id,
         limit,
         offset,
+        moderationStatus: 'DISETUJUI',
       });
 
       res.status(200).json({

@@ -14,49 +14,70 @@
 ```text
 backend/
 ├── prisma/
-│   ├── schema.prisma           # Schema Prisma 7 (provider prisma-client, output generated)
-│   └── seed.ts                 # Database seeder: users (admin + mahasiswa), books, transactions, chats, reviews
+│   ├── schema.prisma           # Schema Prisma 7 (users, books, events, event_registrations, book_ratings, transactions, chats, reviews)
+│   └── seed.ts                 # Database seeder: users, books, transactions, chats, reviews
 ├── src/
 │   ├── config/
 │   │   ├── database.ts         # Connection pool PostgreSQL & auto-init schema tabel
 │   │   ├── prisma.ts           # Init Prisma Client v7 dengan adapter PrismaPg & dotenv
 │   │   └── security.ts         # Validasi JWT_SECRET wajib dan panjang minimum
 │   ├── controllers/
-│   │   ├── admin.controller.ts
-│   │   ├── auth.controller.ts
-│   │   ├── book.controller.ts
-│   │   ├── chat.controller.ts
-│   │   ├── review.controller.ts
-│   │   └── transaction.controller.ts
+│   │   ├── admin.controller.ts # Dashboard, users, transactions, moderasi buku
+│   │   ├── auth.controller.ts  # Register, login, profile, Google login
+│   │   ├── book-rating.controller.ts # Rating & review buku per item
+│   │   ├── book.controller.ts  # CRUD buku, my-books, filter status & moderasi
+│   │   ├── chat.controller.ts  # Riwayat pesan & kirim chat
+│   │   ├── event.controller.ts # CRUD event admin, view & registrasi event mahasiswa
+│   │   ├── review.controller.ts # Rating transaksi antar user
+│   │   └── transaction.controller.ts # Lifecycle peminjaman & barter
 │   ├── generated/
 │   │   └── prisma/             # Client Prisma 7, digenerate langsung ke source tree
 │   ├── middlewares/
 │   │   ├── auth.middleware.ts  # Verifikasi JWT (authenticate) & role check (authorizeAdmin)
-│   │   └── error.middleware.ts # Global error handler & 404
+│   │   ├── error.middleware.ts # Global error handler & 404
+│   │   ├── upload.middleware.ts # Handler upload file multipart/form-data (Multer)
+│   │   └── validate.middleware.ts # Middleware validasi request body/query via Zod
 │   ├── models/
-│   │   └── schema.sql          # DDL tabel (users, books, transactions, chats, reviews)
+│   │   └── schema.sql          # DDL tabel PostgreSQL
 │   ├── routes/
-│   │   ├── admin.routes.ts
-│   │   ├── auth.routes.ts
-│   │   ├── book.routes.ts
-│   │   ├── chat.routes.ts
-│   │   ├── review.routes.ts
-│   │   ├── transaction.routes.ts
+│   │   ├── admin.routes.ts     # Rute monitoring & moderasi buku admin
+│   │   ├── auth.routes.ts      # Rute register, login, profile, Google auth
+│   │   ├── book.routes.ts      # Rute katalog, detail, CRUD buku & book rating
+│   │   ├── chat.routes.ts      # Rute percakapan per transaksi
+│   │   ├── event.routes.ts     # Rute event kampus & registrasi event
+│   │   ├── review.routes.ts    # Rute ulasan transaksi antar pengguna
+│   │   ├── transaction.routes.ts # Rute pengajuan, persetujuan, handover, return
+│   │   ├── upload.routes.ts    # Rute upload gambar buku/profil/event
 │   │   └── index.ts            # Route aggregator + health check (/api, /api/health)
+│   ├── schemas/
+│   │   ├── auth.schema.ts      # Skema validasi Zod register, login, profile, Google auth
+│   │   ├── book.schema.ts      # Skema validasi Zod buku & moderasi
+│   │   ├── chat.schema.ts      # Skema validasi Zod pesan chat
+│   │   ├── event.schema.ts     # Skema validasi Zod event & registrasi
+│   │   ├── review.schema.ts    # Skema validasi Zod ulasan transaksi & book rating
+│   │   └── transaction.schema.ts # Skema validasi Zod pengajuan & aksi transaksi
 │   ├── services/
-│   │   ├── admin.service.ts    # Query statistik, data user & transaksi buat admin
-│   │   ├── auth.service.ts     # Registrasi, hashing bcrypt, generate JWT, get/update profil
-│   │   ├── book.service.ts     # CRUD buku, search multi-field, filter kategori & status
-│   │   ├── chat.service.ts     # Kirim pesan & fetch history dengan flag is_read
-│   │   ├── review.service.ts   # Rating 1-5, hitung rata-rata rating user
-│   │   └── transaction.service.ts # Lifecycle pinjam/barter, matching buku, deposit dummy, handover
+│   │   ├── admin.service.ts    # Statistik dashboard, data user, moderasi buku
+│   │   ├── auth.service.ts     # Registrasi, bcrypt, JWT, Google OAuth2 verify
+│   │   ├── book-rating.service.ts # Agregasi rating & CRUD ulasan buku
+│   │   ├── book.service.ts     # CRUD buku, filter katalog moderasi, search
+│   │   ├── chat.service.ts     # Pesan chat transaksi & status is_read
+│   │   ├── event.service.ts    # CRUD event, filter tanggal/kategori, atomic registration
+│   │   ├── review.service.ts   # Rating transaksi & rata-rata reputasi user
+│   │   └── transaction.service.ts # Lifecycle pinjam/barter, matching buku, deposit dummy
+│   ├── socket/
+│   │   └── index.ts            # Socket.IO realtime handler untuk chat transaksi
 │   ├── types/
-│   │   └── index.ts            # TS interfaces
-│   ├── app.ts                  # Setup Express, CORS, JSON body parser
-│   └── server.ts               # Bootstrap server dan validasi koneksi DB
+│   │   └── index.ts            # TypeScript interfaces & DTO
+│   ├── utils/
+│   │   └── sanitize.ts         # Sanitasi input teks (anti-XSS)
+│   ├── app.ts                  # Setup Express, CORS, Helmet, Rate Limiter
+│   ├── server.ts               # Bootstrap server, Socket.IO & koneksi DB
+│   └── test_api_e2e.ts         # E2E runner script
+├── uploads/                    # Direktori penyimpanan static file gambar
 ├── .env
 ├── .env.example
-├── package.json                # Scripts: dev, build, start, prisma:*, db:seed, test:*
+├── package.json                # Scripts & dependencies
 ├── prisma.config.ts             # Config Prisma 7 CLI & datasource migrations
 ├── test_qa_suite.ts             # QA suite E2E (53 test cases)
 ├── test_security_audit.ts       # Penetration testing OWASP API Security Top 10
@@ -122,6 +143,18 @@ Deposit tidak ditarik saat request dibuat. Pada approval, saldo requester dikura
 - `GET /api/admin/users` — monitoring semua data mahasiswa & admin.
 - `GET /api/admin/transactions` — log seluruh transaksi sistem.
 
+### Moderasi Buku, Event, dan Rating
+
+- `GET /api/admin/books/pending` — daftar buku berstatus `PENDING` untuk admin.
+- `PATCH /api/admin/books/:id/moderasi` — body `{ "action": "APPROVE" | "REJECT", "catatan?": "..." }`; reject menandai buku `DITOLAK` tanpa menghapus histori.
+- `GET /api/events` dan `GET /api/events/:id` — daftar/detail event aktif dengan filter `search`, `kategori`, `mulai_dari`, dan `sampai_dengan`.
+- `POST|PUT|DELETE /api/events` — manajemen event khusus admin.
+- `POST /api/events/:id/register` — pendaftaran mahasiswa dengan proteksi kuota atomic.
+- `POST /api/auth/google` — login memakai Google `id_token`; membutuhkan `GOOGLE_CLIENT_ID`.
+- `GET|POST|DELETE /api/books/:id/reviews` — agregat review publik dan upsert/hapus rating mahasiswa.
+
+Kolom buku baru memiliki `status_moderasi` default `PENDING`; katalog publik hanya menampilkan `DISETUJUI`.
+
 ---
 
 ## 4. Database Seeding (`prisma/seed.ts`)
@@ -182,6 +215,10 @@ Target test dapat diubah dengan `API_BASE_URL`; default-nya tetap `http://localh
    ```bash
    cd backend
    npm run prisma:push
+   ```
+   Perintah ini membuat tabel event, pendaftaran event, rating buku, indeks pencarian, dan kolom moderasi:
+   ```bash
+   npx prisma db push
    ```
 3. Seed database (opsional, untuk demo data):
    ```bash
@@ -244,6 +281,25 @@ Backend menerapkan kontrol berikut sebagai bagian dari hardening **OWASP API Sec
 ---
 
 ## 8. Changelog
+
+### 08 Oktober 2026
+
+**Penyelarasan Kebutuhan SRS Resmi & Ekspansi Database Schema**
+- **Moderasi Buku Pra-Katalog (`FR-ADM-07`, `FR-BUK-003`)**:
+  - Menambahkan kolom `statusModerasi` (`status_moderasi` VARCHAR(30), default: `"PENDING"`) dan `catatanModerasi` (`catatan_moderasi` TEXT) pada model `Book`.
+  - Menambahkan index `@@index([statusModerasi])` dan `@@index([ownerId])` untuk mempercepat query katalog publik (`statusModerasi = 'DISETUJUI'`) dan filter antrean peninjauan buku oleh Admin.
+- **Modul Event Kampus & Literasi (`FR-EVT-01`, `FR-EVT-02`)**:
+  - Menambahkan model `Event` (`id`, `judul`, `deskripsi`, `kategori`, `lokasi`, `tanggalMulai`, `tanggalSelesai`, `kuota`, `fotoEvent`, `createdById`, timestamps) dengan relasi `createdBy` ke model `User` (`onDelete: Cascade`).
+  - Menambahkan model `EventRegistration` untuk pendaftaran mahasiswa dengan constraint unik `@@unique([eventId, userId])`.
+  - Menambahkan database indexing: `@@index([tanggalMulai])`, `@@index([kategori])`, `@@index([createdById])`, `@@index([eventId])`, dan `@@index([userId])`.
+- **Modul Rating & Ulasan Buku (Book Rating)**:
+  - Menambahkan model `BookRating` untuk penilaian langsung pada karya/unit buku (skala 1–5 bintang): `id`, `bookId`, `userId`, `rating`, `komentar`, timestamps.
+  - Menambahkan constraint unik `@@unique([bookId, userId])` (1 user hanya bisa memberi 1 rating per buku, mendukung update rating) serta indexing `@@index([bookId])` dan `@@index([userId])`.
+- **Pembaruan Relasi Model `User`**:
+  - Menambahkan relasi `events` (`Event[]`), `eventRegistrations` (`EventRegistration[]`), dan `bookRatings` (`BookRating[]`).
+- **Autentikasi Google OAuth2**:
+  - Menambahkan variabel environment `GOOGLE_CLIENT_ID` pada `.env.example` dan `.env`.
+  - Mengonfigurasi dependensi `google-auth-library` untuk persiapan endpoint verifikasi `id_token` (`POST /api/auth/google`).
 
 ### 26 September 2026
 

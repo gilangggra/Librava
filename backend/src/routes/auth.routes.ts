@@ -4,6 +4,7 @@ import { AuthController } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { validate } from '../middlewares/validate.middleware';
 import { registerSchema, loginSchema, updateProfileSchema } from '../schemas/auth.schema';
+import { z } from 'zod';
 
 const router = Router();
 
@@ -32,6 +33,7 @@ const registerLimiter = rateLimit({
 
 router.post('/register', registerLimiter, validate({ body: registerSchema }), AuthController.register);
 router.post('/login', loginLimiter, validate({ body: loginSchema }), AuthController.login);
+router.post('/google', validate({ body: z.object({ id_token: z.string().min(1) }) }), AuthController.googleLogin);
 router.get('/profile', authenticate, AuthController.getProfile);
 router.get('/profile/:id', AuthController.getProfileById);
 router.put('/profile', authenticate, validate({ body: updateProfileSchema }), AuthController.updateProfile);
