@@ -12,6 +12,7 @@ export interface CreateBookDTO {
   status?: 'Tersedia' | 'Dipinjam' | 'Dibarter' | 'Tidak Tersedia';
   foto_buku?: string;
   kategori?: string;
+  statusModerasi?: string;
 }
 
 export interface BookFilterParams {
@@ -19,6 +20,7 @@ export interface BookFilterParams {
   kategori?: string;
   status?: string;
   owner_id?: number;
+  moderationStatus?: string;
   limit?: number;
   offset?: number;
 }
@@ -39,6 +41,8 @@ const mapBookWithRelations = (book: any): Book => ({
   owner_nama: book.owner?.namaLengkap,
   owner_universitas: book.owner?.universitas,
   owner_foto: book.owner?.fotoProfil,
+  status_moderasi: book.statusModerasi,
+  catatan_moderasi: book.catatanModerasi,
 });
 
 export class BookService {
@@ -54,6 +58,7 @@ export class BookService {
         status: dto.status || 'Tersedia',
         fotoBuku: dto.foto_buku || null,
         kategori: dto.kategori || null,
+        statusModerasi: 'PENDING',
       },
       include: {
         owner: true,
@@ -84,6 +89,10 @@ export class BookService {
 
     if (params.owner_id) {
       where.ownerId = params.owner_id;
+    }
+
+    if (params.moderationStatus) {
+      where.statusModerasi = params.moderationStatus;
     }
 
     const limit = params.limit || 20;
@@ -174,5 +183,35 @@ export class BookService {
     await prisma.book.delete({
       where: { id },
     });
+  }
+
+  static async getPendingBooks(): Promise<Book[]> {
+    const books = await prisma.book.findMany({
+      where: { statusModerasi: 'PENDING' },
+      include: { owner: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return books.map(mapBookWithRelations);
+  }
+
+  static async moderateBook(id: number, action: 'APPROVE' | 'REJECT', catatan?: string): Promise<Book> {
+    const book = await prisma.book.findUnique({ where: { id } });
+    if (!book) {
+      const error: any = new Error('Buku tidak ditemukan.');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const updated = await prisma.book.update({
+      where: { id },
+      data: {
+        statusModerasi: action === 'APPROVE' ? 'DISETUJUI' : 'DITOLAK',
+        catatanModerasi: catatan || null,
+      },
+      include: { owner: true },
+    });
+
+    return mapBookWithRelations(updated);
   }
 }

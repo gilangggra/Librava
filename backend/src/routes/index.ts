@@ -7,6 +7,7 @@ import reviewRoutes from './review.routes';
 import adminRoutes from './admin.routes';
 import uploadRoutes from './upload.routes';
 import prisma from '../config/prisma';
+import eventRoutes from './event.routes';
 
 const router = Router();
 
@@ -78,6 +79,7 @@ router.get('/health', async (req, res) => {
 
 router.use('/auth', authRoutes);
 router.use('/books', bookRoutes);
+router.use('/events', eventRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/chats', chatRoutes);
 router.use('/reviews', reviewRoutes);

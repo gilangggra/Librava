@@ -90,7 +90,65 @@ async function main() {
   console.log(`Mahasiswa: ${rina.email}`);
 
   // ══════════════════════════════════════════════════════════════
-  // 2. BOOKS
+  // 2. EVENTS
+  // ══════════════════════════════════════════════════════════════
+  console.log('\nSeeding Events...');
+
+  const eventsData = [
+    {
+      judul: 'Bedah Buku: Atomic Habits',
+      deskripsi: 'Diskusi santai tentang membangun kebiasaan membaca dan belajar yang konsisten.',
+      kategori: 'Literasi',
+      lokasi: 'Telkom University, Gedung Student Center',
+      tanggalMulai: new Date('2026-10-15T09:00:00Z'),
+      tanggalSelesai: new Date('2026-10-15T12:00:00Z'),
+      kuota: 80,
+      fotoEvent: null,
+    },
+    {
+      judul: 'Workshop Menulis Review Buku',
+      deskripsi: 'Pelajari cara menulis review buku yang informatif, kritis, dan menarik untuk pembaca lain.',
+      kategori: 'Workshop',
+      lokasi: 'Telkom University, Perpustakaan Lantai 2',
+      tanggalMulai: new Date('2026-10-22T13:00:00Z'),
+      tanggalSelesai: new Date('2026-10-22T16:00:00Z'),
+      kuota: 50,
+      fotoEvent: null,
+    },
+    {
+      judul: 'Tukar Buku dan Bazaar Literasi',
+      deskripsi: 'Bawa buku yang sudah selesai dibaca dan temukan bacaan baru dari komunitas mahasiswa.',
+      kategori: 'Komunitas',
+      lokasi: 'Lapangan Student Center Telkom University',
+      tanggalMulai: new Date('2026-11-07T08:00:00Z'),
+      tanggalSelesai: new Date('2026-11-07T15:00:00Z'),
+      kuota: 200,
+      fotoEvent: null,
+    },
+    {
+      judul: 'Librava Reading Circle: Fiksi Indonesia',
+      deskripsi: 'Sesi membaca dan berbagi perspektif tentang karya fiksi Indonesia pilihan.',
+      kategori: 'Reading Circle',
+      lokasi: 'Taman Baca Telkom University',
+      tanggalMulai: new Date('2026-11-20T15:30:00Z'),
+      tanggalSelesai: new Date('2026-11-20T17:30:00Z'),
+      kuota: 40,
+      fotoEvent: null,
+    },
+  ];
+
+  for (const eventData of eventsData) {
+    const existingEvent = await prisma.event.findFirst({
+      where: { judul: eventData.judul, createdById: admin.id },
+    });
+    const event = existingEvent
+      ? await prisma.event.update({ where: { id: existingEvent.id }, data: eventData })
+      : await prisma.event.create({ data: { ...eventData, createdById: admin.id } });
+    console.log(`  Event: ${event.judul}`);
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 3. BOOKS
   // ══════════════════════════════════════════════════════════════
   console.log('\needing Books...');
 
@@ -183,7 +241,7 @@ async function main() {
 
   const books = [];
   for (const bookData of booksData) {
-    const book = await prisma.book.create({ data: bookData });
+    const book = await prisma.book.create({ data: { ...bookData, statusModerasi: 'DISETUJUI' } });
     books.push(book);
     console.log(`  ✔ "${book.judul}" (${book.status}) — owner: ${bookData.ownerId}`);
   }
@@ -345,6 +403,7 @@ async function main() {
   console.log('   🔄 4 Transactions (SELESAI, DALAM_PROSES, DISETUJUI, MENUNGGU)');
   console.log('   💬 14 Chat messages');
   console.log('   ⭐ 2 Reviews');
+  console.log(`   📅 ${eventsData.length} Events`);
   console.log('══════════════════════════════════════════════');
 }
 

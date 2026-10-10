@@ -67,6 +67,13 @@ export class AuthController {
     }
   }
 
+  static async googleLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await AuthService.googleLogin(req.body);
+      res.status(200).json({ success: true, message: 'Login Google berhasil.', data: result });
+    } catch (error) { next(error); }
+  }
+
   static async getProfile(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user?.id;

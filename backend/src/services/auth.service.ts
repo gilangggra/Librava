@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import prisma from '../config/prisma';
 import { UserPayload } from '../types';
 import { getJwtSecret } from '../config/security';
+import { OAuth2Client } from 'google-auth-library';
+import { randomBytes } from 'crypto';
 
 export interface RegisterDTO {
   email: string;
@@ -19,7 +21,75 @@ export interface LoginDTO {
   password: string;
 }
 
+export interface GoogleLoginDTO {
+  id_token: string;
+}
+
 export class AuthService {
+  static async googleLogin(dto: GoogleLoginDTO) {
+    const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+    if (!clientId) {
+      const error: any = new Error('GOOGLE_CLIENT_ID belum dikonfigurasi.');
+      error.statusCode = 503;
+      throw error;
+    }
+
+    const client = new OAuth2Client(clientId);
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({ idToken: dto.id_token, audience: clientId });
+      payload = ticket.getPayload();
+    } catch {
+      const error: any = new Error('Google ID token tidak valid.');
+      error.statusCode = 401;
+      throw error;
+    }
+
+    const email = payload?.email?.toLowerCase();
+    if (!payload || !email || payload.email_verified === false) {
+      const error: any = new Error('Akun Google tidak memiliki email terverifikasi.');
+      error.statusCode = 401;
+      throw error;
+    }
+
+    let user = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
+    if (!user) {
+      const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 12);
+      user = await prisma.user.create({
+        data: {
+          email,
+          passwordHash,
+          namaLengkap: payload.name || email.split('@')[0],
+          fotoProfil: payload.picture || null,
+          role: 'mahasiswa',
+        },
+      });
+    }
+
+    const token = this.generateToken({ id: user.id, email: user.email, role: user.role, nama_lengkap: user.namaLengkap });
+    const userAny = user as any;
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        nama_lengkap: user.namaLengkap,
+        nama: user.namaLengkap,
+        nim: user.nim,
+        universitas: user.universitas,
+        foto_profil: user.fotoProfil,
+        role: user.role,
+        saldo_dummy: Number(user.saldoDummy ?? 100000),
+        username: userAny.username || 'User',
+        bio: userAny.bio || 'A casual reader',
+        phone: userAny.nomorTelepon || '+62 8959982898',
+        nomor_telepon: userAny.nomorTelepon || '+62 8959982898',
+        created_at: user.createdAt,
+        updated_at: user.updatedAt,
+      },
+      token,
+    };
+  }
+
   static async register(dto: RegisterDTO) {
     const existingUser = await prisma.user.findFirst({
       where: {
