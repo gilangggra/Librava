@@ -36,10 +36,18 @@ const notFound = () => {
 
 export class EventService {
   static async list(params: { search?: string; kategori?: string; mulai_dari?: Date; sampai_dengan?: Date }) {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
     const where: any = {
       OR: [
-        { tanggalSelesai: null },
-        { tanggalSelesai: { gte: new Date() } },
+        { tanggalSelesai: { gte: now } },
+        {
+          AND: [
+            { tanggalSelesai: null },
+            { tanggalMulai: { gte: startOfToday } },
+          ],
+        },
       ],
     };
     if (params.search) {
@@ -115,7 +123,10 @@ export class EventService {
       return await prisma.$transaction(async (tx) => {
         const event = await tx.event.findUnique({ where: { id: eventId } });
         if (!event) throw notFound();
-        if (event.tanggalSelesai && event.tanggalSelesai < new Date()) {
+        const isClosed = event.tanggalSelesai
+          ? event.tanggalSelesai < new Date()
+          : event.tanggalMulai < new Date();
+        if (isClosed) {
           const error: any = new Error('Pendaftaran event sudah ditutup.');
           error.statusCode = 400;
           throw error;

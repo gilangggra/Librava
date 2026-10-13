@@ -1,7 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/models/admin_book_model.dart';
+import '../providers/admin_provider.dart';
 import '../widgets/admin_book_cover.dart';
 import '../widgets/admin_bottom_nav.dart';
 
@@ -58,6 +61,10 @@ class AdminBookDetailPage extends StatelessWidget {
           _buildBarisInfo('Status', buku.statusTampil),
           _buildBarisInfo('Publisher', _isiAtauStrip(buku.penerbit)),
           _buildBarisInfo('Owner', _isiAtauStrip(buku.pemilikNama)),
+          _buildBarisInfo('Moderation', buku.statusModerasi),
+          if (buku.catatanModerasi != null &&
+              buku.catatanModerasi!.trim().isNotEmpty)
+            _buildBarisInfo('Catatan', buku.catatanModerasi!),
         ],
       ),
     );
@@ -144,6 +151,174 @@ class AdminBookDetailPage extends StatelessWidget {
     );
   }
 
+  Widget _buildModerasiActions(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Aksi Kurasi Admin',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF130F26),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF16A34A),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.check_circle_outline,
+                      color: Colors.white, size: 20),
+                  label: const Text(
+                    'Setujui',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w700),
+                  ),
+                  onPressed: () => _prosesModerasi(context, 'APPROVE'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.cancel_outlined,
+                      color: Colors.white, size: 20),
+                  label: const Text(
+                    'Tolak',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w700),
+                  ),
+                  onPressed: () => _dialogTolak(context),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _dialogTolak(BuildContext context) {
+    final catatanController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          title: const Text(
+            'Tolak Buku',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Berikan alasan mengapa buku ini ditolak agar pemilik dapat memperbaikinya:',
+                style: TextStyle(fontSize: 13, color: Color(0xFF555268)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: catatanController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Contoh: Foto sampul buram, deskripsi kurang lengkap.',
+                  hintStyle: const TextStyle(fontSize: 13, color: Color(0xFFA09DB2)),
+                  filled: true,
+                  fillColor: const Color(0xFFF3F2F8),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal', style: TextStyle(color: Color(0xFF7E7A92))),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () {
+                final catatan = catatanController.text.trim();
+                Navigator.pop(ctx);
+                _prosesModerasi(context, 'REJECT', catatan);
+              },
+              child: const Text('Tolak Buku',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _prosesModerasi(BuildContext context, String action,
+      [String? catatan]) async {
+    final auth = context.read<AuthProvider>();
+    if (auth.token == null) return;
+    try {
+      await context.read<AdminProvider>().moderateBook(
+            token: auth.token!,
+            bookId: buku.id,
+            action: action,
+            catatan: catatan,
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              action == 'APPROVE'
+                  ? 'Buku "${buku.judul}" berhasil disetujui untuk katalog!'
+                  : 'Buku "${buku.judul}" berhasil ditolak.',
+            ),
+            backgroundColor: action == 'APPROVE'
+                ? const Color(0xFF16A34A)
+                : const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memperbarui moderasi: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -179,6 +354,8 @@ class AdminBookDetailPage extends StatelessWidget {
               _buildKartuBuku(),
               const SizedBox(height: 22),
               _buildTentangBuku(),
+              const SizedBox(height: 22),
+              _buildModerasiActions(context),
             ],
           ),
         ),

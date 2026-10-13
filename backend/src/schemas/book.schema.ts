@@ -30,3 +30,12 @@ export const queryBookSchema = z.object({
   limit: z.string().transform((val) => (val ? parseInt(val, 10) : 20)).optional(),
   offset: z.string().transform((val) => (val ? parseInt(val, 10) : 0)).optional(),
 });
+
+export const bookIdParamSchema = z.object({
+  id: z.coerce.number().int().positive('ID buku tidak valid.'),
+});
+
+export const moderationSchema = z.object({
+  action: z.enum(['APPROVE', 'REJECT']),
+  catatan: z.string().max(2000).optional().nullable(),
+});

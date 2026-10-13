@@ -20,8 +20,11 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'application/octet-stream'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  const allowedExts = ['.jpg', '.jpeg', '.png', '.webp'];
+
+  if (allowedMimeTypes.includes(file.mimetype) || allowedExts.includes(ext)) {
     cb(null, true);
   } else {
     const error: any = new Error('Hanya format gambar (.jpg, .jpeg, .png, .webp) yang diperbolehkan.');

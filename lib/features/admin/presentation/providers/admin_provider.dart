@@ -260,4 +260,57 @@ class AdminProvider extends ChangeNotifier {
     _kataKunciRequest = kata;
     notifyListeners();
   }
+
+  List<AdminBookModel> _daftarBukuPending = [];
+  bool _isLoadingBukuPending = false;
+  String? _errorBukuPending;
+
+  List<AdminBookModel> get daftarBukuPending => _daftarBukuPending;
+  bool get isLoadingBukuPending => _isLoadingBukuPending;
+  String? get errorBukuPending => _errorBukuPending;
+  int get jumlahBukuPending => _daftarBukuPending.length;
+
+  Future<void> fetchBukuPending(String token) async {
+    _isLoadingBukuPending = true;
+    _errorBukuPending = null;
+    notifyListeners();
+
+    try {
+      _daftarBukuPending = await _apiService.getPendingBooks(token: token);
+    } catch (e) {
+      final teks = e.toString();
+      _errorBukuPending = teks.startsWith('Exception: ')
+          ? teks.replaceFirst('Exception: ', '')
+          : 'Gagal memuat antrean moderasi buku.';
+    }
+
+    _isLoadingBukuPending = false;
+    notifyListeners();
+  }
+
+  Future<bool> moderateBook({
+    required String token,
+    required String bookId,
+    required String action,
+    String? catatan,
+  }) async {
+    try {
+      final updated = await _apiService.moderateBook(
+        token: token,
+        bookId: bookId,
+        action: action,
+        catatan: catatan,
+      );
+
+      _daftarBukuPending.removeWhere((b) => b.id == bookId);
+      if (action == 'APPROVE') {
+        _daftarBuku.removeWhere((b) => b.id == bookId);
+        _daftarBuku.insert(0, updated);
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

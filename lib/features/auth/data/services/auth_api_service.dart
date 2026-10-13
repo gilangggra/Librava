@@ -48,6 +48,31 @@ class AuthApiService {
     }
   }
 
+  /// Melakukan login / otentikasi via Google OAuth2 ID Token
+  Future<AuthResponse> loginWithGoogle({required String idToken}) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.authGoogle}');
+    final response = await _client
+        .post(
+          url,
+          headers: ApiConstants.headers(),
+          body: jsonEncode({'id_token': idToken}),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = responseData['data'] as Map<String, dynamic>;
+      final user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+      final token = data['token'] as String;
+      return AuthResponse(user: user, token: token);
+    } else {
+      final errorMessage = responseData['message'] ??
+          'Login Google gagal (${response.statusCode})';
+      throw Exception(errorMessage);
+    }
+  }
+
   Future<AuthResponse> register({
     required String email,
     required String password,

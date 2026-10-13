@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/domain/models/book_model.dart';
 import '../../../books/presentation/providers/book_provider.dart';
@@ -13,6 +14,9 @@ import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../../../transactions/presentation/screens/transaction_detail_page.dart';
+import '../../../events/domain/models/event_model.dart';
+import '../../../events/presentation/providers/event_provider.dart';
+import '../../../events/presentation/screens/event_detail_page.dart';
 import 'request_list_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -41,6 +45,9 @@ class _HomePageState extends State<HomePage> {
         if (auth.token != null) {
           context.read<TransactionProvider>().fetchTransaksi(auth.token!);
         }
+      } catch (_) {}
+      try {
+        context.read<EventProvider>().fetchEvents();
       } catch (_) {}
     });
   }
@@ -117,24 +124,6 @@ class _HomePageState extends State<HomePage> {
     }
     return _borrowedBooks;
   }
-
-  final List<Map<String, String>> _events = const [
-    {
-      'title': 'Book Exchange Day',
-      'description': 'Exchange your favorite books with other students',
-      'image': 'assets/images/event_library.jpg',
-    },
-    {
-      'title': 'Reading Meetup',
-      'description': 'Meet fellow readers and share your favorite books.',
-      'image': 'assets/images/event_reading_meetup.jpg',
-    },
-    {
-      'title': 'Book Discussion',
-      'description': 'Share your thoughts and discuss books with fellow readers.',
-      'image': 'assets/images/event_book_discussion.jpg',
-    },
-  ];
 
   @override
   void dispose() {
@@ -353,21 +342,86 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildEventCard(Map<String, String> event) {
+  String _getDefaultEventAsset(EventModel event) {
+    if (event.fotoEvent != null &&
+        event.fotoEvent!.trim().startsWith('assets/')) {
+      return event.fotoEvent!.trim();
+    }
+    const defaults = [
+      'assets/images/event_library.jpg',
+      'assets/images/event_reading_meetup.jpg',
+      'assets/images/event_book_discussion.jpg',
+    ];
+    final judulLower = event.judul.toLowerCase();
+    final katLower = (event.kategori ?? '').toLowerCase();
+    if (judulLower.contains('read') ||
+        judulLower.contains('circle') ||
+        katLower.contains('circle') ||
+        katLower.contains('reading')) {
+      return 'assets/images/event_reading_meetup.jpg';
+    }
+    if (judulLower.contains('panel') ||
+        judulLower.contains('review') ||
+        judulLower.contains('workshop') ||
+        katLower.contains('workshop') ||
+        katLower.contains('seminar')) {
+      return 'assets/images/event_book_discussion.jpg';
+    }
+    return defaults[(event.id.abs()) % defaults.length];
+  }
+
+  Widget _buildEventCard(EventModel event) {
+    final foto = event.fotoEvent ?? '';
+    final isHttp = foto.startsWith('http://') || foto.startsWith('https://');
+    final isUploads =
+        foto.startsWith('/uploads/') || foto.startsWith('uploads/');
+    final fallbackAsset = _getDefaultEventAsset(event);
+
+    String? fullNetworkUrl;
+    if (isHttp) {
+      fullNetworkUrl = foto;
+    } else if (isUploads) {
+      final cleanPath = foto.startsWith('/') ? foto : '/$foto';
+      final rootServer = ApiConstants.baseUrl.replaceAll('/api', '');
+      fullNetworkUrl = '$rootServer$cleanPath';
+    }
+
+    Widget backgroundWidget;
+    if (fullNetworkUrl != null) {
+      backgroundWidget = Image.network(
+        fullNetworkUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Image.asset(
+            fallbackAsset,
+            fit: BoxFit.cover,
+          );
+        },
+      );
+    } else if (foto.isNotEmpty && foto.startsWith('assets/')) {
+      backgroundWidget = Image.asset(
+        foto,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Image.asset(
+            fallbackAsset,
+            fit: BoxFit.cover,
+          );
+        },
+      );
+    } else {
+      backgroundWidget = Image.asset(
+        fallbackAsset,
+        fit: BoxFit.cover,
+      );
+    }
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset(
-              event['image']!,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  color: const Color(0xFF2E2068),
-                );
-              },
-            ),
+            child: backgroundWidget,
           ),
           Positioned.fill(
             child: Container(
@@ -396,7 +450,9 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      event['title']!,
+                      event.judul,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
@@ -406,7 +462,9 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      event['description']!,
+                      event.deskripsi,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.white.withValues(alpha: 0.92),
@@ -416,7 +474,14 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
                 InkWell(
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => EventDetailPage(event: event),
+                      ),
+                    );
+                  },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -528,6 +593,10 @@ class _HomePageState extends State<HomePage> {
       trxProvider = Provider.of<TransactionProvider>(context);
     } catch (_) {}
     final borrowedList = _getBorrowedBooks(trxProvider);
+    final pendingRequestCount =
+        trxProvider?.requestMasuk.where((t) => t.status == 'pending').length ??
+            0;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -563,6 +632,7 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                       child: Stack(
+                        clipBehavior: Clip.none,
                         children: [
                           const Padding(
                             padding: EdgeInsets.all(4.0),
@@ -572,18 +642,39 @@ class _HomePageState extends State<HomePage> {
                               color: Color(0xFF555268),
                             ),
                           ),
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: Container(
-                              width: 9,
-                              height: 9,
-                              decoration: const BoxDecoration(
-                                color: AppColors.primary,
-                                shape: BoxShape.circle,
+                          if (pendingRequestCount > 0)
+                            Positioned(
+                              top: 2,
+                              right: 2,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    pendingRequestCount > 9
+                                        ? '9+'
+                                        : '$pendingRequestCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      height: 1,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -781,150 +872,182 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 14),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                      child: SizedBox(
+                child: Builder(
+                  builder: (context) {
+                    final eventProvider = context.watch<EventProvider>();
+                    final daftarEvent = eventProvider.events;
+
+                    if (daftarEvent.isEmpty) {
+                      return const SizedBox(
                         height: 175,
-                        child: PageView.builder(
-                          controller: _eventPageController,
-                          itemCount: _events.length,
-                          scrollBehavior:
-                              const MaterialScrollBehavior().copyWith(
-                            dragDevices: {
-                              PointerDeviceKind.mouse,
-                              PointerDeviceKind.touch,
-                              PointerDeviceKind.trackpad,
-                            },
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
                           ),
-                          onPageChanged: (index) {
-                            setState(() {
-                              _currentEventIndex = index;
-                            });
-                          },
-                          itemBuilder: (context, index) {
-                            return _buildEventCard(_events[index]);
-                          },
                         ),
-                      ),
-                    ),
-                    if (_currentEventIndex > 0)
-                      Positioned(
-                        left: 0,
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () {
-                              if (_eventPageController.hasClients) {
-                                _eventPageController.previousPage(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-                              }
-                            },
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE8E5FE),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
+                      );
+                    }
+
+                    final safeEventIndex =
+                        _currentEventIndex.clamp(0, daftarEvent.length - 1);
+
+                    return Column(
+                      children: [
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 14.0),
+                              child: SizedBox(
+                                height: 175,
+                                child: PageView.builder(
+                                  controller: _eventPageController,
+                                  itemCount: daftarEvent.length,
+                                  scrollBehavior:
+                                      const MaterialScrollBehavior().copyWith(
+                                    dragDevices: {
+                                      PointerDeviceKind.mouse,
+                                      PointerDeviceKind.touch,
+                                      PointerDeviceKind.trackpad,
+                                    },
                                   ),
-                                ],
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.chevron_left_rounded,
-                                  color: AppColors.primary,
-                                  size: 26,
+                                  onPageChanged: (index) {
+                                    setState(() {
+                                      _currentEventIndex = index;
+                                    });
+                                  },
+                                  itemBuilder: (context, index) {
+                                    return _buildEventCard(daftarEvent[index]);
+                                  },
                                 ),
                               ),
                             ),
-                          ),
-                        ),
-                      ),
-                    if (_currentEventIndex < _events.length - 1)
-                      Positioned(
-                        right: 0,
-                        child: MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () {
-                              if (_eventPageController.hasClients) {
-                                _eventPageController.nextPage(
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-                              }
-                            },
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE8E5FE),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
+                            if (safeEventIndex > 0)
+                              Positioned(
+                                left: 0,
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () {
+                                      if (_eventPageController.hasClients) {
+                                        _eventPageController.previousPage(
+                                          duration:
+                                              const Duration(milliseconds: 300),
+                                          curve: Curves.easeInOut,
+                                        );
+                                      }
+                                    },
+                                    child: Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE8E5FE),
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black
+                                                .withValues(alpha: 0.08),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.chevron_left_rounded,
+                                          color: AppColors.primary,
+                                          size: 26,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ],
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: AppColors.primary,
-                                  size: 26,
                                 ),
                               ),
-                            ),
+                            if (safeEventIndex < daftarEvent.length - 1)
+                              Positioned(
+                                right: 0,
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () {
+                                      if (_eventPageController.hasClients) {
+                                        _eventPageController.nextPage(
+                                          duration:
+                                              const Duration(milliseconds: 300),
+                                          curve: Curves.easeInOut,
+                                        );
+                                      }
+                                    },
+                                    child: Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFE8E5FE),
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black
+                                                .withValues(alpha: 0.08),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.chevron_right_rounded,
+                                          color: AppColors.primary,
+                                          size: 26,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            daftarEvent.length,
+                            (index) {
+                              final isActive = safeEventIndex == index;
+                              return MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () {
+                                    if (_eventPageController.hasClients) {
+                                      _eventPageController.animateToPage(
+                                        index,
+                                        duration:
+                                            const Duration(milliseconds: 300),
+                                        curve: Curves.easeInOut,
+                                      );
+                                    }
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 4),
+                                    width: 9,
+                                    height: 9,
+                                    decoration: BoxDecoration(
+                                      color: isActive
+                                          ? AppColors.primary
+                                          : const Color(0xFFB8AEFF),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  _events.length,
-                  (index) {
-                    final isActive = _currentEventIndex == index;
-                    return MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          if (_eventPageController.hasClients) {
-                            _eventPageController.animateToPage(
-                              index,
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                            );
-                          }
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          width: 9,
-                          height: 9,
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? AppColors.primary
-                                : const Color(0xFFB8AEFF),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
+                      ],
                     );
                   },
                 ),

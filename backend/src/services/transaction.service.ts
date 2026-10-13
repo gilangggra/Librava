@@ -61,6 +61,12 @@ export class TransactionService {
       throw error;
     }
 
+    if (requestedBook.statusModerasi && requestedBook.statusModerasi !== 'DISETUJUI') {
+      const error: any = new Error('Buku ini belum disetujui oleh moderator.');
+      error.statusCode = 400;
+      throw error;
+    }
+
     if (dto.tipe_transaksi === 'BARTER') {
       if (!dto.barter_book_id) {
         const error: any = new Error('Buku penukar (barter_book_id) wajib dipilih untuk transaksi Barter.');
@@ -86,6 +92,12 @@ export class TransactionService {
 
       if (barterBook.status !== 'Tersedia') {
         const error: any = new Error(`Buku penukar Anda saat ini berstatus ${barterBook.status.toLowerCase()}.`);
+        error.statusCode = 400;
+        throw error;
+      }
+
+      if (barterBook.statusModerasi && barterBook.statusModerasi !== 'DISETUJUI') {
+        const error: any = new Error('Buku penukar Anda belum disetujui oleh moderator.');
         error.statusCode = 400;
         throw error;
       }

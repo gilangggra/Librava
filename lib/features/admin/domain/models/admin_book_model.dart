@@ -10,6 +10,8 @@ class AdminBookModel {
   final String? fotoBuku;
   final String pemilikNama;
   final String pemilikUniversitas;
+  final String statusModerasi;
+  final String? catatanModerasi;
 
   const AdminBookModel({
     required this.id,
@@ -23,7 +25,13 @@ class AdminBookModel {
     this.fotoBuku,
     this.pemilikNama = '',
     this.pemilikUniversitas = '',
+    this.statusModerasi = 'DISETUJUI',
+    this.catatanModerasi,
   });
+
+  bool get isPending => statusModerasi.toUpperCase() == 'PENDING';
+  bool get isDisetujui => statusModerasi.toUpperCase() == 'DISETUJUI';
+  bool get isDitolak => statusModerasi.toUpperCase() == 'DITOLAK';
 
   factory AdminBookModel.fromJson(Map<String, dynamic> json) {
     return AdminBookModel(
@@ -38,6 +46,8 @@ class AdminBookModel {
       fotoBuku: json['foto_buku'] as String?,
       pemilikNama: json['owner_nama'] as String? ?? '',
       pemilikUniversitas: json['owner_universitas'] as String? ?? '',
+      statusModerasi: json['status_moderasi'] as String? ?? 'DISETUJUI',
+      catatanModerasi: json['catatan_moderasi'] as String?,
     );
   }
 

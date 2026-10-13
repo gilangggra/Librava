@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../data/services/transaction_api_service.dart';
 import '../../domain/models/transaction_model.dart';
+import '../../../profile/data/services/review_api_service.dart';
 
 class TransactionProvider extends ChangeNotifier {
   final TransactionApiService _apiService;
@@ -8,6 +9,7 @@ class TransactionProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   String? _currentUserId;
+  String? _currentUserName;
 
   TransactionProvider({
     TransactionApiService? apiService,
@@ -16,6 +18,12 @@ class TransactionProvider extends ChangeNotifier {
     if (isiDataAwal) {
       _inisialisasiDataAwal();
     }
+  }
+
+  void setCurrentUser({String? id, String? name}) {
+    _currentUserId = id;
+    _currentUserName = name;
+    notifyListeners();
   }
 
   void _inisialisasiDataAwal() {
@@ -67,35 +75,37 @@ class TransactionProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get currentUserId => _currentUserId;
+  String? get currentUserName => _currentUserName;
 
   List<TransactionModel> get semuaTransaksi =>
       List.unmodifiable(_daftarTransaksi);
 
   List<TransactionModel> get requestMasuk {
-    if (_currentUserId != null) {
+    if (_currentUserName != null && _currentUserName!.isNotEmpty) {
       return _daftarTransaksi
-          .where((trx) => trx.pemilikNama != trx.pemohonNama &&
-              !_isRequester(trx))
+          .where((trx) =>
+              trx.pemilikNama.toLowerCase() == _currentUserName!.toLowerCase() &&
+              trx.pemohonNama.toLowerCase() != _currentUserName!.toLowerCase())
           .toList();
     }
     return _daftarTransaksi
-        .where((trx) => trx.pemilikNama == 'Gilang Ramadan')
+        .where((trx) =>
+            trx.pemilikNama == 'Gilang Ramadan' ||
+            (trx.pemilikNama != trx.pemohonNama && trx.pemilikNama.isNotEmpty))
         .toList();
   }
 
   List<TransactionModel> get requestSaya {
-    if (_currentUserId != null) {
+    if (_currentUserName != null && _currentUserName!.isNotEmpty) {
       return _daftarTransaksi
-          .where((trx) => _isRequester(trx))
+          .where((trx) =>
+              trx.pemohonNama.toLowerCase() == _currentUserName!.toLowerCase())
           .toList();
     }
     return _daftarTransaksi
         .where((trx) => trx.pemohonNama == 'Gilang Ramadan')
         .toList();
-  }
-
-  bool _isRequester(TransactionModel trx) {
-    return trx.pemohonNama != trx.pemilikNama;
   }
 
   List<TransactionModel> get transaksiPending {
@@ -346,6 +356,70 @@ class TransactionProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> confirmReturnApi(String token, String id) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final intId = int.tryParse(id);
+      if (intId == null) {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+      final updated = await _apiService.confirmReturn(
+        token: token,
+        id: intId,
+      );
+      final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
+      if (idx != -1) {
+        _daftarTransaksi[idx] = updated;
+      }
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> submitReviewApi({
+    required String token,
+    required String transactionId,
+    required int rating,
+    String? komentar,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final intTxId = int.tryParse(transactionId);
+      if (intTxId == null) {
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+      final reviewService = ReviewApiService();
+      final success = await reviewService.submitTransactionReview(
+        token: token,
+        transactionId: intTxId,
+        rating: rating,
+        komentar: komentar,
+      );
+      _isLoading = false;
+      notifyListeners();
+      return success;
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;

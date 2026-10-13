@@ -9,10 +9,13 @@ import '../../../profile/presentation/screens/profile_page.dart';
 import '../../../transactions/domain/models/transaction_model.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../../../transactions/presentation/screens/transaction_detail_page.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../domain/models/book_model.dart';
 import '../providers/book_provider.dart';
 import 'book_detail_page.dart';
 import 'search_page.dart';
+import 'add_book_page.dart';
+import 'edit_book_page.dart';
 
 class MyBookPage extends StatefulWidget {
   const MyBookPage({super.key});
@@ -38,184 +41,336 @@ class _MyBookPageState extends State<MyBookPage> {
     });
   }
 
+  /// Membuka halaman AddBookPage sesuai mockup desain tampilan
   void _bukaModalTambahBuku(BuildContext context) {
-    final judulController = TextEditingController();
-    final penulisController = TextEditingController();
-    final kategoriController = TextEditingController();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const AddBookPage(),
+      ),
+    );
+  }
+
+  /// Membuka dialog pemilihan buku untuk diedit pada EditBookPage
+  void _bukaModalPilihBukuEdit(BuildContext context, List<BookModel> myBooks) {
+    if (myBooks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Anda belum memiliki koleksi buku untuk diedit.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E4E9),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Pilih Buku untuk Diedit',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF130F26),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: myBooks.length,
+                    separatorBuilder: (_, _) =>
+                        const Divider(height: 1, color: Color(0xFFEBE8F4)),
+                    itemBuilder: (_, index) {
+                      final b = myBooks[index];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 4),
+                        leading: _buildCoverWidget(
+                          b.fotoBuku ?? 'assets/images/book_the_unknown.jpg',
+                          width: 36,
+                          height: 48,
+                          borderRadius: 8,
+                        ),
+                        title: Text(
+                          b.judul,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14.5,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${b.penulis} • ${b.kategori}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF7E7A92),
+                          ),
+                        ),
+                        trailing: const Icon(
+                          CupertinoIcons.chevron_right,
+                          size: 18,
+                          color: Color(0xFF7E7A92),
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => EditBookPage(book: b),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+        );
+      },
+    );
+  }
+
+  /// Membuka dialog pemilihan buku untuk dihapus dari koleksi (CupertinoIcons.delete_left)
+  void _bukaModalPilihBukuHapus(BuildContext context, List<BookModel> myBooks) {
+    if (myBooks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Anda belum memiliki koleksi buku untuk dihapus.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E4E9),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Pilih Buku untuk Dihapus',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF130F26),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: myBooks.length,
+                    separatorBuilder: (_, _) =>
+                        const Divider(height: 1, color: Color(0xFFEBE8F4)),
+                    itemBuilder: (_, index) {
+                      final b = myBooks[index];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 4),
+                        leading: _buildCoverWidget(
+                          b.fotoBuku ?? 'assets/images/book_the_unknown.jpg',
+                          width: 36,
+                          height: 48,
+                          borderRadius: 8,
+                        ),
+                        title: Text(
+                          b.judul,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14.5,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${b.penulis} • ${b.kategori}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF7E7A92),
+                          ),
+                        ),
+                        trailing: const Icon(
+                          CupertinoIcons.chevron_right,
+                          size: 18,
+                          color: Color(0xFF7E7A92),
+                        ),
+                        onTap: () => _konfirmasiHapusBukuDariModal(
+                            context, ctx, b),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Menampilkan dialog konfirmasi penghapusan buku
+  void _konfirmasiHapusBukuDariModal(
+      BuildContext pageContext, BuildContext dialogCtx, BookModel book) {
+    showDialog(
+      context: dialogCtx,
+      builder: (confirmCtx) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDCD9EB),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  CupertinoIcons.trash,
+                  color: Color(0xFFDC2626),
+                  size: 20,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(width: 10),
               const Text(
-                'Tambah Koleksi Buku',
+                'Hapus Buku?',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
                   color: Color(0xFF130F26),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Judul Buku',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF130F26),
-                ),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: judulController,
-                decoration: InputDecoration(
-                  hintText: 'Contoh: Belajar Pemrograman Dart',
-                  hintStyle: const TextStyle(color: Color(0xFFA09DB2)),
-                  filled: true,
-                  fillColor: const Color(0xFFF3F2F8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'Penulis',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF130F26),
-                ),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: penulisController,
-                decoration: InputDecoration(
-                  hintText: 'Nama penulis buku',
-                  hintStyle: const TextStyle(color: Color(0xFFA09DB2)),
-                  filled: true,
-                  fillColor: const Color(0xFFF3F2F8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'Kategori',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF130F26),
-                ),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: kategoriController,
-                decoration: InputDecoration(
-                  hintText: 'Teknologi / Fiksi / Sains',
-                  hintStyle: const TextStyle(color: Color(0xFFA09DB2)),
-                  filled: true,
-                  fillColor: const Color(0xFFF3F2F8),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onPressed: () {
-                    final judul = judulController.text.trim();
-                    final penulis = penulisController.text.trim();
-                    final kategori = kategoriController.text.trim();
-                    if (judul.isNotEmpty) {
-                      setState(() {});
-                      try {
-                        final auth = context.read<AuthProvider>();
-                        if (auth.token != null) {
-                          context.read<BookProvider>().tambahBukuApi(
-                                token: auth.token!,
-                                judul: judul,
-                                penulis: penulis.isNotEmpty
-                                    ? penulis
-                                    : 'Penulis Librava',
-                                kategori:
-                                    kategori.isNotEmpty ? kategori : 'Umum',
-                              );
-                        }
-                      } catch (_) {}
-                    }
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          judul.isNotEmpty
-                              ? 'Buku "$judul" berhasil ditambahkan!'
-                              : 'Koleksi buku diperbarui.',
-                        ),
-                        backgroundColor: AppColors.primary,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'Simpan Buku',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
                 ),
               ),
             ],
           ),
+          content: Text(
+            'Apakah Anda yakin ingin menghapus buku "${book.judul}" dari koleksi Anda? Tindakan ini tidak dapat dibatalkan.',
+            style: const TextStyle(
+              fontSize: 13.5,
+              color: Color(0xFF555268),
+              height: 1.4,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(confirmCtx),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: const BorderSide(color: Color(0xFFDCD9EB)),
+                    ),
+                    child: const Text(
+                      'Batal',
+                      style: TextStyle(
+                        color: Color(0xFF7E7A92),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFDC2626),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(confirmCtx);
+                      if (Navigator.canPop(dialogCtx)) {
+                        Navigator.pop(dialogCtx);
+                      }
+
+                      final auth = pageContext.read<AuthProvider>();
+                      final bookProvider = pageContext.read<BookProvider>();
+
+                      if (auth.token != null) {
+                        await bookProvider.hapusBukuApi(
+                          token: auth.token!,
+                          bookId: book.id,
+                        );
+                      } else {
+                        bookProvider.hapusBuku(book.id);
+                      }
+
+                      if (pageContext.mounted) {
+                        ScaffoldMessenger.of(pageContext).showSnackBar(
+                          SnackBar(
+                            content:
+                                Text('Buku "${book.judul}" berhasil dihapus.'),
+                            backgroundColor: const Color(0xFFDC2626),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text(
+                      'Ya, Hapus',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         );
       },
     );
@@ -264,6 +419,60 @@ class _MyBookPageState extends State<MyBookPage> {
     return 'assets/images/book_the_unknown.jpg';
   }
 
+  Widget _buildCoverWidget(
+    String coverPath, {
+    double? width,
+    double? height,
+    BoxFit fit = BoxFit.cover,
+    double borderRadius = 18,
+  }) {
+    String? fullNetworkUrl;
+    if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
+      fullNetworkUrl = coverPath;
+    } else if (coverPath.startsWith('/uploads/') ||
+        coverPath.startsWith('uploads/')) {
+      final clean = coverPath.startsWith('/') ? coverPath : '/$coverPath';
+      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+    }
+
+    Widget fallback() => Container(
+          width: width,
+          height: height,
+          color: const Color(0xFFE7E3FF),
+          child: const Center(
+            child: Icon(
+              Icons.book_rounded,
+              color: AppColors.primary,
+              size: 32,
+            ),
+          ),
+        );
+
+    Widget imageWidget;
+    if (fullNetworkUrl != null) {
+      imageWidget = Image.network(
+        fullNetworkUrl,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) => fallback(),
+      );
+    } else {
+      imageWidget = Image.asset(
+        coverPath,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) => fallback(),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: imageWidget,
+    );
+  }
+
   void _tampilkanDetailBukuModel(
       BuildContext context, BookModel book, String coverAsset) {
     showDialog(
@@ -278,24 +487,11 @@ class _MyBookPageState extends State<MyBookPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.asset(
-                    coverAsset,
-                    width: 120,
-                    height: 160,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      width: 120,
-                      height: 160,
-                      color: const Color(0xFFE7E3FF),
-                      child: const Icon(
-                        Icons.book_rounded,
-                        color: AppColors.primary,
-                        size: 40,
-                      ),
-                    ),
-                  ),
+                _buildCoverWidget(
+                  coverAsset,
+                  width: 120,
+                  height: 160,
+                  borderRadius: 16,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -316,24 +512,115 @@ class _MyBookPageState extends State<MyBookPage> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F2F8),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    book.kategori,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F2F8),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        book.kategori,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                    _buildStatusModerasiBadge(book),
+                  ],
+                ),
+                if (book.isDitolak &&
+                    book.catatanModerasi != null &&
+                    book.catatanModerasi!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEE2E2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFCA5A5)),
+                    ),
+                    child: Text(
+                      'Alasan penolakan: ${book.catatanModerasi}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFB91C1C),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 20),
+                Row(
+                  children: [
+                    // Tombol Edit Buku
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFEDEAFE),
+                          foregroundColor: AppColors.primary,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: const Text(
+                          'Edit',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => EditBookPage(book: book),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Tombol Hapus Buku tepat di samping Edit
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFEE2E2),
+                          foregroundColor: const Color(0xFFDC2626),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(CupertinoIcons.trash, size: 16),
+                        label: const Text(
+                          'Hapus',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFDC2626),
+                          ),
+                        ),
+                        onPressed: () =>
+                            _konfirmasiHapusBukuDariModal(context, ctx, book),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
@@ -354,7 +641,7 @@ class _MyBookPageState extends State<MyBookPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
@@ -398,6 +685,53 @@ class _MyBookPageState extends State<MyBookPage> {
     );
   }
 
+  Widget _buildStatusModerasiBadge(BookModel book) {
+    Color bg;
+    Color fg;
+    String label;
+    IconData icon;
+
+    if (book.isPending) {
+      bg = const Color(0xFFFEF3C7);
+      fg = const Color(0xFFD97706);
+      label = 'Pending';
+      icon = Icons.hourglass_top_rounded;
+    } else if (book.isDitolak) {
+      bg = const Color(0xFFFEE2E2);
+      fg = const Color(0xFFDC2626);
+      label = 'Ditolak';
+      icon = Icons.cancel_outlined;
+    } else {
+      bg = const Color(0xFFDCFCE7);
+      fg = const Color(0xFF16A34A);
+      label = 'Disetujui';
+      icon = Icons.check_circle_outline;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: fg),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCollectionRow(List<BookModel> books) {
     return SizedBox(
       height: 165,
@@ -411,37 +745,61 @@ class _MyBookPageState extends State<MyBookPage> {
           final coverPath = _getCoverForBook(book);
           return GestureDetector(
             onTap: () => _tampilkanDetailBukuModel(context, book, coverPath),
-            child: Container(
-              width: 108,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF1E1A34).withValues(alpha: 0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 108,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF1E1A34).withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: Image.asset(
-                  coverPath,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: const Color(0xFFE7E3FF),
-                      child: const Center(
-                        child: Icon(
-                          Icons.book_rounded,
-                          color: AppColors.primary,
-                          size: 32,
+                  child: _buildCoverWidget(
+                    coverPath,
+                    width: 108,
+                    height: 165,
+                    borderRadius: 18,
+                  ),
+                ),
+                if (book.isPending || book.isDitolak)
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: book.isPending
+                            ? const Color(0xFFFEF3C7)
+                            : const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        book.isPending ? 'Pending' : 'Ditolak',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          color: book.isPending
+                              ? const Color(0xFFB45309)
+                              : const Color(0xFFB91C1C),
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
+                    ),
+                  ),
+              ],
             ),
           );
         },
@@ -490,24 +848,11 @@ class _MyBookPageState extends State<MyBookPage> {
                   ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: Image.asset(
-                  coverPath,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: const Color(0xFFE7E3FF),
-                      child: const Center(
-                        child: Icon(
-                          Icons.book_rounded,
-                          color: AppColors.primary,
-                          size: 32,
-                        ),
-                      ),
-                    );
-                  },
-                ),
+              child: _buildCoverWidget(
+                coverPath,
+                width: 108,
+                height: 165,
+                borderRadius: 18,
               ),
             ),
           );
@@ -800,18 +1145,8 @@ class _MyBookPageState extends State<MyBookPage> {
                             size: 28,
                             color: Color(0xFF7E7A92),
                           ),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text('Mode edit koleksi diaktifkan'),
-                                backgroundColor: AppColors.primary,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            );
-                          },
+                          onPressed: () =>
+                              _bukaModalPilihBukuEdit(context, myBooks),
                         ),
                         const SizedBox(width: 14),
                         IconButton(
@@ -822,18 +1157,8 @@ class _MyBookPageState extends State<MyBookPage> {
                             size: 28,
                             color: Color(0xFF7E7A92),
                           ),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text('Pilih buku yang ingin dihapus'),
-                                backgroundColor: const Color(0xFFFF4D4F),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            );
-                          },
+                          onPressed: () =>
+                              _bukaModalPilihBukuHapus(context, myBooks),
                         ),
                       ],
                     ),

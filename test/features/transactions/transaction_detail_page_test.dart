@@ -157,4 +157,32 @@ void main() {
     expect(find.text('Books Borrowed'), findsOneWidget);
     expect(find.text('Favorites'), findsOneWidget);
   });
+
+  testWidgets('Menekan tombol Konfirmasi Serah Terima memunculkan dialog konfirmasi dan mengubah status',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: TransactionDetailPage(
+          youConfirmed: false,
+          ownerConfirmed: false,
+          handoverLocation: 'Open Library Telkom University',
+        ),
+      ),
+    );
+
+    expect(find.text('Konfirmasi Serah Terima'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Konfirmasi Serah Terima'));
+    await tester.tap(find.text('Konfirmasi Serah Terima'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Apakah Anda sudah menerima / menyerahkan buku "The Unknown" di Open Library Telkom University?'), findsOneWidget);
+    expect(find.text('Ya, Konfirmasi'), findsOneWidget);
+
+    await tester.tap(find.text('Ya, Konfirmasi'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Anda telah mengonfirmasi serah terima buku.'), findsOneWidget);
+  });
 }
+

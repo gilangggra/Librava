@@ -30,10 +30,12 @@ class TransactionDetailPage extends StatefulWidget {
   final String status;
   final bool youConfirmed;
   final bool ownerConfirmed;
+  final String? ownerId;
 
   const TransactionDetailPage({
     super.key,
     this.transactionId,
+    this.ownerId,
     this.bookTitle = 'The Unknown',
     this.bookAuthor = 'Riley Sager',
     this.coverPath = 'assets/images/book_the_unknown.jpg',
@@ -59,6 +61,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   late bool _depositPaid;
   late String _currentHandoverLocation;
   late String _currentStatus;
+  late bool _youConfirmed;
+  late bool _ownerConfirmed;
+  bool _hasReviewed = false;
+  int _myRating = 5;
+  String _myComment = '';
+  bool _isLoadingAction = false;
 
   @override
   void initState() {
@@ -66,6 +74,106 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     _depositPaid = widget.isDepositPaid;
     _currentHandoverLocation = widget.handoverLocation;
     _currentStatus = widget.status;
+    _youConfirmed = widget.youConfirmed;
+    _ownerConfirmed = widget.ownerConfirmed;
+  }
+
+  void _konfirmasiSerahTerima() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Konfirmasi Serah Terima',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF130F26),
+            ),
+          ),
+          content: Text(
+            'Apakah Anda sudah menerima / menyerahkan buku "${widget.bookTitle}" di $_currentHandoverLocation?',
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF7E7A92),
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'Batal',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF8A88A5),
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                setState(() {
+                  _youConfirmed = true;
+                  if (_ownerConfirmed) {
+                    _currentStatus = 'selesai';
+                  } else {
+                    _currentStatus = 'sedang_dipinjam';
+                  }
+                });
+
+                if (widget.transactionId != null) {
+                  try {
+                    final auth = context.read<AuthProvider>();
+                    if (auth.token != null) {
+                      await context
+                          .read<TransactionProvider>()
+                          .confirmHandoverApi(
+                            auth.token!,
+                            widget.transactionId!,
+                          );
+                    }
+                  } catch (_) {}
+                }
+
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      _ownerConfirmed
+                          ? 'Serah terima selesai! Status transaksi kini Selesai.'
+                          : 'Konfirmasi serah terima Anda berhasil dicatat.',
+                    ),
+                    backgroundColor: const Color(0xFF2FD677),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                'Ya, Konfirmasi',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _bukaModalBayarDeposit() {
@@ -173,6 +281,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       context,
       MaterialPageRoute(
         builder: (_) => ProfileViewPage(
+          userId: widget.ownerId ?? '1',
           name: widget.ownerName,
           role: 'User',
           bio: 'A casual reader',
@@ -188,6 +297,286 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           transactionId: widget.transactionId,
         ),
       ),
+    );
+  }
+
+  Future<void> _konfirmasiPengembalianBuku() async {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Konfirmasi Pengembalian Buku',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF130F26),
+            ),
+          ),
+          content: Text(
+            'Apakah Anda sudah mengembalikan buku "${widget.bookTitle}" kepada ${widget.ownerName}?\n\nSetelah dikonfirmasi, transaksi akan selesai dan saldo jaminan deposit akan dikembalikan ke akun Anda.',
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF7E7A92),
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'Batal',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF8A88A5),
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final auth = context.read<AuthProvider>();
+                final trxProvider = context.read<TransactionProvider>();
+                final messenger = ScaffoldMessenger.of(context);
+                Navigator.pop(ctx);
+                setState(() {
+                  _isLoadingAction = true;
+                });
+
+                if (widget.transactionId != null && auth.token != null) {
+                  try {
+                    await trxProvider.confirmReturnApi(
+                      auth.token!,
+                      widget.transactionId!,
+                    );
+                    await auth.segarkanProfil();
+                  } catch (_) {}
+                }
+
+                if (!mounted) return;
+                setState(() {
+                  _isLoadingAction = false;
+                  _currentStatus = 'selesai';
+                });
+
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: const Text(
+                      'Buku berhasil dikembalikan! Transaksi selesai dan saldo jaminan deposit telah dicairkan kembali.',
+                    ),
+                    backgroundColor: const Color(0xFF2FD677),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                'Ya, Sudah Dikembalikan',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _bukaModalReview() {
+    int selectedRating = _myRating > 0 ? _myRating : 5;
+    final commentController = TextEditingController(text: _myComment);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCD9EB),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Beri Ulasan & Rating',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Bagikan pengalaman transaksi bersama ${widget.ownerName}',
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      color: Color(0xFF7E7A92),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(5, (index) {
+                        final starValue = index + 1;
+                        return GestureDetector(
+                          onTap: () {
+                            setModalState(() {
+                              selectedRating = starValue;
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Icon(
+                              starValue <= selectedRating
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
+                              size: 38,
+                              color: starValue <= selectedRating
+                                  ? const Color(0xFFFFB800)
+                                  : const Color(0xFFCCC8DC),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      selectedRating == 5
+                          ? 'Sangat Memuaskan! (5/5)'
+                          : selectedRating == 4
+                              ? 'Bagus (4/5)'
+                              : selectedRating == 3
+                                  ? 'Cukup (3/5)'
+                                  : selectedRating == 2
+                                      ? 'Kurang (2/5)'
+                                      : 'Sangat Buruk (1/5)',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF4A4960),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: commentController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: 'Tulis komentar atau kesan Anda (opsional)...',
+                      hintStyle: const TextStyle(
+                        fontSize: 13.5,
+                        color: Color(0xFF9E9BAE),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFF7F6FA),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final comment = commentController.text.trim();
+                        final auth = context.read<AuthProvider>();
+                        final trxProvider = context.read<TransactionProvider>();
+                        final messenger = ScaffoldMessenger.of(context);
+                        Navigator.pop(ctx);
+
+                        setState(() {
+                          _hasReviewed = true;
+                          _myRating = selectedRating;
+                          _myComment = comment;
+                        });
+
+                        if (widget.transactionId != null && auth.token != null) {
+                          try {
+                            await trxProvider.submitReviewApi(
+                              token: auth.token!,
+                              transactionId: widget.transactionId!,
+                              rating: selectedRating,
+                              komentar: comment.isNotEmpty ? comment : null,
+                            );
+                          } catch (_) {}
+                        }
+
+                        if (!mounted) return;
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content:
+                                const Text('Ulasan Anda berhasil dikirim!'),
+                            backgroundColor: const Color(0xFF2FD677),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Kirim Ulasan',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -378,6 +767,33 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   Widget _buildStatusBanner() {
+    Color dotColor = const Color(0xFFFFD027);
+    String titleText = _currentStatus;
+    String descText =
+        'Your request has been sent. Please wait for a response from the owner';
+
+    final s = _currentStatus.toLowerCase();
+    if (s == 'selesai') {
+      dotColor = const Color(0xFF2FD677);
+      titleText = 'Selesai';
+      descText =
+          'Transaksi telah selesai! Buku telah berhasil diserahterimakan.';
+    } else if (s == 'sedang_dipinjam') {
+      dotColor = const Color(0xFF388AF6);
+      titleText = 'Sedang Dipinjam';
+      descText =
+          'Buku sedang dipinjam. Harap jaga kondisi buku dan kembalikan tepat waktu.';
+    } else if (s == 'dibatalkan' || s == 'ditolak') {
+      dotColor = const Color(0xFFFF4D4F);
+      titleText = _currentStatus == 'ditolak' ? 'Ditolak' : 'Dibatalkan';
+      descText = 'Transaksi ini telah ditutup.';
+    } else if (s == 'disetujui' || s == 'lokasi_ditentukan' || s == 'dalam_proses') {
+      dotColor = const Color(0xFF388AF6);
+      titleText = 'Disetujui / Dalam Proses';
+      descText =
+          'Permintaan disetujui. Selesaikan pembayaran deposit dan penentuan lokasi serah terima.';
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Container(
@@ -400,8 +816,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               margin: const EdgeInsets.only(top: 2),
               width: 18,
               height: 18,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFD027),
+              decoration: BoxDecoration(
+                color: dotColor,
                 shape: BoxShape.circle,
               ),
             ),
@@ -411,7 +827,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _currentStatus,
+                    titleText,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -419,9 +835,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Your request has been sent. Please wait for a response from the owner',
-                    style: TextStyle(
+                  Text(
+                    descText,
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
                       color: Color(0xFF8A88A5),
@@ -614,7 +1030,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: widget.youConfirmed ? const Color(0xFF2FD677) : const Color(0xFFFFD027),
+                    color: _youConfirmed ? const Color(0xFF2FD677) : const Color(0xFFFFD027),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -636,7 +1052,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: widget.ownerConfirmed ? const Color(0xFF2FD677) : const Color(0xFFFFD027),
+                    color: _ownerConfirmed ? const Color(0xFF2FD677) : const Color(0xFFFFD027),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -672,6 +1088,65 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ),
               ],
             ),
+            if (!_youConfirmed) ...[
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: _konfirmasiSerahTerima,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(
+                    Icons.check_circle_outline_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'Konfirmasi Serah Terima',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8FAF0),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 18,
+                      color: Color(0xFF2FD677),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Anda telah mengonfirmasi serah terima buku.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0C9A4B),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -788,7 +1263,276 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
+  Widget _buildReturnCard() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFF388AF6).withValues(alpha: 0.3),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F1FD),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.assignment_return_rounded,
+                    color: Color(0xFF388AF6),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Pengembalian Buku Pinjaman',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Buku saat ini sedang dalam masa peminjaman. Jika sudah selesai dibaca, lakukan konfirmasi pengembalian buku kepada pemilik untuk menyelesaikan transaksi dan mencairkan kembali saldo deposit jaminan Anda.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF7E7A92),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton.icon(
+                onPressed: _isLoadingAction ? null : _konfirmasiPengembalianBuku,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF388AF6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                icon: _isLoadingAction
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                label: Text(
+                  _isLoadingAction
+                      ? 'Memproses...'
+                      : 'Konfirmasi Pengembalian Buku',
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReviewSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFF2FD677).withValues(alpha: 0.3),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8FAF0),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.star_rounded,
+                    color: Color(0xFFFFB800),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Ulasan & Penilaian Transaksi',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (!_hasReviewed) ...[
+              Text(
+                'Transaksi telah selesai! Bagikan ulasan dan berikan penilaian bintang untuk ${widget.ownerName} guna membantu membangun reputasi komunitas mahasiswa.',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF7E7A92),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: _bukaModalReview,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFB800),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(
+                    Icons.rate_review_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'Beri Ulasan Sekarang',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9F8FD),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        ...List.generate(5, (index) {
+                          return Icon(
+                            index < _myRating
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
+                            size: 18,
+                            color: const Color(0xFFFFB800),
+                          );
+                        }),
+                        const SizedBox(width: 8),
+                        Text(
+                          '$_myRating / 5',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF130F26),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_myComment.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        '"$_myComment"',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontStyle: FontStyle.italic,
+                          color: Color(0xFF4A4960),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: const [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 16,
+                    color: Color(0xFF2FD677),
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Ulasan Anda telah tersimpan di sistem.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0C9A4B),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionButtons() {
+    final s = _currentStatus.toLowerCase();
+    final isDone = s == 'selesai';
+    final isBorrowing = s == 'sedang_dipinjam';
+    final isCancelled = s == 'dibatalkan' || s == 'ditolak';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Row(
@@ -827,30 +1571,76 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ),
             ),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: SizedBox(
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _konfirmasiBatalkanPermintaan,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE5E0FC),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Cancel Request',
-                  style: TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
+          if (!isCancelled) ...[
+            const SizedBox(width: 14),
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: isBorrowing
+                    ? ElevatedButton(
+                        onPressed: _isLoadingAction
+                            ? null
+                            : _konfirmasiPengembalianBuku,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF388AF6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Kembalikan Buku',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      )
+                    : isDone
+                        ? ElevatedButton(
+                            onPressed: _bukaModalReview,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _hasReviewed
+                                  ? const Color(0xFFE8FAF0)
+                                  : const Color(0xFFFFF7E6),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              _hasReviewed ? 'Ubah Ulasan' : 'Beri Ulasan',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: _hasReviewed
+                                    ? const Color(0xFF0C9A4B)
+                                    : const Color(0xFFD48806),
+                              ),
+                            ),
+                          )
+                        : ElevatedButton(
+                            onPressed: _konfirmasiBatalkanPermintaan,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE5E0FC),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Cancel Request',
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -956,6 +1746,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               _buildTransactionInfoCard(),
               const SizedBox(height: 14),
               _buildHandoverConfirmationCard(),
+              if (_currentStatus.toLowerCase() == 'sedang_dipinjam') ...[
+                const SizedBox(height: 14),
+                _buildReturnCard(),
+              ],
+              if (_currentStatus.toLowerCase() == 'selesai') ...[
+                const SizedBox(height: 14),
+                _buildReviewSection(),
+              ],
               const SizedBox(height: 14),
               _buildOwnerInfoCard(),
               const SizedBox(height: 18),

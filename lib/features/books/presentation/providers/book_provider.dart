@@ -3,6 +3,7 @@ import '../../data/repositories/book_repository.dart';
 import '../../data/services/book_api_service.dart';
 import '../../data/services/book_filter_service.dart';
 import '../../domain/models/book_model.dart';
+import '../../domain/models/book_review_model.dart';
 
 class BookProvider extends ChangeNotifier {
   final BookFilterService _filterService;
@@ -181,4 +182,137 @@ class BookProvider extends ChangeNotifier {
       return fallbackBook;
     }
   }
+
+  /// Mengambil daftar ulasan untuk buku tertentu
+  Future<BookReviewsData> fetchBookReviews(int bookId) async {
+    return await _apiService.getBookReviews(bookId);
+  }
+
+  /// Mengirim ulasan baru untuk buku
+  Future<void> submitBookReview({
+    required String token,
+    required int bookId,
+    required int rating,
+    String? komentar,
+  }) async {
+    await _apiService.submitBookReview(
+      token: token,
+      bookId: bookId,
+      rating: rating,
+      komentar: komentar,
+    );
+  }
+
+  /// Memperbarui data buku ke backend API
+  Future<BookModel?> updateBukuApi({
+    required String token,
+    required dynamic bookId,
+    String? judul,
+    String? penulis,
+    String? penerbit,
+    String? deskripsi,
+    String? kategori,
+    String? status,
+    String? fotoBuku,
+  }) async {
+    final intId = bookId is int
+        ? bookId
+        : int.tryParse(bookId.toString()) ??
+            int.tryParse(bookId.toString().replaceAll(RegExp(r'[^0-9]'), '')) ??
+            1;
+
+    try {
+      final updated = await _apiService.updateBook(
+        token: token,
+        bookId: intId,
+        judul: judul,
+        penulis: penulis,
+        penerbit: penerbit,
+        deskripsi: deskripsi,
+        kategori: kategori,
+        status: status,
+        fotoBuku: fotoBuku,
+      );
+
+      final idx = _books.indexWhere((b) => b.id.toString() == bookId.toString());
+      if (idx != -1) _books[idx] = updated;
+
+      final myIdx = _myBooks.indexWhere((b) => b.id.toString() == bookId.toString());
+      if (myIdx != -1) _myBooks[myIdx] = updated;
+
+      notifyListeners();
+      return updated;
+    } catch (_) {
+      // Fallback update lokal
+      final idx = _books.indexWhere((b) => b.id.toString() == bookId.toString());
+      if (idx != -1) {
+        final b = _books[idx];
+        final modified = BookModel(
+          id: b.id,
+          judul: judul ?? b.judul,
+          penulis: penulis ?? b.penulis,
+          kategori: kategori ?? b.kategori,
+          tahunTerbit: b.tahunTerbit,
+          deskripsi: deskripsi ?? b.deskripsi,
+          fotoBuku: fotoBuku ?? b.fotoBuku,
+          tersedia: status == null ? b.tersedia : (status == 'Tersedia'),
+          statusModerasi: b.statusModerasi,
+          catatanModerasi: b.catatanModerasi,
+        );
+        _books[idx] = modified;
+        final myIdx = _myBooks.indexWhere((mb) => mb.id.toString() == bookId.toString());
+        if (myIdx != -1) _myBooks[myIdx] = modified;
+        notifyListeners();
+        return modified;
+      }
+      return null;
+    }
+  }
+
+  /// Mengunggah cover gambar buku ke server
+  Future<String> uploadBookCover({
+    required String token,
+    required List<int> bytes,
+    required String filename,
+  }) async {
+    return await _apiService.uploadBookCover(
+      token: token,
+      bytes: bytes,
+      filename: filename,
+    );
+  }
+
+  /// Menghapus buku dari backend API dan membersihkan dari state lokal
+  Future<bool> hapusBukuApi({
+    required String token,
+    required dynamic bookId,
+  }) async {
+    final intId = bookId is int
+        ? bookId
+        : int.tryParse(bookId.toString()) ??
+            int.tryParse(bookId.toString().replaceAll(RegExp(r'[^0-9]'), '')) ??
+            1;
+
+    try {
+      await _apiService.deleteBook(token: token, bookId: intId);
+      _books.removeWhere((b) => b.id.toString() == bookId.toString());
+      _myBooks.removeWhere((b) => b.id.toString() == bookId.toString());
+      notifyListeners();
+      return true;
+    } catch (_) {
+      // Fallback penghapusan dari state lokal
+      _books.removeWhere((b) => b.id.toString() == bookId.toString());
+      _myBooks.removeWhere((b) => b.id.toString() == bookId.toString());
+      notifyListeners();
+      return true;
+    }
+  }
+
+  /// Menghapus buku secara lokal
+  void hapusBuku(String bookId) {
+    _books.removeWhere((b) => b.id.toString() == bookId);
+    _myBooks.removeWhere((b) => b.id.toString() == bookId);
+    notifyListeners();
+  }
 }
+

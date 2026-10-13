@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+// ignore: depend_on_referenced_packages
+import 'package:http_parser/http_parser.dart';
 import '../../../../core/network/api_constants.dart';
 import '../../domain/models/book_model.dart';
+import '../../domain/models/book_review_model.dart';
 
 class BookListResult {
   final List<BookModel> books;
@@ -188,6 +191,113 @@ class BookApiService {
       final Map<String, dynamic> responseData = jsonDecode(response.body);
       final errorMessage =
           responseData['message'] ?? 'Gagal menghapus buku (${response.statusCode})';
+      throw Exception(errorMessage);
+    }
+  }
+
+  /// Mengunggah cover buku ke server (POST /api/upload/image)
+  Future<String> uploadBookCover({
+    required String token,
+    required List<int> bytes,
+    required String filename,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}/upload/image');
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'Bearer $token';
+    final ext = filename.toLowerCase().split('.').last;
+    final subType = (ext == 'png' || ext == 'webp') ? ext : 'jpeg';
+
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        'image',
+        bytes,
+        filename: filename,
+        contentType: MediaType('image', subType),
+      ),
+    );
+
+    final streamedResponse =
+        await request.send().timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamedResponse);
+    final Map<String, dynamic> body = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300 &&
+        body['success'] == true &&
+        body['data'] != null) {
+      return (body['data']['url'] ?? body['data']['path']) as String;
+    }
+
+    throw Exception(
+      body['message'] ?? 'Gagal mengunggah cover buku (${response.statusCode})',
+    );
+  }
+
+
+  /// Mengambil daftar ulasan dan rating buku dari backend
+  Future<BookReviewsData> getBookReviews(int bookId) async {
+    final uri = Uri.parse(
+        '${ApiConstants.baseUrl}${ApiConstants.bookReviews(bookId)}');
+    final response = await _client
+        .get(uri, headers: ApiConstants.headers())
+        .timeout(const Duration(seconds: 10));
+
+    final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final data = responseData['data'] as Map<String, dynamic>? ?? {};
+      return BookReviewsData.fromApiJson(data);
+    } else {
+      final errorMessage = responseData['message'] ??
+          'Gagal memuat ulasan buku (${response.statusCode})';
+      throw Exception(errorMessage);
+    }
+  }
+
+  /// Mengirim ulasan dan rating (1-5 bintang) untuk buku
+  Future<void> submitBookReview({
+    required String token,
+    required int bookId,
+    required int rating,
+    String? komentar,
+  }) async {
+    final uri = Uri.parse(
+        '${ApiConstants.baseUrl}${ApiConstants.bookReviews(bookId)}');
+    final response = await _client
+        .post(
+          uri,
+          headers: ApiConstants.headers(token),
+          body: jsonEncode({
+            'rating': rating,
+            'komentar': komentar,
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final errorMessage = responseData['message'] ??
+          'Gagal mengirim ulasan (${response.statusCode})';
+      throw Exception(errorMessage);
+    }
+  }
+
+  /// Menghapus ulasan buku
+  Future<void> deleteBookReview({
+    required String token,
+    required int bookId,
+  }) async {
+    final uri = Uri.parse(
+        '${ApiConstants.baseUrl}${ApiConstants.bookReviews(bookId)}');
+    final response = await _client
+        .delete(uri, headers: ApiConstants.headers(token))
+        .timeout(const Duration(seconds: 10));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final Map<String, dynamic> responseData = jsonDecode(response.body);
+      final errorMessage = responseData['message'] ??
+          'Gagal menghapus ulasan (${response.statusCode})';
       throw Exception(errorMessage);
     }
   }

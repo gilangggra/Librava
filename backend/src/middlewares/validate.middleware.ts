@@ -14,10 +14,18 @@ export const validate = (schemas: ValidationTargets) => {
         req.body = schemas.body.parse(req.body);
       }
       if (schemas.query) {
-        req.query = schemas.query.parse(req.query) as any;
+        const parsedQuery = schemas.query.parse(req.query) as any;
+        for (const key of Object.keys(req.query)) {
+          delete (req.query as any)[key];
+        }
+        Object.assign(req.query, parsedQuery);
       }
       if (schemas.params) {
-        req.params = schemas.params.parse(req.params) as any;
+        const parsedParams = schemas.params.parse(req.params) as any;
+        for (const key of Object.keys(req.params)) {
+          delete (req.params as any)[key];
+        }
+        Object.assign(req.params, parsedParams);
       }
       next();
     } catch (error) {

@@ -103,7 +103,7 @@ async function main() {
       tanggalMulai: new Date('2026-10-15T09:00:00Z'),
       tanggalSelesai: new Date('2026-10-15T12:00:00Z'),
       kuota: 80,
-      fotoEvent: null,
+      fotoEvent: 'assets/images/event_library.jpg',
     },
     {
       judul: 'Workshop Menulis Review Buku',
@@ -113,7 +113,7 @@ async function main() {
       tanggalMulai: new Date('2026-10-22T13:00:00Z'),
       tanggalSelesai: new Date('2026-10-22T16:00:00Z'),
       kuota: 50,
-      fotoEvent: null,
+      fotoEvent: 'assets/images/event_book_discussion.jpg',
     },
     {
       judul: 'Tukar Buku dan Bazaar Literasi',
@@ -123,7 +123,7 @@ async function main() {
       tanggalMulai: new Date('2026-11-07T08:00:00Z'),
       tanggalSelesai: new Date('2026-11-07T15:00:00Z'),
       kuota: 200,
-      fotoEvent: null,
+      fotoEvent: 'assets/images/event_reading_meetup.jpg',
     },
     {
       judul: 'Librava Reading Circle: Fiksi Indonesia',
@@ -133,7 +133,7 @@ async function main() {
       tanggalMulai: new Date('2026-11-20T15:30:00Z'),
       tanggalSelesai: new Date('2026-11-20T17:30:00Z'),
       kuota: 40,
-      fotoEvent: null,
+      fotoEvent: 'assets/images/event_library.jpg',
     },
   ];
 

@@ -97,6 +97,65 @@ class AdminApiService {
     );
   }
 
+  Future<List<AdminBookModel>> getPendingBooks({required String token}) async {
+    final uri =
+        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.adminPendingBooks}');
+
+    final response = await _client
+        .get(uri, headers: ApiConstants.headers(token))
+        .timeout(const Duration(seconds: 8));
+
+    final Map<String, dynamic> body = jsonDecode(response.body);
+
+    if (response.statusCode == 200 && body['success'] != false) {
+      final List<dynamic> data = body['data'] as List<dynamic>? ?? [];
+      return data
+          .map((item) => AdminBookModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
+    throw Exception(
+      body['message'] ??
+          'Gagal mengambil antrean moderasi buku (${response.statusCode})',
+    );
+  }
+
+  Future<AdminBookModel> moderateBook({
+    required String token,
+    required String bookId,
+    required String action,
+    String? catatan,
+  }) async {
+    final uri = Uri.parse(
+        '${ApiConstants.baseUrl}${ApiConstants.adminModerateBook(bookId)}');
+
+    final payload = <String, dynamic>{
+      'action': action,
+    };
+    if (catatan != null && catatan.trim().isNotEmpty) {
+      payload['catatan'] = catatan.trim();
+    }
+
+    final response = await _client
+        .patch(
+          uri,
+          headers: ApiConstants.headers(token),
+          body: jsonEncode(payload),
+        )
+        .timeout(const Duration(seconds: 8));
+
+    final Map<String, dynamic> body = jsonDecode(response.body);
+
+    if (response.statusCode == 200 && body['success'] != false) {
+      return AdminBookModel.fromJson(body['data'] as Map<String, dynamic>);
+    }
+
+    throw Exception(
+      body['message'] ??
+          'Gagal memperbarui moderasi buku (${response.statusCode})',
+    );
+  }
+
   AdminDashboardModel _getDefaultDashboard() {
     return const AdminDashboardModel(
       totalStudents: 320,

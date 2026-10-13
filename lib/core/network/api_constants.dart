@@ -10,14 +10,22 @@ class ApiConstants {
   static const String authRegister = '/auth/register';
   static const String authLogin = '/auth/login';
   static const String authProfile = '/auth/profile';
+  static const String authGoogle = '/auth/google';
   static const String books = '/books';
   static const String myBooks = '/books/user/my-books';
+  static const String events = '/events';
   static const String transactions = '/transactions';
   static const String chats = '/chats';
   static const String reviews = '/reviews';
   static const String adminDashboard = '/admin/dashboard';
   static const String adminUsers = '/admin/users';
   static const String adminTransactions = '/admin/transactions';
+  static const String adminPendingBooks = '/admin/books/pending';
+
+  static String bookReviews(dynamic bookId) => '/books/$bookId/reviews';
+  static String eventRegister(dynamic eventId) => '/events/$eventId/register';
+  static String adminModerateBook(dynamic bookId) =>
+      '/admin/books/$bookId/moderasi';
 
   static Map<String, String> headers([String? token]) {
     final Map<String, String> headerMap = {
