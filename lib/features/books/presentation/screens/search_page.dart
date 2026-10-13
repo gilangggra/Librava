@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
@@ -497,6 +498,61 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
+  Widget _buildCoverImage(
+    String coverPath, {
+    double? width,
+    double? height,
+    BoxFit fit = BoxFit.cover,
+    double borderRadius = 18,
+    double iconSize = 32,
+  }) {
+    String? fullNetworkUrl;
+    if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
+      fullNetworkUrl = coverPath;
+    } else if (coverPath.startsWith('/uploads/') ||
+        coverPath.startsWith('uploads/')) {
+      final clean = coverPath.startsWith('/') ? coverPath : '/$coverPath';
+      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+    }
+
+    Widget fallback() => Container(
+          width: width,
+          height: height,
+          color: const Color(0xFFE7E3FF),
+          child: Center(
+            child: Icon(
+              Icons.book_rounded,
+              color: AppColors.primary,
+              size: iconSize,
+            ),
+          ),
+        );
+
+    Widget imageWidget;
+    if (fullNetworkUrl != null) {
+      imageWidget = Image.network(
+        fullNetworkUrl,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) => fallback(),
+      );
+    } else {
+      imageWidget = Image.asset(
+        coverPath,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) => fallback(),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: imageWidget,
+    );
+  }
+
   Widget _buildSearchResultCard({
     required String coverPath,
     required String title,
@@ -538,31 +594,12 @@ class _SearchPageState extends State<SearchPage> {
         ),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.asset(
-                coverPath,
-                width: 72,
-                height: 98,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 72,
-                    height: 98,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE7E3FF),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.book_rounded,
-                        color: AppColors.primary,
-                        size: 28,
-                      ),
-                    ),
-                  );
-                },
-              ),
+            _buildCoverImage(
+              coverPath,
+              width: 72,
+              height: 98,
+              borderRadius: 14,
+              iconSize: 28,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -756,56 +793,12 @@ class _SearchPageState extends State<SearchPage> {
           ),
         );
       },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: assetPath.startsWith('http://') ||
-                assetPath.startsWith('https://')
-            ? Image.network(
-                assetPath,
-                width: 108,
-                height: 165,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 108,
-                    height: 165,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE7E3FF),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.book_rounded,
-                        color: AppColors.primary,
-                        size: 36,
-                      ),
-                    ),
-                  );
-                },
-              )
-            : Image.asset(
-                assetPath,
-                width: 108,
-                height: 165,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 108,
-                    height: 165,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE7E3FF),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.book_rounded,
-                        color: AppColors.primary,
-                        size: 36,
-                      ),
-                    ),
-                  );
-                },
-              ),
+      child: _buildCoverImage(
+        assetPath,
+        width: 108,
+        height: 165,
+        borderRadius: 18,
+        iconSize: 36,
       ),
     );
   }

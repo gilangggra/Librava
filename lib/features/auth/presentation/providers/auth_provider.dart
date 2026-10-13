@@ -98,6 +98,32 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Melakukan login menggunakan Google OAuth2 ID Token
+  Future<bool> masukDenganGoogle({required String idToken}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.loginWithGoogle(idToken: idToken);
+      _currentUser = response.user;
+      _token = response.token;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = _ambilPesanError(
+        e,
+        'Login Google gagal. Pastikan konfigurasi OAuth2 dan token valid.',
+      );
+      _currentUser = null;
+      _token = null;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> resetPassword({
     required String email,
     required String passwordBaru,

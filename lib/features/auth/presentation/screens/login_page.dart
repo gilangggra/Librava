@@ -103,6 +103,201 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  /// Menampilkan dialog / modal untuk masuk menggunakan Google OAuth2 ID Token
+  void _loginWithGoogleDialog(BuildContext context) {
+    final tokenController = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Image.asset(
+                            'assets/images/google_logo.png',
+                            width: 28,
+                            height: 28,
+                          ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'Login Google',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF130F26),
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close_rounded),
+                        color: const Color(0xFF8A88A5),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Integrasi Google OAuth2 Sign-In Librava untuk mahasiswa.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF7E7A92),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Google ID Token',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: tokenController,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      hintText: 'Tempelkan token ID Google di sini...',
+                      hintStyle: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFF8F7FF),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFE4E1FB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFE4E1FB)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
+                              final tokenInput = tokenController.text.trim();
+                              if (tokenInput.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content:
+                                        Text('ID Token tidak boleh kosong.'),
+                                    backgroundColor: Color(0xFFDC2626),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              setModalState(() {
+                                isSubmitting = true;
+                              });
+
+                              final authProvider =
+                                  context.read<AuthProvider>();
+                              final messenger = ScaffoldMessenger.of(context);
+                              final navigator = Navigator.of(context);
+
+                              final berhasil =
+                                  await authProvider.masukDenganGoogle(
+                                idToken: tokenInput,
+                              );
+
+                              if (!ctx.mounted) return;
+
+                              if (berhasil) {
+                                Navigator.pop(ctx);
+                                final nama =
+                                    authProvider.currentUser?.nama ?? 'Pengguna';
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text('Selamat datang, $nama!'),
+                                    backgroundColor: const Color(0xFF16A34A),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                navigator.pushReplacement(
+                                  MaterialPageRoute(
+                                    builder: (context) => const HomePage(),
+                                  ),
+                                );
+                              } else {
+                                setModalState(() {
+                                  isSubmitting = false;
+                                });
+                                final pesan = authProvider.errorMessage ??
+                                    'Login Google gagal diverifikasi.';
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(pesan),
+                                    backgroundColor: const Color(0xFFDC2626),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                      child: isSubmitting
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Verifikasi & Masuk',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
@@ -316,7 +511,7 @@ class _LoginPageState extends State<LoginPage> {
                         children: [
                           InkWell(
                             borderRadius: BorderRadius.circular(24),
-                            onTap: () {},
+                            onTap: () => _loginWithGoogleDialog(context),
                             child: Padding(
                               padding: const EdgeInsets.all(4.0),
                               child: Image.asset(
@@ -329,7 +524,16 @@ class _LoginPageState extends State<LoginPage> {
                           const SizedBox(width: 28),
                           InkWell(
                             borderRadius: BorderRadius.circular(24),
-                            onTap: () {},
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Fitur login GitHub akan tersedia di pembaruan rilis berikutnya.'),
+                                  backgroundColor: AppColors.primary,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
                             child: Padding(
                               padding: const EdgeInsets.all(4.0),
                               child: Image.asset(

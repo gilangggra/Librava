@@ -203,11 +203,13 @@ export class BookService {
       throw error;
     }
 
+    const cleanCatatan = catatan ? (sanitizeText(catatan) || catatan.trim()) : null;
+
     const updated = await prisma.book.update({
       where: { id },
       data: {
         statusModerasi: action === 'APPROVE' ? 'DISETUJUI' : 'DITOLAK',
-        catatanModerasi: catatan || null,
+        catatanModerasi: cleanCatatan,
       },
       include: { owner: true },
     });

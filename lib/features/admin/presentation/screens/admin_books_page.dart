@@ -18,6 +18,7 @@ class AdminBooksPage extends StatefulWidget {
 
 class _AdminBooksPageState extends State<AdminBooksPage> {
   final TextEditingController _searchController = TextEditingController();
+  int _selectedTab = 0;
 
   @override
   void initState() {
@@ -40,7 +41,10 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
     final token = context.read<AuthProvider>().token;
 
     if (token != null && token.isNotEmpty) {
-      await adminProvider.fetchBuku(token);
+      await Future.wait([
+        adminProvider.fetchBuku(token),
+        adminProvider.fetchBukuPending(token),
+      ]);
     } else if (adminProvider.jumlahBuku == 0) {
       adminProvider.tandaiSesiBukuTidakValid();
     }
@@ -83,22 +87,35 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
   }
 
   Widget _buildBarisStatus(AdminBookModel buku) {
+    Color warna;
+    String teksStatus = buku.statusTampil;
+    if (buku.isPending) {
+      warna = const Color(0xFFF59E0B);
+      teksStatus = 'Pending Verifikasi';
+    } else if (buku.isDitolak) {
+      warna = const Color(0xFFDC2626);
+      teksStatus = 'Ditolak';
+    } else {
+      warna = _warnaStatus(buku.status);
+    }
+
     return Row(
       children: [
         Container(
           width: 8,
           height: 8,
           decoration: BoxDecoration(
-            color: _warnaStatus(buku.status),
+            color: warna,
             shape: BoxShape.circle,
           ),
         ),
         const SizedBox(width: 6),
         Text(
-          buku.statusTampil,
+          teksStatus,
           style: const TextStyle(
             fontSize: 12.5,
             color: Color(0xFF7E7A92),
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -241,18 +258,142 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
     );
   }
 
+  Widget _buildTabs(AdminProvider adminProvider) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEBE8F8),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() => _selectedTab = 0);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color:
+                        _selectedTab == 0 ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: _selectedTab == 0
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Semua Buku (${adminProvider.jumlahBuku})',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: _selectedTab == 0
+                            ? AppColors.primary
+                            : const Color(0xFF7E7A92),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() => _selectedTab = 1);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color:
+                        _selectedTab == 1 ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: _selectedTab == 1
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Antrean Pending',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: _selectedTab == 1
+                              ? const Color(0xFFD97706)
+                              : const Color(0xFF7E7A92),
+                        ),
+                      ),
+                      if (adminProvider.jumlahBukuPending > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF59E0B),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${adminProvider.jumlahBukuPending}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildIsiDaftar(AdminProvider adminProvider) {
-    if (adminProvider.isLoadingBuku && adminProvider.jumlahBuku == 0) {
+    final sedangLoading = _selectedTab == 0
+        ? (adminProvider.isLoadingBuku && adminProvider.jumlahBuku == 0)
+        : (adminProvider.isLoadingBukuPending &&
+            adminProvider.jumlahBukuPending == 0);
+
+    if (sedangLoading) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
-    if (adminProvider.errorBuku != null && adminProvider.jumlahBuku == 0) {
+    final error = _selectedTab == 0
+        ? adminProvider.errorBuku
+        : adminProvider.errorBukuPending;
+    final jumlah = _selectedTab == 0
+        ? adminProvider.jumlahBuku
+        : adminProvider.jumlahBukuPending;
+
+    if (error != null && jumlah == 0) {
       return _buildPesanTengah(
         icon: CupertinoIcons.wifi_exclamationmark,
         judul: 'Data buku gagal dimuat',
-        subjudul: adminProvider.errorBuku,
+        subjudul: error,
         tombol: ElevatedButton(
           onPressed: _muatData,
           style: ElevatedButton.styleFrom(
@@ -270,16 +411,34 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
       );
     }
 
-    final daftar = adminProvider.daftarBukuTampil;
+    List<AdminBookModel> daftar;
+    if (_selectedTab == 0) {
+      daftar = adminProvider.daftarBukuTampil;
+    } else {
+      final kata = adminProvider.kataKunciBuku.trim().toLowerCase();
+      daftar = kata.isEmpty
+          ? adminProvider.daftarBukuPending
+          : adminProvider.daftarBukuPending.where((buku) {
+              return buku.judul.toLowerCase().contains(kata) ||
+                  buku.penulis.toLowerCase().contains(kata) ||
+                  buku.kategori.toLowerCase().contains(kata);
+            }).toList();
+    }
 
     if (daftar.isEmpty) {
       final sedangMencari = adminProvider.kataKunciBuku.trim().isNotEmpty;
       return _buildPesanTengah(
         icon: CupertinoIcons.book,
-        judul: sedangMencari ? 'Buku tidak ditemukan' : 'Belum ada buku',
+        judul: sedangMencari
+            ? 'Buku tidak ditemukan'
+            : (_selectedTab == 0
+                ? 'Belum ada buku di katalog'
+                : 'Tidak ada buku yang menunggu verifikasi'),
         subjudul: sedangMencari
             ? 'Coba kata kunci lain seperti judul, penulis, atau genre.'
-            : null,
+            : (_selectedTab == 1
+                ? 'Semua pengajuan buku dari mahasiswa telah dikurasi.'
+                : null),
       );
     }
 
@@ -319,7 +478,9 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildKotakSearch(adminProvider),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
+            _buildTabs(adminProvider),
+            const SizedBox(height: 14),
             Expanded(
               child: RefreshIndicator(
                 color: AppColors.primary,

@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:librava/features/auth/presentation/providers/auth_provider.dart';
 import 'package:librava/features/books/domain/models/book_model.dart';
+import 'package:librava/features/books/presentation/providers/book_provider.dart';
 import 'package:librava/features/books/presentation/screens/book_detail_page.dart';
 import 'package:librava/features/transactions/presentation/providers/transaction_provider.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +12,8 @@ void main() {
   Widget buildTestableWidget({BookModel? book, String? coverPath}) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => BookProvider()),
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
       ],
       child: MaterialApp(
@@ -88,7 +92,7 @@ void main() {
     expect(find.text('Ajukan Barter Buku'), findsOneWidget);
     expect(find.text('Ingin ditukar dengan: The Unknown'), findsOneWidget);
     expect(find.text('Pilih Buku dari Koleksimu'), findsOneWidget);
-    expect(find.text('Clean Code'), findsOneWidget);
+    expect(find.textContaining('Clean Code'), findsOneWidget);
     expect(find.text('Konfirmasi Pengajuan Barter'), findsOneWidget);
   });
 

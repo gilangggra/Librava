@@ -11,6 +11,9 @@ import '../../../chat/presentation/screens/chat_room_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import 'profile_page.dart';
 
+import '../../domain/models/user_review_model.dart';
+import '../../data/services/review_api_service.dart';
+
 /// Halaman Profile View untuk melihat profil pengguna / pemilik buku
 /// yang terhubung dan tersinkronisasi langsung dengan Database backend Librava.
 class ProfileViewPage extends StatefulWidget {
@@ -48,27 +51,62 @@ class ProfileViewPage extends StatefulWidget {
 class _ProfileViewPageState extends State<ProfileViewPage> {
   UserModel? _fetchedUser;
   bool _isLoading = false;
+  UserReviewsData? _reviewsData;
+  bool _isLoadingReviews = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.userId != null && widget.user == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.userId != null && widget.user == null) {
         _muatProfilDariDatabase();
-      });
+      }
+      _muatUlasanPengguna();
+    });
+  }
+
+  Future<void> _muatUlasanPengguna() async {
+    final int? targetUserId = int.tryParse(widget.userId ?? '') ??
+        int.tryParse(widget.user?.id ?? '') ??
+        int.tryParse(_fetchedUser?.id ?? '');
+
+    if (targetUserId == null) return;
+
+    setState(() => _isLoadingReviews = true);
+    try {
+      final reviews = await ReviewApiService().getUserReviews(targetUserId);
+      if (mounted) {
+        setState(() {
+          _reviewsData = reviews;
+          _isLoadingReviews = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingReviews = false);
+      }
     }
   }
 
   Future<void> _muatProfilDariDatabase() async {
     if (widget.userId == null) return;
     setState(() => _isLoading = true);
-    final auth = context.read<AuthProvider>();
-    final userDb = await auth.ambilProfilPenggunaLain(widget.userId!);
-    if (mounted) {
-      setState(() {
-        _fetchedUser = userDb;
-        _isLoading = false;
-      });
+    try {
+      final auth = context.read<AuthProvider>();
+      final userDb = await auth.ambilProfilPenggunaLain(widget.userId!);
+      if (mounted) {
+        setState(() {
+          _fetchedUser = userDb;
+          _isLoading = false;
+        });
+        if (_reviewsData == null) {
+          _muatUlasanPengguna();
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -127,6 +165,213 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
             color: Color(0xFF8A88A5),
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildReviewsSection() {
+    final reviews = _reviewsData?.reviews ?? [];
+    final avgRating = _reviewsData?.averageRating ?? 5.0;
+    final totalReviews = _reviewsData?.totalReviews ?? reviews.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Peer Reviews & Ratings',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF130F26),
+                letterSpacing: -0.4,
+              ),
+            ),
+            if (totalReviews > 0)
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7E6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFFFFD591),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.star_rounded,
+                      size: 16,
+                      color: Color(0xFFFAAD14),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${avgRating.toStringAsFixed(1)} ($totalReviews)',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFD48806),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_isLoadingReviews)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppColors.primary,
+              ),
+            ),
+          )
+        else if (reviews.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: const [
+                Icon(
+                  Icons.rate_review_outlined,
+                  size: 40,
+                  color: Color(0xFFBBB7D0),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Belum ada ulasan',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF4A4960),
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Pengguna ini belum memiliki ulasan dari transaksi buku.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF8A88A5),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: reviews.length,
+            separatorBuilder: (_, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final item = reviews[index];
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: const Color(0xFFE5E0FD),
+                          child: Text(
+                            item.reviewerNama.isNotEmpty
+                                ? item.reviewerNama[0].toUpperCase()
+                                : 'U',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.reviewerNama,
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF130F26),
+                                ),
+                              ),
+                              if (item.createdAt.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  item.createdAt.split('T').first,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: Color(0xFF8A88A5),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        Row(
+                          children: List.generate(5, (sIdx) {
+                            return Icon(
+                              sIdx < item.rating
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
+                              size: 16,
+                              color: const Color(0xFFFFB800),
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                    if (item.komentar.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        item.komentar,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          color: Color(0xFF4A4960),
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
       ],
     );
   }
@@ -507,6 +752,8 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
+              _buildReviewsSection(),
               const SizedBox(height: 32),
             ],
           ),

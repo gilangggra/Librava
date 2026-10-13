@@ -1,15 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:librava/features/auth/presentation/providers/auth_provider.dart';
+import 'package:librava/features/books/presentation/providers/book_provider.dart';
+import 'package:librava/features/events/presentation/providers/event_provider.dart';
+import 'package:librava/features/transactions/presentation/providers/transaction_provider.dart';
 import 'package:librava/features/home/presentation/screens/home_page.dart';
+
+Widget createTestWidget() {
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ChangeNotifierProvider(create: (_) => BookProvider()),
+      ChangeNotifierProvider(create: (_) => TransactionProvider(isiDataAwal: false)),
+      ChangeNotifierProvider(create: (_) => EventProvider()),
+    ],
+    child: const MaterialApp(
+      home: HomePage(),
+    ),
+  );
+}
 
 void main() {
   testWidgets('HomePage dapat dimuat dan dirender dengan baik',
       (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: HomePage(),
-      ),
-    );
+    await tester.pumpWidget(createTestWidget());
 
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Event'), findsOneWidget);
@@ -21,11 +36,7 @@ void main() {
 
   testWidgets('Carousel event di HomePage dapat bergeser ke slide berikutnya',
       (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: HomePage(),
-      ),
-    );
+    await tester.pumpWidget(createTestWidget());
 
     expect(find.text('Book Exchange Day'), findsOneWidget);
 
@@ -40,11 +51,7 @@ void main() {
 
   testWidgets('Carousel buku pinjaman di HomePage dapat bergeser ke Fruit Fly',
       (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: HomePage(),
-      ),
-    );
+    await tester.pumpWidget(createTestWidget());
 
     expect(find.text('The Unknown'), findsWidgets);
     expect(find.text('Borrowing from Andi'), findsOneWidget);
@@ -60,11 +67,7 @@ void main() {
 
   testWidgets('Menekan tombol View transaction di HomePage membuka TransactionDetailPage',
       (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: HomePage(),
-      ),
-    );
+    await tester.pumpWidget(createTestWidget());
 
     await tester.ensureVisible(find.text('View transaction'));
     await tester.tap(find.text('View transaction'));

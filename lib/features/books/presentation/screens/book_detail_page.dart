@@ -2,13 +2,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../../domain/models/book_model.dart';
+import '../../domain/models/book_review_model.dart';
 import '../providers/book_provider.dart';
+import 'edit_book_page.dart';
 import 'my_book_page.dart';
 import 'search_page.dart';
 
@@ -44,6 +47,43 @@ class _BookDetailPageState extends State<BookDetailPage> {
   final int _selectedIndex = 2;
   bool _isBookmarked = false;
 
+  List<BookReviewModel> _reviews = [];
+  double _dynamicAverageRating = 0.0;
+  int _totalReviews = 0;
+  bool _isLoadingReviews = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _muatUlasanBuku();
+  }
+
+  Future<void> _muatUlasanBuku() async {
+    final bookIdNum = int.tryParse(widget.book?.id ?? '');
+    if (bookIdNum == null) return;
+
+    setState(() {
+      _isLoadingReviews = true;
+    });
+
+    try {
+      final bookProvider = context.read<BookProvider>();
+      final hasil = await bookProvider.fetchBookReviews(bookIdNum);
+      if (!mounted) return;
+      setState(() {
+        _reviews = hasil.reviews;
+        _dynamicAverageRating = hasil.averageRating;
+        _totalReviews = hasil.totalReviews;
+        _isLoadingReviews = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingReviews = false;
+      });
+    }
+  }
+
   String get _title => widget.title ?? widget.book?.judul ?? 'The Unknown';
   String get _author => widget.author ?? widget.book?.penulis ?? 'Riley Sager';
   String get _genre =>
@@ -65,8 +105,15 @@ class _BookDetailPageState extends State<BookDetailPage> {
     return 'A chilling mystery unfolds when hidden secrets turn ordinary lives into something far more dangerous than they seem.';
   }
 
-  String get _coverPath =>
-      widget.coverPath ?? 'assets/images/book_the_unknown.jpg';
+  String get _coverPath {
+    if (widget.book?.fotoBuku != null && widget.book!.fotoBuku!.isNotEmpty) {
+      return widget.book!.fotoBuku!;
+    }
+    if (widget.coverPath != null && widget.coverPath!.isNotEmpty) {
+      return widget.coverPath!;
+    }
+    return 'assets/images/book_the_unknown.jpg';
+  }
 
   void _bukaModalPinjam(BuildContext context) {
     int durasiTerpilih = 7;
@@ -643,36 +690,95 @@ class _BookDetailPageState extends State<BookDetailPage> {
                         ),
                       ),
                     ),
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          _isBookmarked = !_isBookmarked;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              _isBookmarked
-                                  ? 'Buku disimpan ke bookmark'
-                                  : 'Buku dihapus dari bookmark',
-                            ),
-                            duration: const Duration(seconds: 1),
-                            backgroundColor: AppColors.primary,
+                    Row(
+                      children: [
+                        if (widget.book != null)
+                          Consumer<AuthProvider>(
+                            builder: (context, auth, _) {
+                              final isOwnerOrAdmin = auth.currentUser?.role == 'admin' ||
+                                  (auth.currentUser != null &&
+                                      widget.book!.pemilikNama != null &&
+                                      widget.book!.pemilikNama == auth.currentUser!.nama);
+                              if (!isOwnerOrAdmin) return const SizedBox.shrink();
+
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 6.0),
+                                    child: InkWell(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                EditBookPage(book: widget.book!),
+                                          ),
+                                        );
+                                      },
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(4.0),
+                                        child: Icon(
+                                          CupertinoIcons.pencil_circle_fill,
+                                          size: 26,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 10.0),
+                                    child: InkWell(
+                                      onTap: () => _konfirmasiHapusBuku(
+                                          context, widget.book!),
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(4.0),
+                                        child: Icon(
+                                          CupertinoIcons.trash_circle_fill,
+                                          size: 26,
+                                          color: Color(0xFFDC2626),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4.0),
-                        child: Icon(
-                          _isBookmarked
-                              ? CupertinoIcons.bookmark_fill
-                              : CupertinoIcons.bookmark,
-                          size: 24,
-                          color: _isBookmarked
-                              ? AppColors.primary
-                              : const Color(0xFF333333),
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              _isBookmarked = !_isBookmarked;
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  _isBookmarked
+                                      ? 'Buku disimpan ke bookmark'
+                                      : 'Buku dihapus dari bookmark',
+                                ),
+                                duration: const Duration(seconds: 1),
+                                backgroundColor: AppColors.primary,
+                              ),
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: Icon(
+                              _isBookmarked
+                                  ? CupertinoIcons.bookmark_fill
+                                  : CupertinoIcons.bookmark,
+                              size: 24,
+                              color: _isBookmarked
+                                  ? AppColors.primary
+                                  : const Color(0xFF333333),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
@@ -703,54 +809,70 @@ class _BookDetailPageState extends State<BookDetailPage> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
-                          child: _coverPath.startsWith('http://') ||
-                                  _coverPath.startsWith('https://')
-                              ? Image.network(
-                                  _coverPath,
+                          child: () {
+                            final path = _coverPath;
+                            String? fullNetworkUrl;
+                            if (path.startsWith('http://') ||
+                                path.startsWith('https://')) {
+                              fullNetworkUrl = path;
+                            } else if (path.startsWith('/uploads/') ||
+                                path.startsWith('uploads/')) {
+                              final clean =
+                                  path.startsWith('/') ? path : '/$path';
+                              fullNetworkUrl =
+                                  '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+                            }
+
+                            if (fullNetworkUrl != null) {
+                              return Image.network(
+                                fullNetworkUrl,
+                                width: 140,
+                                height: 205,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 140,
+                                    height: 205,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE7E3FF),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.book_rounded,
+                                        color: AppColors.primary,
+                                        size: 48,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }
+
+                            return Image.asset(
+                              path,
+                              width: 140,
+                              height: 205,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
                                   width: 140,
                                   height: 205,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      width: 140,
-                                      height: 205,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFE7E3FF),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: const Center(
-                                        child: Icon(
-                                          Icons.book_rounded,
-                                          color: AppColors.primary,
-                                          size: 48,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                )
-                              : Image.asset(
-                                  _coverPath,
-                                  width: 140,
-                                  height: 205,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      width: 140,
-                                      height: 205,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFE7E3FF),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: const Center(
-                                        child: Icon(
-                                          Icons.book_rounded,
-                                          color: AppColors.primary,
-                                          size: 48,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE7E3FF),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.book_rounded,
+                                      color: AppColors.primary,
+                                      size: 48,
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          }(),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -787,7 +909,9 @@ class _BookDetailPageState extends State<BookDetailPage> {
                             const SizedBox(height: 10),
                             _buildDetailRow(
                               'Rating',
-                              _rating.toStringAsFixed(1),
+                              _totalReviews > 0
+                                  ? '${_dynamicAverageRating.toStringAsFixed(1)} ★ ($_totalReviews)'
+                                  : '${_rating.toStringAsFixed(1)} ★',
                             ),
                           ],
                         ),
@@ -901,6 +1025,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ],
                 ),
               ),
+              const SizedBox(height: 28),
+              _buildSectionUlasan(),
               const SizedBox(height: 24),
             ],
           ),
@@ -948,6 +1074,631 @@ class _BookDetailPageState extends State<BookDetailPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _konfirmasiHapusBuku(BuildContext context, BookModel book) {
+    showDialog(
+      context: context,
+      builder: (confirmCtx) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  CupertinoIcons.trash,
+                  color: Color(0xFFDC2626),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Hapus Buku?',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  color: Color(0xFF130F26),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'Apakah Anda yakin ingin menghapus buku "${book.judul}" dari koleksi Anda? Tindakan ini tidak dapat dibatalkan.',
+            style: const TextStyle(
+              fontSize: 13.5,
+              color: Color(0xFF555268),
+              height: 1.4,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          actions: [
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(confirmCtx),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: const BorderSide(color: Color(0xFFDCD9EB)),
+                    ),
+                    child: const Text(
+                      'Batal',
+                      style: TextStyle(
+                        color: Color(0xFF7E7A92),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFDC2626),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(confirmCtx);
+
+                      final auth = context.read<AuthProvider>();
+                      final bookProvider = context.read<BookProvider>();
+
+                      if (auth.token != null) {
+                        await bookProvider.hapusBukuApi(
+                          token: auth.token!,
+                          bookId: book.id,
+                        );
+                      } else {
+                        bookProvider.hapusBuku(book.id);
+                      }
+
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content:
+                                Text('Buku "${book.judul}" berhasil dihapus.'),
+                            backgroundColor: const Color(0xFFDC2626),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        Navigator.pop(context);
+                      }
+                    },
+                    child: const Text(
+                      'Ya, Hapus',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _bukaModalTulisUlasan(BuildContext context) {
+    final auth = context.read<AuthProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final bookProvider = context.read<BookProvider>();
+
+    if (auth.token == null || auth.token!.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Silakan login terlebih dahulu untuk memberikan ulasan.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final bookIdNum = int.tryParse(widget.book?.id ?? '');
+    if (bookIdNum == null) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Buku ini belum tersinkronisasi dengan server database.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    int ratingTerpilih = 5;
+    final komentarController = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Beri Ulasan Buku',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF130F26),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(CupertinoIcons.xmark_circle_fill),
+                        color: const Color(0xFF8A88A5),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Buku: $_title',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Penilaian Bintang',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      final starValue = index + 1;
+                      final isSelected = starValue <= ratingTerpilih;
+                      return IconButton(
+                        iconSize: 38,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        icon: Icon(
+                          isSelected
+                              ? CupertinoIcons.star_fill
+                              : CupertinoIcons.star,
+                          color: isSelected
+                              ? const Color(0xFFF59E0B)
+                              : const Color(0xFFD1D5DB),
+                        ),
+                        onPressed: () {
+                          setModalState(() {
+                            ratingTerpilih = starValue;
+                          });
+                        },
+                      );
+                    }),
+                  ),
+                  Center(
+                    child: Text(
+                      _getRatingDescription(ratingTerpilih),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF7E7A92),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Komentar / Catatan Ulasan',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: komentarController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Bagikan pendapatmu tentang alur cerita atau isi buku ini...',
+                      hintStyle: const TextStyle(
+                        fontSize: 13.5,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFF8F7FF),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFE4E1FB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFE4E1FB)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
+                              setModalState(() {
+                                isSubmitting = true;
+                              });
+
+                              try {
+                                await bookProvider.submitBookReview(
+                                  token: auth.token!,
+                                  bookId: bookIdNum,
+                                  rating: ratingTerpilih,
+                                  komentar:
+                                      komentarController.text.trim().isNotEmpty
+                                          ? komentarController.text.trim()
+                                          : null,
+                                );
+
+                                if (ctx.mounted) {
+                                  Navigator.pop(ctx);
+                                }
+
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Ulasan berhasil dikirim! Terima kasih.'),
+                                    backgroundColor: Color(0xFF16A34A),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+
+                                _muatUlasanBuku();
+                              } catch (e) {
+                                setModalState(() {
+                                  isSubmitting = false;
+                                });
+                                final pesan = e
+                                    .toString()
+                                    .replaceFirst('Exception: ', '');
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(pesan),
+                                    backgroundColor: const Color(0xFFDC2626),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                      child: isSubmitting
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Kirim Ulasan',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _getRatingDescription(int rating) {
+    switch (rating) {
+      case 1:
+        return 'Sangat Kurang ⭐';
+      case 2:
+        return 'Kurang ⭐⭐';
+      case 3:
+        return 'Cukup Baik ⭐⭐⭐';
+      case 4:
+        return 'Bagus ⭐⭐⭐⭐';
+      case 5:
+        return 'Luar Biasa / Sangat Bagus ⭐⭐⭐⭐⭐';
+      default:
+        return '';
+    }
+  }
+
+  Widget _buildSectionUlasan() {
+    final double ratingTampil =
+        _totalReviews > 0 ? _dynamicAverageRating : _rating;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Text(
+                    'Ulasan Pembaca',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECEAFC),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$_totalReviews',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _bukaModalTulisUlasan(context),
+                icon: const Icon(CupertinoIcons.pencil, size: 14),
+                label: const Text('Beri Ulasan'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: Color(0xFFC7BFF5)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Rating summary card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFBFBFE),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFECE8F6)),
+            ),
+            child: Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ratingTampil.toStringAsFixed(1),
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF130F26),
+                      ),
+                    ),
+                    Row(
+                      children: List.generate(5, (index) {
+                        final filled = (index + 1) <= ratingTampil.round();
+                        return Icon(
+                          filled
+                              ? CupertinoIcons.star_fill
+                              : CupertinoIcons.star,
+                          size: 16,
+                          color: filled
+                              ? const Color(0xFFF59E0B)
+                              : const Color(0xFFD1D5DB),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Text(
+                    _totalReviews > 0
+                        ? 'Berdasarkan ulasan $_totalReviews pembaca di Librava.'
+                        : 'Belum ada ulasan resmi. Nilai standar katalog adalah $ratingTampil.',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: Color(0xFF6B7280),
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          if (_isLoadingReviews)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_reviews.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFEBE8F6)),
+              ),
+              child: Column(
+                children: const [
+                  Icon(
+                    CupertinoIcons.chat_bubble_2,
+                    size: 32,
+                    color: Color(0xFFB8AEFF),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Belum ada ulasan untuk buku ini',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Jadilah yang pertama membagikan pendapat Anda!',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF8A88A5),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ..._reviews.map((r) => _buildReviewCard(r)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewCard(BookReviewModel review) {
+    final tanggalStr = review.createdAt != null
+        ? '${review.createdAt!.day}/${review.createdAt!.month}/${review.createdAt!.year}'
+        : 'Baru saja';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFECE8F6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: const Color(0xFFECE7FD),
+                child: Text(
+                  review.userName.isNotEmpty
+                      ? review.userName[0].toUpperCase()
+                      : 'U',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      review.userName,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF130F26),
+                      ),
+                    ),
+                    Text(
+                      tanggalStr,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                children: List.generate(5, (index) {
+                  final filled = index < review.rating;
+                  return Icon(
+                    filled ? CupertinoIcons.star_fill : CupertinoIcons.star,
+                    size: 14,
+                    color: filled
+                        ? const Color(0xFFF59E0B)
+                        : const Color(0xFFD1D5DB),
+                  );
+                }),
+              ),
+            ],
+          ),
+          if (review.komentar != null && review.komentar!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              review.komentar!,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF4B5563),
+                height: 1.4,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -10,6 +10,8 @@ class BookModel {
   final String? fotoBuku;
   final String? pemilikNama;
   final String? pemilikUniversitas;
+  final String statusModerasi;
+  final String? catatanModerasi;
 
   const BookModel({
     required this.id,
@@ -23,7 +25,13 @@ class BookModel {
     this.fotoBuku,
     this.pemilikNama,
     this.pemilikUniversitas,
+    this.statusModerasi = 'DISETUJUI',
+    this.catatanModerasi,
   });
+
+  bool get isPending => statusModerasi.toUpperCase() == 'PENDING';
+  bool get isDisetujui => statusModerasi.toUpperCase() == 'DISETUJUI';
+  bool get isDitolak => statusModerasi.toUpperCase() == 'DITOLAK';
 
   factory BookModel.fromJson(Map<String, dynamic> json) {
     return BookModel(
@@ -35,6 +43,8 @@ class BookModel {
       tersedia: json['tersedia'] ?? true,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       deskripsi: json['deskripsi'] ?? '',
+      statusModerasi: json['statusModerasi'] ?? 'DISETUJUI',
+      catatanModerasi: json['catatanModerasi'],
     );
   }
 
@@ -53,6 +63,8 @@ class BookModel {
       fotoBuku: json['foto_buku'] as String?,
       pemilikNama: json['owner_nama'] as String?,
       pemilikUniversitas: json['owner_universitas'] as String?,
+      statusModerasi: json['status_moderasi'] as String? ?? 'DISETUJUI',
+      catatanModerasi: json['catatan_moderasi'] as String?,
     );
   }
 
@@ -66,6 +78,8 @@ class BookModel {
       'tersedia': tersedia,
       'rating': rating,
       'deskripsi': deskripsi,
+      'status_moderasi': statusModerasi,
+      'catatan_moderasi': catatanModerasi,
     };
   }
 
@@ -81,6 +95,8 @@ class BookModel {
     String? fotoBuku,
     String? pemilikNama,
     String? pemilikUniversitas,
+    String? statusModerasi,
+    String? catatanModerasi,
   }) {
     return BookModel(
       id: id ?? this.id,
@@ -94,12 +110,14 @@ class BookModel {
       fotoBuku: fotoBuku ?? this.fotoBuku,
       pemilikNama: pemilikNama ?? this.pemilikNama,
       pemilikUniversitas: pemilikUniversitas ?? this.pemilikUniversitas,
+      statusModerasi: statusModerasi ?? this.statusModerasi,
+      catatanModerasi: catatanModerasi ?? this.catatanModerasi,
     );
   }
 
   @override
   String toString() {
-    return 'BookModel(id: $id, judul: $judul, penulis: $penulis, kategori: $kategori, tahun: $tahunTerbit, tersedia: $tersedia, rating: $rating)';
+    return 'BookModel(id: $id, judul: $judul, penulis: $penulis, kategori: $kategori, tahun: $tahunTerbit, tersedia: $tersedia, rating: $rating, moderasi: $statusModerasi)';
   }
 
   @override

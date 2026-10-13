@@ -27,6 +27,81 @@ class _RequestListPageState extends State<RequestListPage> {
   void initState() {
     super.initState();
     _inisialisasiData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadRealRequests();
+    });
+  }
+
+  Future<void> _loadRealRequests() async {
+    try {
+      final auth = context.read<AuthProvider>();
+      final trxProvider = context.read<TransactionProvider>();
+      if (auth.token != null) {
+        if (auth.currentUser != null) {
+          trxProvider.setCurrentUser(
+            id: auth.currentUser!.id,
+            name: auth.currentUser!.nama,
+          );
+        }
+        await trxProvider.fetchTransaksi(auth.token!);
+      }
+      _gabungkanDataDatabase(trxProvider, auth.currentUser?.nama);
+    } catch (_) {}
+  }
+
+  void _gabungkanDataDatabase(
+      TransactionProvider trxProvider, String? currentUserName) {
+    final incomingTxs = trxProvider.semuaTransaksi.where((t) {
+      if (currentUserName != null && currentUserName.isNotEmpty) {
+        return t.pemilikNama.toLowerCase() == currentUserName.toLowerCase();
+      }
+      return t.pemilikNama == 'Gilang Ramadan' ||
+          (t.pemilikNama != t.pemohonNama && t.pemilikNama.isNotEmpty);
+    }).toList();
+
+    if (incomingTxs.isNotEmpty && mounted) {
+      final List<BookRequestItem> realItems = incomingTxs.map((t) {
+        String statusMapped = 'Pending';
+        if (t.status == 'disetujui' || t.status == 'selesai') {
+          statusMapped = 'Accepted';
+        } else if (t.status == 'ditolak' || t.status == 'dibatalkan') {
+          statusMapped = 'Declined';
+        }
+
+        final isBarter = t.jenisTransaksi.toLowerCase() == 'barter';
+        return BookRequestItem(
+          id: 'api_${t.id}',
+          bookTitle: t.judulBuku.isNotEmpty ? t.judulBuku : 'Buku Librava',
+          bookAuthor: 'Koleksi Saya',
+          bookCover: t.coverBuku.isNotEmpty
+              ? t.coverBuku
+              : 'assets/images/book_the_unknown.jpg',
+          requesterName: t.pemohonNama.isNotEmpty ? t.pemohonNama : 'Mahasiswa',
+          requesterHandle:
+              '@${t.pemohonNama.toLowerCase().replaceAll(' ', '')}',
+          type: isBarter ? 'Barter' : 'Borrow',
+          status: statusMapped,
+          exchangeBookTitle: isBarter && t.bukuBarter.isNotEmpty
+              ? t.bukuBarter
+              : (isBarter ? 'Fruit Fly' : null),
+          exchangeBookAuthor: isBarter ? 'Josh Silver' : null,
+          exchangeBookCover:
+              isBarter ? 'assets/images/book_fruit_fly.jpg' : null,
+          requestedPeriod: '${t.durasiHari} hari',
+          dateRange: t.tanggal,
+          requestedOn: t.tanggal.isNotEmpty ? t.tanggal : 'Aug 21, 2026',
+          transactionId: int.tryParse(t.id),
+        );
+      }).toList();
+
+      setState(() {
+        final existingTxIds = realItems.map((e) => e.transactionId).toSet();
+        final keptMock = _requestList
+            .where((m) => !existingTxIds.contains(m.transactionId))
+            .toList();
+        _requestList = [...realItems, ...keptMock];
+      });
+    }
   }
 
   void _inisialisasiData() {
