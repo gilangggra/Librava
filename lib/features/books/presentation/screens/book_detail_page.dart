@@ -116,6 +116,41 @@ class _BookDetailPageState extends State<BookDetailPage> {
   }
 
   void _bukaModalPinjam(BuildContext context) {
+    final auth = context.read<AuthProvider>();
+    final currentUser = auth.currentUser;
+    final bool isMyBook = currentUser != null &&
+        widget.book != null &&
+        ((widget.book!.pemilikId != null &&
+          widget.book!.pemilikId == currentUser.id) ||
+         (widget.book!.pemilikNama != null &&
+          currentUser.nama.isNotEmpty &&
+          widget.book!.pemilikNama!.trim().toLowerCase() ==
+              currentUser.nama.trim().toLowerCase()));
+
+    if (isMyBook) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Anda tidak dapat meminjam buku milik Anda sendiri.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if ((currentUser?.saldoDummy ?? 100000.0) < 20000.0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Saldo dummy Anda tidak mencukupi untuk deposit simulasi (minimal Rp 20.000).',
+          ),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     int durasiTerpilih = 7;
     final catatanController = TextEditingController();
 
@@ -323,10 +358,32 @@ class _BookDetailPageState extends State<BookDetailPage> {
   }
 
   void _bukaModalBarter(BuildContext context) {
+    final auth = context.read<AuthProvider>();
+    final currentUser = auth.currentUser;
+    final bool isMyBook = currentUser != null &&
+        widget.book != null &&
+        ((widget.book!.pemilikId != null &&
+          widget.book!.pemilikId == currentUser.id) ||
+         (widget.book!.pemilikNama != null &&
+          currentUser.nama.isNotEmpty &&
+          widget.book!.pemilikNama!.trim().toLowerCase() ==
+              currentUser.nama.trim().toLowerCase()));
+
+    if (isMyBook) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Anda tidak dapat membarter buku milik Anda sendiri.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     List<BookModel> koleksi = [];
     try {
       final bp = context.read<BookProvider>();
-      koleksi = bp.koleksiSaya;
+      koleksi = bp.koleksiSaya.where((b) => b.id != widget.book?.id).toList();
     } catch (_) {}
 
     if (koleksi.isEmpty) {
@@ -747,36 +804,58 @@ class _BookDetailPageState extends State<BookDetailPage> {
                               );
                             },
                           ),
-                        InkWell(
-                          onTap: () {
-                            setState(() {
-                              _isBookmarked = !_isBookmarked;
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  _isBookmarked
-                                      ? 'Buku disimpan ke bookmark'
-                                      : 'Buku dihapus dari bookmark',
+                        Builder(
+                          builder: (ctx) {
+                            final bookProv = ctx.watch<BookProvider>();
+                            final effectiveBook = widget.book ??
+                                BookModel(
+                                  id: widget.title
+                                          ?.toLowerCase()
+                                          .replaceAll(' ', '_') ??
+                                      'bk_001',
+                                  judul: _title,
+                                  penulis: _author,
+                                  kategori: _genre,
+                                  tahunTerbit: 2024,
+                                  fotoBuku: widget.coverPath,
+                                );
+                            final isBookmarked =
+                                bookProv.isBookmarked(effectiveBook.id) ||
+                                    _isBookmarked;
+
+                            return InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _isBookmarked = !isBookmarked;
+                                });
+                                bookProv.toggleBookmark(effectiveBook);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      !isBookmarked
+                                          ? 'Buku disimpan ke bookmark'
+                                          : 'Buku dihapus dari bookmark',
+                                    ),
+                                    duration: const Duration(seconds: 1),
+                                    backgroundColor: AppColors.primary,
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(20),
+                              child: Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Icon(
+                                  isBookmarked
+                                      ? CupertinoIcons.bookmark_fill
+                                      : CupertinoIcons.bookmark,
+                                  size: 24,
+                                  color: isBookmarked
+                                      ? AppColors.primary
+                                      : const Color(0xFF333333),
                                 ),
-                                duration: const Duration(seconds: 1),
-                                backgroundColor: AppColors.primary,
                               ),
                             );
                           },
-                          borderRadius: BorderRadius.circular(20),
-                          child: Padding(
-                            padding: const EdgeInsets.all(4.0),
-                            child: Icon(
-                              _isBookmarked
-                                  ? CupertinoIcons.bookmark_fill
-                                  : CupertinoIcons.bookmark,
-                              size: 24,
-                              color: _isBookmarked
-                                  ? AppColors.primary
-                                  : const Color(0xFF333333),
-                            ),
-                          ),
                         ),
                       ],
                     ),
@@ -950,79 +1029,152 @@ class _BookDetailPageState extends State<BookDetailPage> {
               const SizedBox(height: 22),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        height: 52,
+                child: Consumer<AuthProvider>(
+                  builder: (context, auth, _) {
+                    final currentUser = auth.currentUser;
+                    final bool isMyBook = currentUser != null &&
+                        widget.book != null &&
+                        ((widget.book!.pemilikId != null &&
+                          widget.book!.pemilikId == currentUser.id) ||
+                         (widget.book!.pemilikNama != null &&
+                          currentUser.nama.isNotEmpty &&
+                          widget.book!.pemilikNama!.trim().toLowerCase() ==
+                              currentUser.nama.trim().toLowerCase()));
+
+                    if (isMyBook) {
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary
-                                  .withValues(alpha: 0.35),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
+                          color: const Color(0xFFF3F2FD),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.35),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.auto_stories_rounded,
+                                color: AppColors.primary,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Ini Adalah Buku Milik Anda',
+                                    style: TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF130F26),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Anda tidak dapat meminjam atau membarter koleksi sendiri.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF7E7A92),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                        child: ElevatedButton(
-                          onPressed: () => _bukaModalPinjam(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
+                      );
+                    }
+
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 52,
+                            decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary
+                                      .withValues(alpha: 0.35),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
                             ),
-                          ),
-                          child: const Text(
-                            'Borrow',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                            child: ElevatedButton(
+                              onPressed: () => _bukaModalPinjam(context),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: const Text(
+                                'Borrow',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Container(
-                        height: 52,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF52518D)
-                                  .withValues(alpha: 0.12),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: () => _bukaModalBarter(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE5E2FD),
-                            foregroundColor: AppColors.primary,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Container(
+                            height: 52,
+                            decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF52518D)
+                                      .withValues(alpha: 0.12),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                          ),
-                          child: const Text(
-                            'Barter',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
+                            child: ElevatedButton(
+                              onPressed: () => _bukaModalBarter(context),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFE5E2FD),
+                                foregroundColor: AppColors.primary,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              child: const Text(
+                                'Barter',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 28),

@@ -1,6 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:librava/features/auth/data/services/auth_api_service.dart';
 import 'package:librava/features/auth/presentation/providers/auth_provider.dart';
 import 'package:librava/features/books/domain/models/book_model.dart';
 import 'package:librava/features/books/presentation/providers/book_provider.dart';
@@ -116,5 +120,57 @@ void main() {
     expect(find.text('Teknologi'), findsOneWidget);
     expect(find.text('4.9'), findsOneWidget);
     expect(find.text('Panduan lengkap algoritma dan struktur data.'), findsOneWidget);
+  });
+
+  testWidgets('Jika buku milik sendiri, tombol Borrow dan Barter digantikan oleh banner Ini Adalah Buku Milik Anda',
+      (WidgetTester tester) async {
+    const myBook = BookModel(
+      id: 'bk_my',
+      judul: 'Clean Architecture',
+      penulis: 'Uncle Bob',
+      kategori: 'Teknologi',
+      tahunTerbit: 2020,
+      pemilikNama: 'Gilang Ramadan',
+    );
+
+    final mockClient = MockClient((request) async {
+      return http.Response(
+        jsonEncode({
+          'success': true,
+          'data': {
+            'user': {
+              'id': 1,
+              'nama_lengkap': 'Gilang Ramadan',
+              'email': 'gilang@example.com',
+            },
+            'token': 'tok',
+          }
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+
+    final authProvider =
+        AuthProvider(apiService: AuthApiService(client: mockClient));
+    await authProvider.masuk(email: 'gilang@example.com', password: '123');
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: authProvider),
+          ChangeNotifierProvider(create: (_) => BookProvider()),
+          ChangeNotifierProvider(create: (_) => TransactionProvider()),
+        ],
+        child: const MaterialApp(
+          home: BookDetailPage(book: myBook),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ini Adalah Buku Milik Anda'), findsOneWidget);
+    expect(find.text('Borrow'), findsNothing);
+    expect(find.text('Barter'), findsNothing);
   });
 }

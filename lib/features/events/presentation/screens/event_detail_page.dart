@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/network/api_constants.dart';
+import '../../../admin/presentation/screens/admin_dashboard_page.dart';
+import '../../../admin/presentation/widgets/admin_bottom_nav.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
@@ -12,14 +14,18 @@ import '../../../profile/presentation/screens/profile_page.dart';
 import '../../data/services/event_api_service.dart';
 import '../../domain/models/event_model.dart';
 import '../providers/event_provider.dart';
-import 'add_event_page.dart';
 
-/// Halaman Detail Event Kampus Librava.
-/// Didesain teliti dan konsisten 100% mengikuti mockup desain tampilan.
+/// Halaman Detail / View Event Kampus Librava.
+/// Didesain teliti, rapi, dan 100% konsisten dengan rancangan visual mockup "Event view".
 class EventDetailPage extends StatefulWidget {
   final EventModel event;
+  final bool? isAdmin;
 
-  const EventDetailPage({super.key, required this.event});
+  const EventDetailPage({
+    super.key,
+    required this.event,
+    this.isAdmin,
+  });
 
   @override
   State<EventDetailPage> createState() => _EventDetailPageState();
@@ -27,16 +33,31 @@ class EventDetailPage extends StatefulWidget {
 
 class _EventDetailPageState extends State<EventDetailPage> {
   late EventModel _event;
-  final int _selectedIndex = 0; // Tab Home aktif
+  final int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _event = widget.event;
     _refreshEventDetail();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final auth = context.read<AuthProvider>();
+        if (auth.token != null) {
+          context.read<EventProvider>().fetchMyEvents(auth.token!);
+        }
+      }
+    });
   }
 
-  /// Mengambil data teranyar langsung dari backend database (kuota, pendaftar, dll)
+  /// Mengecek apakah tampilan dibuka sebagai Admin atau Mahasiswa
+  bool _checkIsAdmin(BuildContext context) {
+    if (widget.isAdmin != null) return widget.isAdmin!;
+    final auth = context.watch<AuthProvider>();
+    return auth.currentUser?.role.toLowerCase() == 'admin';
+  }
+
+  /// Mengambil data teranyar langsung dari backend database
   Future<void> _refreshEventDetail() async {
     try {
       final latest = await EventApiService().getEventById(_event.id);
@@ -97,7 +118,211 @@ class _EventDetailPageState extends State<EventDetailPage> {
     }
   }
 
-  /// Menangani proses pendaftaran event
+  /// Dialog pop-up konfirmasi Approve / Reject sesuai mockup
+  Future<bool?> _tampilkanDialogKonfirmasi(
+    BuildContext context, {
+    required bool isApprove,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.38),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isApprove
+                    ? 'Are you sure you want to approve\nthis event?'
+                    : 'Are you sure you want to reject\nthis event?',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF130F26),
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 48,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF5B4DFF).withValues(alpha: 0.28),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF5B4DFF),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: Text(
+                          isApprove ? 'Approve' : 'Reject',
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE2E0FD),
+                          foregroundColor: const Color(0xFF5B4DFF),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Menangani proses approval event oleh Admin (Approve / Reject)
+  Future<void> _prosesApprovalEvent(
+    BuildContext context, {
+    required bool approve,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final auth = context.read<AuthProvider>();
+    final eventProvider = context.read<EventProvider>();
+
+    final setuju = await _tampilkanDialogKonfirmasi(context, isApprove: approve);
+    if (setuju != true || !mounted) return;
+
+    final targetStatus = approve ? 'APPROVED' : 'REJECTED';
+
+    try {
+      if (auth.token != null && auth.token!.isNotEmpty) {
+        final updated = await eventProvider.updateEventStatus(
+          token: auth.token!,
+          eventId: _event.id,
+          status: targetStatus,
+        );
+        if (mounted) {
+          setState(() {
+            _event = updated;
+          });
+        }
+      }
+
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                approve ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  approve
+                      ? 'Event "${_event.judul}" berhasil disetujui (Status: APPROVED).'
+                      : 'Event "${_event.judul}" telah ditolak (Status: REJECTED).',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: approve ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      if (navigator.canPop()) {
+        navigator.pop(true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color bg;
+    Color fg;
+
+    final s = status.toLowerCase();
+    if (s.contains('reject')) {
+      bg = const Color(0xFFFEE2E2);
+      fg = const Color(0xFFEF4444);
+    } else if (s.contains('pend')) {
+      bg = const Color(0xFFFEF3C7);
+      fg = const Color(0xFFD97706);
+    } else {
+      bg = const Color(0xFFD1FADF);
+      fg = const Color(0xFF12B76A);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: fg,
+        ),
+      ),
+    );
+  }
+
+  /// Menangani proses pendaftaran event oleh Mahasiswa
   Future<void> _konfirmasiDaftar(BuildContext context) async {
     final auth = context.read<AuthProvider>();
     if (auth.token == null || auth.token!.isEmpty) {
@@ -185,16 +410,6 @@ class _EventDetailPageState extends State<EventDetailPage> {
     }
   }
 
-  /// Membuka halaman Tambah Event (AddEventPage) sesuai mockup desain
-  void _bukaModalAddEvent(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const AddEventPage(),
-      ),
-    );
-  }
-
   String _getDefaultEventAsset(EventModel event) {
     if (event.fotoEvent != null &&
         event.fotoEvent!.trim().startsWith('assets/')) {
@@ -206,7 +421,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
       'assets/images/event_book_discussion.jpg',
     ];
     final judulLower = event.judul.toLowerCase();
-    final katLower = (event.kategori ?? '').toLowerCase();
+    final katLower = event.kategori.toLowerCase();
     if (judulLower.contains('read') ||
         judulLower.contains('circle') ||
         katLower.contains('circle') ||
@@ -241,7 +456,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     }
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(22),
       child: SizedBox(
         height: 215,
         width: double.infinity,
@@ -271,8 +486,8 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  /// Tombol bar navigasi bawah yang seragam dengan halaman utama Librava
-  Widget _buildNavItem({
+  /// Tombol bar navigasi bawah untuk mahasiswa
+  Widget _buildUserNavItem({
     required int index,
     required IconData activeIcon,
     required IconData inactiveIcon,
@@ -346,8 +561,187 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
+  Widget _buildUserBottomNav() {
+    return Container(
+      height: 72,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: Color(0xFFEBE8F6),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildUserNavItem(
+            index: 0,
+            activeIcon: CupertinoIcons.house_fill,
+            inactiveIcon: CupertinoIcons.house,
+          ),
+          _buildUserNavItem(
+            index: 1,
+            activeIcon: CupertinoIcons.book_fill,
+            inactiveIcon: CupertinoIcons.book,
+          ),
+          _buildUserNavItem(
+            index: 2,
+            activeIcon: CupertinoIcons.search,
+            inactiveIcon: CupertinoIcons.search,
+          ),
+          _buildUserNavItem(
+            index: 3,
+            activeIcon: CupertinoIcons.ellipses_bubble_fill,
+            inactiveIcon: CupertinoIcons.ellipses_bubble,
+          ),
+          _buildUserNavItem(
+            index: 4,
+            activeIcon: CupertinoIcons.person_fill,
+            inactiveIcon: CupertinoIcons.person,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Tombol aksi Admin: Approve dan Reject (side-by-side sesuai mockup)
+  Widget _buildAdminActions(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 50,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF5B4DFF).withValues(alpha: 0.32),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF5B4DFF),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: () => _prosesApprovalEvent(context, approve: true),
+              child: const Text(
+                'Approve',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: SizedBox(
+            height: 50,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEDEAFE),
+                foregroundColor: const Color(0xFF5B4DFF),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: () => _prosesApprovalEvent(context, approve: false),
+              child: const Text(
+                'Reject',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Tombol aksi Mahasiswa: Join Event / Sudah Terdaftar
+  Widget _buildStudentAction(BuildContext context) {
+    return Builder(
+      builder: (ctx) {
+        final eventProvider = ctx.watch<EventProvider>();
+        final isRegistered = eventProvider.isUserRegistered(_event.id);
+        return Container(
+          width: double.infinity,
+          height: 52,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: (isRegistered
+                        ? const Color(0xFF16A34A)
+                        : AppColors.primary)
+                    .withValues(alpha: 0.35),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isRegistered
+                  ? const Color(0xFF16A34A)
+                  : AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            icon: Icon(
+              isRegistered
+                  ? Icons.check_circle_rounded
+                  : CupertinoIcons.ticket_fill,
+              size: 20,
+            ),
+            label: Text(
+              isRegistered ? 'Sudah Terdaftar' : 'Join event',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            onPressed: isRegistered
+                ? () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            'Anda telah terdaftar di event "${_event.judul}".'),
+                        backgroundColor: const Color(0xFF16A34A),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                : () => _konfirmasiDaftar(context),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isAdmin = _checkIsAdmin(context);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -359,14 +753,22 @@ class _EventDetailPageState extends State<EventDetailPage> {
               children: [
                 const SizedBox(height: 12),
 
-                // Top App Bar: Back Button & Add Event Action
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    InkWell(
-                      onTap: () {
-                        if (Navigator.canPop(context)) {
-                          Navigator.pop(context);
+                // Top App Bar: Back Button (Chevron Left)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: InkWell(
+                    onTap: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        if (isAdmin) {
+                          Navigator.pushReplacement(
+                            context,
+                            PageRouteBuilder(
+                              pageBuilder: (_, _, _) => const AdminDashboardPage(),
+                              transitionDuration: Duration.zero,
+                            ),
+                          );
                         } else {
                           Navigator.pushReplacement(
                             context,
@@ -376,53 +778,27 @@ class _EventDetailPageState extends State<EventDetailPage> {
                             ),
                           );
                         }
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: const Padding(
-                        padding: EdgeInsets.all(4.0),
-                        child: Icon(
-                          CupertinoIcons.chevron_left,
-                          size: 24,
-                          color: Color(0xFF2E2A47),
-                        ),
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
+                      child: Icon(
+                        CupertinoIcons.chevron_left,
+                        size: 24,
+                        color: Color(0xFF130F26),
                       ),
                     ),
-                    InkWell(
-                      onTap: () => _bukaModalAddEvent(context),
-                      borderRadius: BorderRadius.circular(12),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.add_circle_outline_rounded,
-                              color: Color(0xFF7D799B),
-                              size: 26,
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Add event',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF7D799B),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
 
                 const SizedBox(height: 14),
 
-                // Header Title: "Event detail"
+                // Header Title: "Event view" sesuai mockup
                 const Text(
-                  'Event detail',
+                  'Event view',
                   style: TextStyle(
-                    fontSize: 32,
+                    fontSize: 30,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF130F26),
                     letterSpacing: -0.5,
@@ -436,61 +812,77 @@ class _EventDetailPageState extends State<EventDetailPage> {
 
                 const SizedBox(height: 22),
 
-                // Event Title: e.g. "Book Exhange Day"
-                Text(
-                  _event.judul,
-                  style: const TextStyle(
-                    fontSize: 23,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF130F26),
-                    letterSpacing: -0.3,
-                  ),
+                // Event Title & Status Badge
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _event.judul,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF130F26),
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildStatusBadge(_event.displayStatus),
+                  ],
                 ),
 
                 const SizedBox(height: 14),
 
-                // Card Info: Date, Time, Location (Single White Card)
+                // Card Info: Date, Time, Location (White Card)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF1E1A34).withValues(alpha: 0.04),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
-                      // Row 1: Tanggal
+                      // Row 1: Tanggal (Calendar Icon)
                       Row(
                         children: [
                           const Icon(
-                            Icons.calendar_today_outlined,
+                            CupertinoIcons.calendar,
                             color: Color(0xFF4C3BCF),
-                            size: 23,
+                            size: 22,
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Text(
                               _formatDate(_event.tanggalMulai),
                               style: const TextStyle(
-                                fontSize: 14.5,
+                                fontSize: 13.5,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF555268),
+                                color: Color(0xFF6B6880),
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
 
-                      // Row 2: Waktu
+                      // Row 2: Waktu (Clock Icon)
                       Row(
                         children: [
                           const Icon(
                             Icons.access_time_rounded,
                             color: Color(0xFF4C3BCF),
-                            size: 23,
+                            size: 22,
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Text(
                               _formatTime(
@@ -498,32 +890,32 @@ class _EventDetailPageState extends State<EventDetailPage> {
                                 _event.tanggalSelesai,
                               ),
                               style: const TextStyle(
-                                fontSize: 14.5,
+                                fontSize: 13.5,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF555268),
+                                color: Color(0xFF6B6880),
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
 
-                      // Row 3: Lokasi
+                      // Row 3: Lokasi (Pin Location Icon)
                       Row(
                         children: [
                           const Icon(
-                            Icons.location_on_rounded,
+                            CupertinoIcons.location_solid,
                             color: Color(0xFF4C3BCF),
-                            size: 23,
+                            size: 22,
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Text(
                               _event.lokasi,
                               style: const TextStyle(
-                                fontSize: 14.5,
+                                fontSize: 13.5,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF555268),
+                                color: Color(0xFF6B6880),
                               ),
                             ),
                           ),
@@ -550,109 +942,48 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 // Card Description
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: Text(
-                    _event.deskripsi.isNotEmpty
-                        ? _event.deskripsi
-                        : 'Book Exchange Day is a campus event where you can meet other book lovers, exchange your favorite books, and discover new reads. Everyone is welcome, whether you want to give, find, or simply talk about books!',
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      height: 1.5,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF75728A),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 28),
-
-                // Button: "Join event"
-                Container(
-                  width: double.infinity,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.35),
-                        blurRadius: 18,
-                        offset: const Offset(0, 6),
+                        color: const Color(0xFF1E1A34).withValues(alpha: 0.04),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    onPressed: () => _konfirmasiDaftar(context),
-                    child: const Text(
-                      'Join event',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
+                  child: Text(
+                    _event.deskripsi.trim().isNotEmpty
+                        ? _event.deskripsi.trim()
+                        : 'Book Exchange Day is a campus event where you can meet other book lovers, exchange your favorite books, and discover new reads. Everyone is welcome, whether you want to give, find, or simply talk about books!',
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      height: 1.55,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF7E7A92),
                     ),
                   ),
                 ),
 
                 const SizedBox(height: 26),
+
+                // Actions: Admin Mode (Approve / Reject) vs Student Mode (Join Event)
+                if (isAdmin)
+                  _buildAdminActions(context)
+                else
+                  _buildStudentAction(context),
+
+                const SizedBox(height: 24),
               ],
             ),
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        height: 72,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(
-              color: Color(0xFFEBE8F6),
-              width: 1,
-            ),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(
-              index: 0,
-              activeIcon: CupertinoIcons.house_fill,
-              inactiveIcon: CupertinoIcons.house,
-            ),
-            _buildNavItem(
-              index: 1,
-              activeIcon: CupertinoIcons.book_fill,
-              inactiveIcon: CupertinoIcons.book,
-            ),
-            _buildNavItem(
-              index: 2,
-              activeIcon: CupertinoIcons.search,
-              inactiveIcon: CupertinoIcons.search,
-            ),
-            _buildNavItem(
-              index: 3,
-              activeIcon: CupertinoIcons.ellipses_bubble_fill,
-              inactiveIcon: CupertinoIcons.ellipses_bubble,
-            ),
-            _buildNavItem(
-              index: 4,
-              activeIcon: CupertinoIcons.person_fill,
-              inactiveIcon: CupertinoIcons.person,
-            ),
-          ],
-        ),
-      ),
+      bottomNavigationBar: isAdmin
+          ? const AdminBottomNav(selectedIndex: 1)
+          : _buildUserBottomNav(),
     );
   }
 }

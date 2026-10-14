@@ -353,7 +353,7 @@ class _HomePageState extends State<HomePage> {
       'assets/images/event_book_discussion.jpg',
     ];
     final judulLower = event.judul.toLowerCase();
-    final katLower = (event.kategori ?? '').toLowerCase();
+    final katLower = event.kategori.toLowerCase();
     if (judulLower.contains('read') ||
         judulLower.contains('circle') ||
         katLower.contains('circle') ||

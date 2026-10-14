@@ -188,27 +188,51 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
             child: DepositModalContent(
+              depositAmount: widget.depositAmount,
               onClose: () => Navigator.pop(ctx),
-              onPaymentConfirmed: () {
+              onPaymentConfirmed: () async {
                 setState(() {
                   _depositPaid = true;
                 });
+                final auth = context.read<AuthProvider>();
+                final trxProvider = context.read<TransactionProvider>();
+                final messenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(ctx);
+                final depositNominal = double.tryParse(
+                      widget.depositAmount.replaceAll(RegExp(r'[^0-9]'), ''),
+                    ) ??
+                    20000.0;
+
+                // Memotong saldo dummy pengguna
+                auth.potongSaldoDummy(depositNominal);
+
                 if (widget.transactionId != null) {
                   try {
-                    final auth = context.read<AuthProvider>();
                     if (auth.token != null) {
-                      context.read<TransactionProvider>().updateStatusApi(
+                      await trxProvider.updateStatusApi(
                             auth.token!,
                             widget.transactionId!,
                             'DALAM_PROSES',
                           );
+                      await auth.segarkanProfil();
                     }
                   } catch (_) {}
                 }
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
+                navigator.pop();
+                if (!mounted) return;
+                final sisaSaldoFormatted =
+                    (auth.currentUser?.saldoDummy ?? 100000.0)
+                        .toInt()
+                        .toString()
+                        .replaceAllMapped(
+                          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                          (Match m) => '${m[1]}.',
+                        );
+                messenger.showSnackBar(
                   SnackBar(
-                    content: const Text('Payment successful! Deposit is now secured.'),
+                    content: Text(
+                      'Pembayaran deposit Rp ${depositNominal.toInt()} berhasil diamankan! Sisa saldo dompet: Rp $sisaSaldoFormatted.',
+                    ),
                     backgroundColor: const Color(0xFF2FD677),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
@@ -300,6 +324,204 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
+  void _tampilkanDialogPengembalianDepositSukses({
+    required BuildContext context,
+    required String depositAmount,
+    required double updatedSaldo,
+  }) {
+    final formattedSaldo = updatedSaldo.toInt().toString().replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 76,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2FD677), Color(0xFF10B981)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              const Color(0xFF10B981).withValues(alpha: 0.35),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 44,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Deposit Dikembalikan!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Buku "${widget.bookTitle}" telah dikembalikan kepada ${widget.ownerName}. Jaminan peminjaman telah dikembalikan penuh ke saldo Anda.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFF7E7A92),
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF6F8FF),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: const Color(0xFFE4E9FB)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Jumlah Dana Dicairkan',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF7E7A92),
+                              ),
+                            ),
+                            Text(
+                              '+$depositAmount',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF16A34A),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          child: Divider(
+                            height: 1,
+                            color: Color(0xFFE4E9FB),
+                          ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Saldo Dompet Sekarang',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF7E7A92),
+                              ),
+                            ),
+                            Text(
+                              'Rp $formattedSaldo',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF130F26),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        if (!_hasReviewed) {
+                          _bukaModalReview();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        _hasReviewed ? 'Selesai' : 'Beri Ulasan Pemilik',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text(
+                      'Tutup',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF8A88A5),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _konfirmasiPengembalianBuku() async {
     showDialog(
       context: context,
@@ -340,10 +562,18 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 final auth = context.read<AuthProvider>();
                 final trxProvider = context.read<TransactionProvider>();
                 final messenger = ScaffoldMessenger.of(context);
+                final depositNominal = double.tryParse(
+                      widget.depositAmount.replaceAll(RegExp(r'[^0-9]'), ''),
+                    ) ??
+                    20000.0;
+
                 Navigator.pop(ctx);
                 setState(() {
                   _isLoadingAction = true;
                 });
+
+                // Tambahkan kembali saldo jaminan ke dompet peminjam
+                auth.tambahSaldoDummy(depositNominal);
 
                 if (widget.transactionId != null && auth.token != null) {
                   try {
@@ -360,6 +590,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   _isLoadingAction = false;
                   _currentStatus = 'selesai';
                 });
+
+                final updatedSaldo =
+                    auth.currentUser?.saldoDummy ?? 100000.0;
+                _tampilkanDialogPengembalianDepositSukses(
+                  context: context,
+                  depositAmount: widget.depositAmount,
+                  updatedSaldo: updatedSaldo,
+                );
 
                 messenger.showSnackBar(
                   SnackBar(

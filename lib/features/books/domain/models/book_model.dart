@@ -8,6 +8,7 @@ class BookModel {
   final double rating;
   final String deskripsi;
   final String? fotoBuku;
+  final String? pemilikId;
   final String? pemilikNama;
   final String? pemilikUniversitas;
   final String statusModerasi;
@@ -23,6 +24,7 @@ class BookModel {
     this.rating = 0.0,
     this.deskripsi = '',
     this.fotoBuku,
+    this.pemilikId,
     this.pemilikNama,
     this.pemilikUniversitas,
     this.statusModerasi = 'DISETUJUI',
@@ -43,6 +45,8 @@ class BookModel {
       tersedia: json['tersedia'] ?? true,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       deskripsi: json['deskripsi'] ?? '',
+      pemilikId: json['pemilikId'] ?? json['owner_id']?.toString(),
+      pemilikNama: json['pemilikNama'] ?? json['owner_nama'],
       statusModerasi: json['statusModerasi'] ?? 'DISETUJUI',
       catatanModerasi: json['catatanModerasi'],
     );
@@ -61,6 +65,7 @@ class BookModel {
       rating: 0.0,
       deskripsi: json['deskripsi'] as String? ?? '',
       fotoBuku: json['foto_buku'] as String?,
+      pemilikId: json['owner_id']?.toString(),
       pemilikNama: json['owner_nama'] as String?,
       pemilikUniversitas: json['owner_universitas'] as String?,
       statusModerasi: json['status_moderasi'] as String? ?? 'DISETUJUI',
@@ -78,6 +83,8 @@ class BookModel {
       'tersedia': tersedia,
       'rating': rating,
       'deskripsi': deskripsi,
+      'pemilikId': pemilikId,
+      'pemilikNama': pemilikNama,
       'status_moderasi': statusModerasi,
       'catatan_moderasi': catatanModerasi,
     };
@@ -93,6 +100,7 @@ class BookModel {
     double? rating,
     String? deskripsi,
     String? fotoBuku,
+    String? pemilikId,
     String? pemilikNama,
     String? pemilikUniversitas,
     String? statusModerasi,
@@ -108,6 +116,7 @@ class BookModel {
       rating: rating ?? this.rating,
       deskripsi: deskripsi ?? this.deskripsi,
       fotoBuku: fotoBuku ?? this.fotoBuku,
+      pemilikId: pemilikId ?? this.pemilikId,
       pemilikNama: pemilikNama ?? this.pemilikNama,
       pemilikUniversitas: pemilikUniversitas ?? this.pemilikUniversitas,
       statusModerasi: statusModerasi ?? this.statusModerasi,

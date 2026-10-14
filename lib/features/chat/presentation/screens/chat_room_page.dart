@@ -14,12 +14,14 @@ class ChatBubbleMessage {
   final String text;
   final String time;
   final bool isOutgoing;
+  final String? imageUrl;
 
   const ChatBubbleMessage({
     required this.id,
     required this.text,
     required this.time,
     required this.isOutgoing,
+    this.imageUrl,
   });
 }
 
@@ -121,6 +123,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       time: '13.39',
       isOutgoing: true,
     ),
+    const ChatBubbleMessage(
+      id: 'm4',
+      text: 'Ini foto kondisi fisik bukunya ya, mulus tanpa lipatan.',
+      time: '13.40',
+      isOutgoing: false,
+      imageUrl: 'assets/images/book_atomic_habits.jpg',
+    ),
   ];
 
   @override
@@ -163,12 +172,23 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 formattedTime = '$hour.$min';
               } catch (_) {}
             }
+
+            String text = m.pesan;
+            String? imgUrl;
+            if (m.pesan.startsWith('[FOTO:') && m.pesan.contains(']')) {
+              final closeIdx = m.pesan.indexOf(']');
+              imgUrl = m.pesan.substring(6, closeIdx).trim();
+              text = m.pesan.substring(closeIdx + 1).trim();
+              if (text.isEmpty) text = 'Foto kondisi buku';
+            }
+
             _messages.add(
               ChatBubbleMessage(
                 id: m.id,
-                text: m.pesan,
+                text: text,
                 time: formattedTime,
                 isOutgoing: isOut,
+                imageUrl: imgUrl,
               ),
             );
           }
@@ -231,6 +251,377 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     }
   }
 
+  Widget _buildImageWidget(String path) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Image.network(
+        path,
+        height: 160,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          height: 140,
+          color: const Color(0xFFE5E2F3),
+          child: const Center(
+            child: Icon(Icons.broken_image_rounded, color: Color(0xFF8A859E)),
+          ),
+        ),
+      );
+    }
+    return Image.asset(
+      path,
+      height: 160,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Container(
+        height: 140,
+        color: const Color(0xFFE5E2F3),
+        child: const Center(
+          child: Icon(Icons.image_rounded, color: Color(0xFF8A859E)),
+        ),
+      ),
+    );
+  }
+
+  void _previewFoto(String imagePath) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                icon: const Icon(Icons.close_rounded,
+                    color: Colors.white, size: 28),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: imagePath.startsWith('http')
+                  ? Image.network(imagePath, fit: BoxFit.contain)
+                  : Image.asset(imagePath, fit: BoxFit.contain),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _kirimFoto(String imageAsset, String caption) {
+    final text =
+        caption.trim().isEmpty ? 'Foto kondisi buku' : caption.trim();
+    final now = DateTime.now();
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+
+    setState(() {
+      _messages.add(
+        ChatBubbleMessage(
+          id: 'm_${DateTime.now().millisecondsSinceEpoch}',
+          text: text,
+          time: '$hour.$minute',
+          isOutgoing: true,
+          imageUrl: imageAsset,
+        ),
+      );
+    });
+
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+
+    final txId = int.tryParse(widget.transactionId ?? '');
+    if (txId != null) {
+      try {
+        final authProvider =
+            Provider.of<AuthProvider>(context, listen: false);
+        final token = authProvider.token;
+        if (token != null && token.isNotEmpty) {
+          _apiService.sendMessage(
+            token: token,
+            transactionId: txId,
+            pesan: '[FOTO:$imageAsset] $text',
+          );
+        }
+      } catch (_) {}
+    }
+  }
+
+  void _bukaModalLampiranFoto() {
+    final captionController = TextEditingController();
+    String selectedAsset = 'assets/images/book_atomic_habits.jpg';
+    final samplePhotos = [
+      {
+        'title': 'Cover Depan',
+        'subtitle': 'Sampul depan & judul',
+        'asset': 'assets/images/book_atomic_habits.jpg',
+      },
+      {
+        'title': 'Halaman Dalam',
+        'subtitle': 'Kondisi kertas & teks',
+        'asset': 'assets/images/book_fruit_fly.jpg',
+      },
+      {
+        'title': 'Punggung Buku',
+        'subtitle': 'Jilid & tepi lembaran',
+        'asset': 'assets/images/book_the_unknown.jpg',
+      },
+      {
+        'title': 'Rak & Koleksi',
+        'subtitle': 'Buku di perpustakaan',
+        'asset': 'assets/images/bookshelf.jpg',
+      },
+      {
+        'title': 'Koleksi Sastra',
+        'subtitle': 'Fisik buku novel',
+        'asset': 'assets/images/book_midnight_lib.jpg',
+      },
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 20,
+                right: 20,
+                top: 16,
+              ),
+              child: SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E4E9),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Kirim Foto Kondisi Buku',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF130F26),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEDEAFE),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                CupertinoIcons.camera_fill,
+                                size: 14,
+                                color: AppColors.primary,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Kamera / Foto',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Pilih angle foto fisik buku untuk verifikasi sebelum serah terima.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF7E7A92),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 124,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: samplePhotos.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: 12),
+                        itemBuilder: (_, index) {
+                          final item = samplePhotos[index];
+                          final isSelected = selectedAsset == item['asset'];
+                          return GestureDetector(
+                            onTap: () {
+                              setModalState(() {
+                                selectedAsset = item['asset']!;
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 104,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : const Color(0xFFE8E5F4),
+                                  width: isSelected ? 2.5 : 1,
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Image.asset(
+                                      item['asset']!,
+                                      fit: BoxFit.cover,
+                                    ),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.transparent,
+                                            Colors.black
+                                                .withValues(alpha: 0.75),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      Positioned(
+                                        top: 6,
+                                        right: 6,
+                                        child: Container(
+                                          padding:
+                                              const EdgeInsets.all(2),
+                                          decoration: const BoxDecoration(
+                                            color: AppColors.primary,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.check,
+                                            color: Colors.white,
+                                            size: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    Positioned(
+                                      bottom: 6,
+                                      left: 6,
+                                      right: 6,
+                                      child: Text(
+                                        item['title']!,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: captionController,
+                      decoration: InputDecoration(
+                        hintText:
+                            'Keterangan foto (contoh: "Cover mulus tanpa coretan")...',
+                        hintStyle: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF9E9BAE),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFFF7F6FA),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.send_rounded,
+                            size: 18, color: Colors.white),
+                        label: const Text(
+                          'Kirim Foto Kondisi Buku',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _kirimFoto(
+                              selectedAsset, captionController.text);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildChatBubble(ChatBubbleMessage message) {
     final isOutgoing = message.isOutgoing;
     final bubbleColor = isOutgoing ? const Color(0xFFE5E0FD) : Colors.white;
@@ -248,31 +639,80 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               : const EdgeInsets.fromLTRB(22, 12, 16, 12),
           child: ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 140, maxWidth: 260),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: isOutgoing
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Flexible(
-                  child: Text(
-                    message.text,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF130F26),
+                if (message.imageUrl != null &&
+                    message.imageUrl!.isNotEmpty) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: GestureDetector(
+                      onTap: () => _previewFoto(message.imageUrl!),
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          _buildImageWidget(message.imageUrl!),
+                          Container(
+                            margin: const EdgeInsets.all(6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.55),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.zoom_in_rounded,
+                                    color: Colors.white, size: 14),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Perbesar',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Text(
-                  message.time,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: isOutgoing
-                        ? const Color(0xFF7E7A92)
-                        : const Color(0xFF8E8B9F),
-                  ),
+                  const SizedBox(height: 8),
+                ],
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        message.text,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF130F26),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Text(
+                      message.time,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: isOutgoing
+                            ? const Color(0xFF7E7A92)
+                            : const Color(0xFF8E8B9F),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -483,6 +923,32 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
               child: Row(
                 children: [
+                  Container(
+                    width: 50,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              const Color(0xFF1E1A34).withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        CupertinoIcons.camera_fill,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
+                      tooltip: 'Kirim Foto Kondisi Buku',
+                      onPressed: _bukaModalLampiranFoto,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Container(
                       height: 52,

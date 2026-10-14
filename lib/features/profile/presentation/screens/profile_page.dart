@@ -4,10 +4,14 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/screens/login_page.dart';
+import '../../../books/domain/models/book_model.dart';
 import '../../../books/presentation/providers/book_provider.dart';
+import '../../../books/presentation/screens/book_detail_page.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
+import '../../../events/presentation/providers/event_provider.dart';
+import '../../../events/presentation/screens/event_detail_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../transactions/domain/models/transaction_model.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
@@ -43,6 +47,11 @@ class _ProfilePageState extends State<ProfilePage> {
             final bookProvider =
                 Provider.of<BookProvider>(context, listen: false);
             bookProvider.fetchMyBooks(token);
+          } catch (_) {}
+          try {
+            final eventProvider =
+                Provider.of<EventProvider>(context, listen: false);
+            eventProvider.fetchMyEvents(token);
           } catch (_) {}
         }
       } catch (_) {}
@@ -154,36 +163,374 @@ class _ProfilePageState extends State<ProfilePage> {
     required IconData icon,
     required String value,
     required String label,
+    VoidCallback? onTap,
   }) {
     return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: AppColors.primary,
-            size: 28,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: AppColors.primary,
+                size: 28,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF130F26),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF7E7A92),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF130F26),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF7E7A92),
-            ),
-          ),
-        ],
+        ),
       ),
+    );
+  }
+
+  String _getCoverForBook(BookModel book) {
+    if (book.fotoBuku != null && book.fotoBuku!.isNotEmpty) {
+      return book.fotoBuku!;
+    }
+    return 'assets/images/book_the_unknown.jpg';
+  }
+
+  void _bukaModalBukuTersimpan(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Consumer<BookProvider>(
+          builder: (context, bookProvider, _) {
+            final bookmarks = bookProvider.bookmarkedBooks;
+            return SafeArea(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.75,
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E4E9),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Buku Tersimpan',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF130F26),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEDEAFE),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${bookmarks.length} Buku',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (bookmarks.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40.0),
+                        child: Center(
+                          child: Column(
+                            children: const [
+                              Icon(CupertinoIcons.bookmark,
+                                  size: 48, color: Color(0xFFB4B0C7)),
+                              SizedBox(height: 12),
+                              Text(
+                                'Belum Ada Buku Tersimpan',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                  color: Color(0xFF4A4468),
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Tekan ikon bookmark pada halaman detail buku untuk menyimpannya di sini.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF8A88A5),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: bookmarks.length,
+                          separatorBuilder: (context, index) => const Divider(
+                              height: 1, color: Color(0xFFEBE8F4)),
+                          itemBuilder: (_, index) {
+                            final b = bookmarks[index];
+                            final cover = _getCoverForBook(b);
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 6),
+                              leading: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: _buildCoverWidget(cover),
+                              ),
+                              title: Text(
+                                b.judul,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14.5,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${b.penulis} • ${b.kategori}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(
+                                  CupertinoIcons.bookmark_fill,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  bookProvider.toggleBookmark(b);
+                                },
+                              ),
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BookDetailPage(book: b),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _bukaModalEventSaya(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Consumer<EventProvider>(
+          builder: (context, eventProvider, _) {
+            final myEvents = eventProvider.myEvents;
+            return SafeArea(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.75,
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E4E9),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Event yang Saya Ikuti',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF130F26),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDCFCE7),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${myEvents.length} Event',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF16A34A),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (myEvents.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40.0),
+                        child: Center(
+                          child: Column(
+                            children: const [
+                              Icon(CupertinoIcons.ticket,
+                                  size: 48, color: Color(0xFFB4B0C7)),
+                              SizedBox(height: 12),
+                              Text(
+                                'Belum Ada Event yang Diikuti',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                  color: Color(0xFF4A4468),
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Jelajahi agenda literasi kampus di Home dan tekan tombol Join Event.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF8A88A5),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: myEvents.length,
+                          separatorBuilder: (context, index) => const Divider(
+                              height: 1, color: Color(0xFFEBE8F4)),
+                          itemBuilder: (_, index) {
+                            final ev = myEvents[index];
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 6),
+                              leading: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8FAF0),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.event_available_rounded,
+                                  color: Color(0xFF16A34A),
+                                  size: 24,
+                                ),
+                              ),
+                              title: Text(
+                                ev.judul,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14.5,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${ev.lokasi} • Kuota: ${ev.kuota}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                              trailing: const Icon(
+                                CupertinoIcons.chevron_right,
+                                size: 18,
+                                color: Color(0xFF7E7A92),
+                              ),
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => EventDetailPage(event: ev),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -558,6 +905,11 @@ class _ProfilePageState extends State<ProfilePage> {
       bookProvider = context.watch<BookProvider>();
     } catch (_) {}
 
+    EventProvider? eventProvider;
+    try {
+      eventProvider = context.watch<EventProvider>();
+    } catch (_) {}
+
     final booksReadStat =
         (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
             ? trxProvider.semuaTransaksi
@@ -573,9 +925,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 .toString()
             : '3';
     final favoritesStat =
-        (bookProvider != null && bookProvider.koleksiSaya.isNotEmpty)
-            ? bookProvider.koleksiSaya.length.toString()
-            : '5';
+        (bookProvider != null && bookProvider.bookmarkedBooks.isNotEmpty)
+            ? bookProvider.bookmarkedBooks.length.toString()
+            : (bookProvider != null && bookProvider.koleksiSaya.isNotEmpty
+                ? bookProvider.koleksiSaya.length.toString()
+                : '0');
 
     final List<Widget> recentWidgets = [];
     final transactions = trxProvider?.semuaTransaksi ?? [];
@@ -666,6 +1020,9 @@ class _ProfilePageState extends State<ProfilePage> {
               }
               if (bookProvider != null) {
                 await bookProvider.fetchMyBooks(token);
+              }
+              if (eventProvider != null) {
+                await eventProvider.fetchMyEvents(token);
               }
             }
           },
@@ -861,6 +1218,14 @@ class _ProfilePageState extends State<ProfilePage> {
                           icon: CupertinoIcons.book,
                           value: booksReadStat,
                           label: 'Books Read',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const TransactionHistoryPage(),
+                              ),
+                            );
+                          },
                         ),
                         const VerticalDivider(
                           color: Color(0xFFEBE8F4),
@@ -872,6 +1237,14 @@ class _ProfilePageState extends State<ProfilePage> {
                           icon: CupertinoIcons.arrow_2_squarepath,
                           value: booksBorrowedStat,
                           label: 'Books Borrowed',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const TransactionHistoryPage(),
+                              ),
+                            );
+                          },
                         ),
                         const VerticalDivider(
                           color: Color(0xFFEBE8F4),
@@ -883,6 +1256,82 @@ class _ProfilePageState extends State<ProfilePage> {
                           icon: CupertinoIcons.bookmark,
                           value: favoritesStat,
                           label: 'Favorites',
+                          onTap: () => _bukaModalBukuTersimpan(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: InkWell(
+                  onTap: () => _bukaModalEventSaya(context),
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: const Color(0xFFE8E5F4),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF1E1A34).withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEDEAFE),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.ticket_fill,
+                            color: AppColors.primary,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Event Kampus yang Diikuti',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF130F26),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${eventProvider?.myEvents.length ?? 0} agenda terdaftar',
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          CupertinoIcons.chevron_right,
+                          size: 18,
+                          color: Color(0xFF7E7A92),
                         ),
                       ],
                     ),

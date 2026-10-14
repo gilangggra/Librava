@@ -234,4 +234,24 @@ class AuthProvider extends ChangeNotifier {
       return null;
     }
   }
+
+  /// Memotong saldo dummy (misal saat membayar simulasi deposit jaminan)
+  void potongSaldoDummy(double nominal) {
+    if (_currentUser != null) {
+      final current = _currentUser!.saldoDummy;
+      final updated = (current - nominal).clamp(0.0, double.infinity);
+      _currentUser = _currentUser!.copyWith(saldoDummy: updated);
+      notifyListeners();
+    }
+  }
+
+  /// Menambahkan kembali saldo dummy (misal saat jaminan deposit dikembalikan/refund)
+  void tambahSaldoDummy(double nominal) {
+    if (_currentUser != null) {
+      final current = _currentUser!.saldoDummy;
+      final updated = current + nominal;
+      _currentUser = _currentUser!.copyWith(saldoDummy: updated);
+      notifyListeners();
+    }
+  }
 }

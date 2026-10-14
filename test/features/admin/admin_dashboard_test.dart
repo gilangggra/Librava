@@ -9,8 +9,11 @@ import 'package:librava/features/admin/domain/models/admin_dashboard_model.dart'
 import 'package:librava/features/admin/domain/models/admin_user_model.dart';
 import 'package:librava/features/admin/presentation/providers/admin_provider.dart';
 import 'package:librava/features/admin/presentation/screens/admin_dashboard_page.dart';
+import 'package:librava/features/admin/presentation/screens/admin_events_page.dart';
 import 'package:librava/features/admin/presentation/screens/admin_users_page.dart';
+import 'package:librava/features/admin/presentation/widgets/admin_bottom_nav.dart';
 import 'package:librava/features/auth/presentation/providers/auth_provider.dart';
+import 'package:librava/features/events/presentation/providers/event_provider.dart';
 import 'package:provider/provider.dart';
 
 MockClient buatBackendAdminPalsu() {
@@ -159,6 +162,7 @@ void main() {
           providers: [
             ChangeNotifierProvider(create: (_) => AuthProvider()),
             ChangeNotifierProvider(create: (_) => AdminProvider()),
+            ChangeNotifierProvider(create: (_) => EventProvider()),
           ],
           child: const MaterialApp(
             home: AdminDashboardPage(),
@@ -174,6 +178,8 @@ void main() {
       expect(find.text('Total requests'), findsOneWidget);
       expect(find.text('Total transactions'), findsOneWidget);
       expect(find.text('Recent activity'), findsOneWidget);
+      expect(find.text('Event'), findsOneWidget);
+      expect(find.text('Tambah'), findsOneWidget);
       expect(find.text('Recent transactions'), findsOneWidget);
       expect(find.text('The Unknown'), findsAtLeastNWidgets(1));
       expect(find.text('Fruit Fly'), findsAtLeastNWidgets(1));
@@ -222,6 +228,36 @@ void main() {
       await tester.tap(find.byIcon(CupertinoIcons.chevron_left));
       await tester.pumpAndSettle();
       expect(find.text('User data'), findsOneWidget);
+    });
+  });
+
+  group('AdminEventsPage Widget Tests', () {
+    testWidgets('renders Event data header, search box, event cards, and bottom nav', (tester) async {
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => AuthProvider()),
+            ChangeNotifierProvider(create: (_) => AdminProvider()),
+            ChangeNotifierProvider(create: (_) => EventProvider()),
+          ],
+          child: const MaterialApp(
+            home: AdminEventsPage(),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Event data'), findsOneWidget);
+      expect(find.text('Search'), findsOneWidget);
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.text('Book Exchange Day'), findsWidgets);
+      expect(find.byType(AdminBottomNav), findsOneWidget);
+
+      // Search filter test
+      await tester.enterText(find.byType(TextField), 'Exchange');
+      await tester.pumpAndSettle();
+      expect(find.text('Book Exchange Day'), findsWidgets);
     });
   });
 }

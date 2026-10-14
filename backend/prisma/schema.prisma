@@ -73,6 +73,7 @@ model Event {
   tanggalSelesai  DateTime? @map("tanggal_selesai")
   kuota           Int      @default(100)
   fotoEvent       String?  @map("foto_event") @db.Text
+  status          String   @default("APPROVED") @db.VarChar(50)
   createdById     Int      @map("created_by_id")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
@@ -83,6 +84,7 @@ model Event {
   @@index([tanggalMulai])
   @@index([kategori])
   @@index([createdById])
+  @@index([status])
 }
 
 model EventRegistration {

@@ -37,6 +37,35 @@ class AdminRequestDetailPage extends StatelessWidget {
   }
 
   Widget _buildCoverBuku() {
+    final foto = (request.bookFoto ?? '').trim();
+    if (foto.startsWith('http://') || foto.startsWith('https://')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          foto,
+          width: 100,
+          height: 120,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _buildFallbackCover(),
+        ),
+      );
+    }
+    if (foto.isNotEmpty && foto.startsWith('assets/')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.asset(
+          foto,
+          width: 100,
+          height: 120,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _buildFallbackCover(),
+        ),
+      );
+    }
+    return _buildFallbackCover();
+  }
+
+  Widget _buildFallbackCover() {
     return Container(
       width: 100,
       height: 120,

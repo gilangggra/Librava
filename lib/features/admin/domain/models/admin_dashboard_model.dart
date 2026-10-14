@@ -85,10 +85,11 @@ class AdminDashboardModel {
     final txData = json['transactions'] as Map<String, dynamic>?;
     final rawRecentTx = json['recent_transactions'] as List<dynamic>? ?? [];
 
-    final studentsCount = (usersData?['mahasiswa'] as num?)?.toInt() ?? 320;
-    final booksCount = (booksData?['total'] as num?)?.toInt() ?? 1245;
-    final requestsCount = (txData?['menunggu_konfirmasi'] as num?)?.toInt() ?? 86;
-    final txCount = (txData?['total'] as num?)?.toInt() ?? 62;
+    final hasRealData = usersData != null || booksData != null || txData != null;
+    final studentsCount = (usersData?['mahasiswa'] as num?)?.toInt() ?? (usersData?['total'] as num?)?.toInt() ?? (hasRealData ? 0 : 320);
+    final booksCount = (booksData?['total'] as num?)?.toInt() ?? (hasRealData ? 0 : 1245);
+    final requestsCount = (txData?['menunggu_konfirmasi'] as num?)?.toInt() ?? (hasRealData ? 0 : 86);
+    final txCount = (txData?['total'] as num?)?.toInt() ?? (hasRealData ? 0 : 62);
 
     final List<AdminActivityItem> activities = [];
     final List<AdminTransactionItem> transactions = [];
@@ -115,19 +116,26 @@ class AdminDashboardModel {
           txStatus = 'Completed';
         }
 
-        String cover = 'assets/images/book_the_unknown.jpg';
-        final lowTitle = bookTitle.toLowerCase();
-        if (lowTitle.contains('fruit')) {
-          cover = 'assets/images/book_fruit_fly.jpg';
-        } else if (lowTitle.contains('adversary') || lowTitle.contains('filosofi')) {
-          cover = 'assets/images/book_adversary.jpg';
-        } else if (lowTitle.contains('atomic')) {
-          cover = 'assets/images/book_atomic_habits.jpg';
-        } else if (lowTitle.contains('midnight')) {
-          cover = 'assets/images/book_midnight_lib.jpg';
+        String cover = (item['book_foto']?.toString() ?? '').trim();
+        if (cover.isEmpty) {
+          final lowTitle = bookTitle.toLowerCase();
+          if (lowTitle.contains('fruit')) {
+            cover = 'assets/images/book_fruit_fly.jpg';
+          } else if (lowTitle.contains('adversary') || lowTitle.contains('filosofi')) {
+            cover = 'assets/images/book_adversary.jpg';
+          } else if (lowTitle.contains('atomic')) {
+            cover = 'assets/images/book_atomic_habits.jpg';
+          } else if (lowTitle.contains('midnight')) {
+            cover = 'assets/images/book_midnight_lib.jpg';
+          } else {
+            cover = 'assets/images/book_the_unknown.jpg';
+          }
         }
 
-        final author = lowTitle.contains('fruit') ? 'Kaiju Shirai' : 'Riley Sager';
+        final rawAuthor = (item['book_penulis']?.toString() ?? '').trim();
+        final author = rawAuthor.isNotEmpty
+            ? rawAuthor
+            : (bookTitle.toLowerCase().contains('fruit') ? 'Kaiju Shirai' : 'Riley Sager');
 
         activities.add(AdminActivityItem(
           id: item['id']?.toString() ?? '',
@@ -198,10 +206,10 @@ class AdminDashboardModel {
           ];
 
     return AdminDashboardModel(
-      totalStudents: studentsCount > 0 ? studentsCount : 320,
-      totalBooks: booksCount > 0 ? booksCount : 1245,
-      totalRequests: requestsCount > 0 ? requestsCount : 86,
-      totalTransactions: txCount > 0 ? txCount : 62,
+      totalStudents: hasRealData ? studentsCount : 320,
+      totalBooks: hasRealData ? booksCount : 1245,
+      totalRequests: hasRealData ? requestsCount : 86,
+      totalTransactions: hasRealData ? txCount : 62,
       recentActivity: finalActivities,
       recentTransactions: finalTransactions,
     );

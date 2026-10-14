@@ -143,5 +143,72 @@ void main() {
       expect(authProvider.token, 'jwt_provider_token');
       expect(authProvider.currentUser?.nama, 'Provider User');
     });
+
+    test('loginWithGoogle berhasil mengembalikan AuthResponse saat respons 200', () async {
+      final mockClient = MockClient((request) async {
+        expect(request.url.path, contains('/auth/google'));
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['id_token'], 'valid_google_token');
+
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'message': 'Login Google berhasil.',
+            'data': {
+              'user': {
+                'id': 67,
+                'email': 'gilang.google@telkomuniversity.ac.id',
+                'nama_lengkap': 'Gilang Ramadan (Google)',
+                'role': 'mahasiswa',
+                'saldo_dummy': 100000,
+              },
+              'token': 'google_jwt_token_xyz',
+            }
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final service = AuthApiService(client: mockClient);
+      final response = await service.loginWithGoogle(idToken: 'valid_google_token');
+
+      expect(response.token, 'google_jwt_token_xyz');
+      expect(response.user.email, 'gilang.google@telkomuniversity.ac.id');
+      expect(response.user.nama, 'Gilang Ramadan (Google)');
+    });
+
+    test('AuthProvider berhasil masukDenganGoogle', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'message': 'Login Google berhasil.',
+            'data': {
+              'user': {
+                'id': 67,
+                'email': 'gilang.google@telkomuniversity.ac.id',
+                'nama_lengkap': 'Gilang Ramadan (Google)',
+                'role': 'mahasiswa',
+                'saldo_dummy': 100000,
+              },
+              'token': 'google_jwt_token_xyz',
+            }
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+
+      final apiService = AuthApiService(client: mockClient);
+      final authProvider = AuthProvider(apiService: apiService);
+
+      final success = await authProvider.masukDenganGoogle(idToken: 'demo_google_token');
+
+      expect(success, true);
+      expect(authProvider.isLoggedIn, true);
+      expect(authProvider.token, 'google_jwt_token_xyz');
+      expect(authProvider.currentUser?.nama, 'Gilang Ramadan (Google)');
+    });
   });
 }

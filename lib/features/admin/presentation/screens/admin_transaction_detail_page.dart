@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../chat/presentation/screens/chat_room_page.dart';
 import '../../domain/models/admin_transaction_model.dart';
 import '../widgets/admin_bottom_nav.dart';
 
@@ -22,6 +23,35 @@ class AdminTransactionDetailPage extends StatelessWidget {
   }
 
   Widget _buildCoverBuku() {
+    final foto = (transaksi.bookFoto ?? '').trim();
+    if (foto.startsWith('http://') || foto.startsWith('https://')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(
+          foto,
+          width: 80,
+          height: 100,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _buildFallbackCover(),
+        ),
+      );
+    }
+    if (foto.isNotEmpty && foto.startsWith('assets/')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.asset(
+          foto,
+          width: 80,
+          height: 100,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => _buildFallbackCover(),
+        ),
+      );
+    }
+    return _buildFallbackCover();
+  }
+
+  Widget _buildFallbackCover() {
     return Container(
       width: 80,
       height: 100,
@@ -382,6 +412,39 @@ class AdminTransactionDetailPage extends StatelessWidget {
               _buildKartuInfo(),
               const SizedBox(height: 14),
               _buildKartuTimeline(),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(CupertinoIcons.ellipses_bubble_fill, size: 20),
+                  label: const Text(
+                    'Lihat Obrolan Transaksi',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatRoomPage(
+                          userName: '${transaksi.requesterNama} & ${transaksi.ownerNama}',
+                          transactionId: transaksi.id,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ],
           ),
         ),

@@ -95,6 +95,30 @@ class EventApiService {
     );
   }
 
+  /// Mengambil daftar event yang telah didaftarkan oleh mahasiswa
+  Future<List<EventModel>> getMyEvents({required String token}) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.myEvents}');
+
+    final response = await _client
+        .get(uri, headers: ApiConstants.headers(token))
+        .timeout(const Duration(seconds: 10));
+
+    final Map<String, dynamic> body = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300 &&
+        body['success'] == true) {
+      final List<dynamic> data = body['data'] as List<dynamic>? ?? [];
+      return data
+          .map((item) => EventModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
+    throw Exception(
+      body['message'] ?? 'Gagal mengambil event saya (${response.statusCode})',
+    );
+  }
+
   /// Menambahkan event baru ke backend database
   Future<EventModel> createEvent({
     required String token,
@@ -176,6 +200,59 @@ class EventApiService {
 
     throw Exception(
       body['message'] ?? 'Gagal mengunggah banner event (${response.statusCode})',
+    );
+  }
+
+  /// Menghapus event oleh admin
+  Future<bool> deleteEvent({
+    required String token,
+    required int eventId,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.events}/$eventId');
+
+    final response = await _client
+        .delete(uri, headers: ApiConstants.headers(token))
+        .timeout(const Duration(seconds: 10));
+
+    final Map<String, dynamic> body = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300 &&
+        body['success'] == true) {
+      return true;
+    }
+
+    throw Exception(
+      body['message'] ?? 'Gagal menghapus event (${response.statusCode})',
+    );
+  }
+
+  /// Memperbarui status event di database backend (APPROVED / REJECTED / PENDING)
+  Future<EventModel> updateEventStatus({
+    required String token,
+    required int eventId,
+    required String status,
+  }) async {
+    final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.events}/$eventId/status');
+
+    final response = await _client
+        .patch(
+          uri,
+          headers: ApiConstants.headers(token),
+          body: jsonEncode({'status': status}),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    final Map<String, dynamic> body = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 &&
+        response.statusCode < 300 &&
+        body['success'] == true) {
+      return EventModel.fromJson(body['data'] as Map<String, dynamic>);
+    }
+
+    throw Exception(
+      body['message'] ?? 'Gagal memperbarui status event (${response.statusCode})',
     );
   }
 }

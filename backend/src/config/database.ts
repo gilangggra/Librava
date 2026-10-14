@@ -149,6 +149,25 @@ export const initDb = async (): Promise<void> => {
         komentar TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS "Event" (
+        id SERIAL PRIMARY KEY,
+        judul VARCHAR(255) NOT NULL,
+        deskripsi TEXT NOT NULL,
+        kategori VARCHAR(100),
+        lokasi VARCHAR(255) NOT NULL,
+        tanggal_mulai TIMESTAMP NOT NULL,
+        tanggal_selesai TIMESTAMP,
+        kuota INT DEFAULT 100,
+        foto_event TEXT,
+        status VARCHAR(50) DEFAULT 'APPROVED',
+        created_by_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'APPROVED';
+    CREATE INDEX IF NOT EXISTS "Event_status_idx" ON "Event"(status);
   `;
 
   try {
