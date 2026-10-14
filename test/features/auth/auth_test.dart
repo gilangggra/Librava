@@ -241,5 +241,20 @@ void main() {
       expect(suksesReset, true);
       expect(provider.isLoading, false);
     });
+
+    test('potongSaldoDummy dan tambahSaldoDummy memanipulasi saldo pengguna dengan tepat', () async {
+      await provider.masuk(
+        email: 'gilang@telkomuniversity.ac.id',
+        password: 'password123',
+      );
+
+      expect(provider.currentUser?.saldoDummy, 100000.0);
+
+      provider.potongSaldoDummy(20000.0);
+      expect(provider.currentUser?.saldoDummy, 80000.0);
+
+      provider.tambahSaldoDummy(20000.0);
+      expect(provider.currentUser?.saldoDummy, 100000.0);
+    });
   });
 }

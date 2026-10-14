@@ -10,6 +10,7 @@ export interface EventDTO {
   tanggal_selesai?: Date | null;
   kuota?: number;
   foto_event?: string | null;
+  status?: string | null;
 }
 
 const mapEvent = (event: any) => ({
@@ -22,6 +23,7 @@ const mapEvent = (event: any) => ({
   tanggal_selesai: event.tanggalSelesai,
   kuota: event.kuota,
   foto_event: event.fotoEvent,
+  status: event.status ?? 'APPROVED',
   created_by_id: event.createdById,
   created_at: event.createdAt,
   updated_at: event.updatedAt,
@@ -35,7 +37,7 @@ const notFound = () => {
 };
 
 export class EventService {
-  static async list(params: { search?: string; kategori?: string; mulai_dari?: Date; sampai_dengan?: Date }) {
+  static async list(params: { search?: string; kategori?: string; status?: string; mulai_dari?: Date; sampai_dengan?: Date }) {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -57,6 +59,7 @@ export class EventService {
       ] }];
     }
     if (params.kategori) where.kategori = { equals: params.kategori, mode: 'insensitive' };
+    if (params.status) where.status = { equals: params.status, mode: 'insensitive' };
     if (params.mulai_dari || params.sampai_dengan) {
       where.tanggalMulai = {};
       if (params.mulai_dari) where.tanggalMulai.gte = params.mulai_dari;
@@ -92,6 +95,7 @@ export class EventService {
         tanggalSelesai: dto.tanggal_selesai || null,
         kuota: dto.kuota ?? 100,
         fotoEvent: dto.foto_event || null,
+        status: dto.status || 'APPROVED',
       },
     });
     return mapEvent(event);
@@ -108,8 +112,19 @@ export class EventService {
     if (dto.tanggal_selesai !== undefined) data.tanggalSelesai = dto.tanggal_selesai;
     if (dto.kuota !== undefined) data.kuota = dto.kuota;
     if (dto.foto_event !== undefined) data.fotoEvent = dto.foto_event;
+    if (dto.status !== undefined && dto.status !== null) data.status = dto.status;
 
     const event = await prisma.event.update({ where: { id }, data });
+    return mapEvent(event);
+  }
+
+  static async updateStatus(id: number, status: string) {
+    await this.getById(id);
+    const event = await prisma.event.update({
+      where: { id },
+      data: { status },
+      include: { _count: { select: { registrations: true } } },
+    });
     return mapEvent(event);
   }
 
@@ -149,5 +164,14 @@ export class EventService {
       }
       throw error;
     }
+  }
+
+  static async getMyRegistrations(userId: number) {
+    const regs = await prisma.eventRegistration.findMany({
+      where: { userId },
+      include: { event: true },
+      orderBy: { registeredAt: 'desc' },
+    });
+    return regs.map((r) => mapEvent(r.event));
   }
 }

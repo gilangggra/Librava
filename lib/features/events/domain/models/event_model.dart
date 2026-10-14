@@ -10,6 +10,7 @@ class EventModel {
   final String? fotoEvent;
   final int createdById;
   final int jumlahPendaftar;
+  final String? status;
 
   const EventModel({
     required this.id,
@@ -23,7 +24,20 @@ class EventModel {
     this.fotoEvent,
     this.createdById = 1,
     this.jumlahPendaftar = 0,
+    this.status,
   });
+
+  /// Mengambil status event untuk badge tampilan: Approved, Pending, Rejected
+  String get displayStatus {
+    if (status != null && status!.trim().isNotEmpty) {
+      final s = status!.toUpperCase();
+      if (s.contains('REJECT')) return 'Rejected';
+      if (s.contains('PEND')) return 'Pending';
+      if (s.contains('APPR')) return 'Approved';
+      return status!;
+    }
+    return 'Approved';
+  }
 
   /// Menghitung sisa kuota yang masih tersedia
   int get sisaKuota => (kuota - jumlahPendaftar).clamp(0, kuota);
@@ -61,6 +75,7 @@ class EventModel {
       jumlahPendaftar: json['jumlah_pendaftar'] is int
           ? json['jumlah_pendaftar']
           : int.tryParse(json['jumlah_pendaftar']?.toString() ?? '0') ?? 0,
+      status: json['status'] as String?,
     );
   }
 
@@ -78,6 +93,7 @@ class EventModel {
       'foto_event': fotoEvent,
       'created_by_id': createdById,
       'jumlah_pendaftar': jumlahPendaftar,
+      'status': status,
     };
   }
 
@@ -93,6 +109,7 @@ class EventModel {
     String? fotoEvent,
     int? createdById,
     int? jumlahPendaftar,
+    String? status,
   }) {
     return EventModel(
       id: id ?? this.id,
@@ -106,6 +123,7 @@ class EventModel {
       fotoEvent: fotoEvent ?? this.fotoEvent,
       createdById: createdById ?? this.createdById,
       jumlahPendaftar: jumlahPendaftar ?? this.jumlahPendaftar,
+      status: status ?? this.status,
     );
   }
 }

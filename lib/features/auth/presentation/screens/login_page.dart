@@ -8,6 +8,7 @@ import '../../../home/presentation/screens/home_page.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/custom_text_field.dart';
+import '../widgets/google_sign_in_modal.dart';
 import 'forgot_password_page.dart';
 import 'register_page.dart';
 
@@ -103,199 +104,9 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  /// Menampilkan dialog / modal untuk masuk menggunakan Google OAuth2 ID Token
+  /// Menampilkan modal konfirmasi akun Google (Google Account Chooser / One Tap)
   void _loginWithGoogleDialog(BuildContext context) {
-    final tokenController = TextEditingController();
-    bool isSubmitting = false;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (modalCtx, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 24,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Image.asset(
-                            'assets/images/google_logo.png',
-                            width: 28,
-                            height: 28,
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Login Google',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF130F26),
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        icon: const Icon(Icons.close_rounded),
-                        color: const Color(0xFF8A88A5),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Integrasi Google OAuth2 Sign-In Librava untuk mahasiswa.',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF7E7A92),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'Google ID Token',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF130F26),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: tokenController,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      hintText: 'Tempelkan token ID Google di sini...',
-                      hintStyle: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF9CA3AF),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFFF8F7FF),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFE4E1FB)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: Color(0xFFE4E1FB)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      onPressed: isSubmitting
-                          ? null
-                          : () async {
-                              final tokenInput = tokenController.text.trim();
-                              if (tokenInput.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content:
-                                        Text('ID Token tidak boleh kosong.'),
-                                    backgroundColor: Color(0xFFDC2626),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                                return;
-                              }
-
-                              setModalState(() {
-                                isSubmitting = true;
-                              });
-
-                              final authProvider =
-                                  context.read<AuthProvider>();
-                              final messenger = ScaffoldMessenger.of(context);
-                              final navigator = Navigator.of(context);
-
-                              final berhasil =
-                                  await authProvider.masukDenganGoogle(
-                                idToken: tokenInput,
-                              );
-
-                              if (!ctx.mounted) return;
-
-                              if (berhasil) {
-                                Navigator.pop(ctx);
-                                final nama =
-                                    authProvider.currentUser?.nama ?? 'Pengguna';
-                                messenger.showSnackBar(
-                                  SnackBar(
-                                    content: Text('Selamat datang, $nama!'),
-                                    backgroundColor: const Color(0xFF16A34A),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                                navigator.pushReplacement(
-                                  MaterialPageRoute(
-                                    builder: (context) => const HomePage(),
-                                  ),
-                                );
-                              } else {
-                                setModalState(() {
-                                  isSubmitting = false;
-                                });
-                                final pesan = authProvider.errorMessage ??
-                                    'Login Google gagal diverifikasi.';
-                                messenger.showSnackBar(
-                                  SnackBar(
-                                    content: Text(pesan),
-                                    backgroundColor: const Color(0xFFDC2626),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            },
-                      child: isSubmitting
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Verifikasi & Masuk',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
+    showGoogleSignInConfirmationModal(context);
   }
 
   @override
@@ -505,45 +316,51 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          InkWell(
-                            borderRadius: BorderRadius.circular(24),
-                            onTap: () => _loginWithGoogleDialog(context),
-                            child: Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: Image.asset(
-                                'assets/images/google_logo.png',
-                                width: 36,
-                                height: 36,
-                              ),
+                      Center(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(24),
+                          onTap: () => _loginWithGoogleDialog(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 10,
                             ),
-                          ),
-                          const SizedBox(width: 28),
-                          InkWell(
-                            borderRadius: BorderRadius.circular(24),
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'Fitur login GitHub akan tersedia di pembaruan rilis berikutnya.'),
-                                  backgroundColor: AppColors.primary,
-                                  behavior: SnackBarBehavior.floating,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFFE2E0EC),
+                                width: 1.2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
                                 ),
-                              );
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: Image.asset(
-                                'assets/images/github_logo.png',
-                                width: 36,
-                                height: 36,
-                              ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset(
+                                  'assets/images/google_logo.png',
+                                  width: 26,
+                                  height: 26,
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Google',
+                                  style: TextStyle(
+                                    color: Color(0xFF1E1A34),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 16),
                     ],

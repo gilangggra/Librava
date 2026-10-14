@@ -3,10 +3,12 @@ import '../../../../core/constants/app_colors.dart';
 
 class DepositPage extends StatelessWidget {
   final VoidCallback? onPaymentSuccess;
+  final String? depositAmount;
 
   const DepositPage({
     super.key,
     this.onPaymentSuccess,
+    this.depositAmount,
   });
 
   @override
@@ -20,6 +22,7 @@ class DepositPage extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
               child: DepositModalContent(
+                depositAmount: depositAmount,
                 onClose: () => Navigator.pop(context),
                 onPaymentConfirmed: () {
                   onPaymentSuccess?.call();
@@ -37,11 +40,13 @@ class DepositPage extends StatelessWidget {
 class DepositModalContent extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback onPaymentConfirmed;
+  final String? depositAmount;
 
   const DepositModalContent({
     super.key,
     required this.onClose,
     required this.onPaymentConfirmed,
+    this.depositAmount,
   });
 
   @override
@@ -136,8 +141,8 @@ class DepositModalContent extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
+                children: [
+                  const Text(
                     'Deposit amount',
                     style: TextStyle(
                       fontSize: 13,
@@ -145,10 +150,10 @@ class DepositModalContent extends StatelessWidget {
                       color: Color(0xFF757489),
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
-                    'RP 50.000',
-                    style: TextStyle(
+                    depositAmount ?? 'RP 20.000',
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF130F26),

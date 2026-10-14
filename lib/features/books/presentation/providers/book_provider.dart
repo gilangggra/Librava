@@ -12,6 +12,7 @@ class BookProvider extends ChangeNotifier {
 
   List<BookModel> _books = [];
   List<BookModel> _myBooks = [];
+  final List<BookModel> _bookmarkedBooks = [];
   String _searchQuery = '';
   String _selectedKategori = 'Semua';
   bool _onlyAvailable = false;
@@ -39,6 +40,20 @@ class BookProvider extends ChangeNotifier {
   List<BookModel> get koleksiSaya => List.unmodifiable(
         _myBooks.isNotEmpty ? _myBooks : _books.take(3).toList(),
       );
+  List<BookModel> get bookmarkedBooks => List.unmodifiable(_bookmarkedBooks);
+
+  bool isBookmarked(String bookId) =>
+      _bookmarkedBooks.any((b) => b.id == bookId);
+
+  void toggleBookmark(BookModel book) {
+    final idx = _bookmarkedBooks.indexWhere((b) => b.id == book.id);
+    if (idx != -1) {
+      _bookmarkedBooks.removeAt(idx);
+    } else {
+      _bookmarkedBooks.insert(0, book);
+    }
+    notifyListeners();
+  }
   String get searchQuery => _searchQuery;
   String get selectedKategori => _selectedKategori;
   bool get onlyAvailable => _onlyAvailable;

@@ -15,6 +15,7 @@ export class AdminService {
       completedTx,
       depositAggregate,
       recentTxs,
+      totalEvents,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { role: 'mahasiswa' } }),
@@ -48,6 +49,7 @@ export class AdminService {
           book: true,
         },
       }),
+      prisma.event.count(),
     ]);
 
     const formattedRecentTx = recentTxs.map((t) => ({
@@ -64,6 +66,8 @@ export class AdminService {
       requester_nama: t.requester.namaLengkap,
       owner_nama: t.owner.namaLengkap,
       book_judul: t.book.judul,
+      book_penulis: t.book.penulis,
+      book_foto: t.book.fotoBuku,
     }));
 
     return {
@@ -83,6 +87,9 @@ export class AdminService {
         dalam_proses: activeTx,
         selesai: completedTx,
         total_deposit_dummy: Number(depositAggregate._sum.depositDummy || 0),
+      },
+      events: {
+        total: totalEvents,
       },
       recent_transactions: formattedRecentTx,
     };
@@ -166,6 +173,8 @@ export class AdminService {
       owner_nama: t.owner.namaLengkap,
       owner_email: t.owner.email,
       book_judul: t.book.judul,
+      book_penulis: t.book.penulis,
+      book_foto: t.book.fotoBuku,
     }));
   }
 }

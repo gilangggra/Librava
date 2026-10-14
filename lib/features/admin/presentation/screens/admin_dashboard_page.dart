@@ -9,11 +9,16 @@ import '../../domain/models/admin_transaction_model.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_bottom_nav.dart';
 import 'admin_books_page.dart';
+import 'admin_events_page.dart';
 import 'admin_request_detail_page.dart';
 import 'admin_requests_page.dart';
 import 'admin_transaction_detail_page.dart';
 import 'admin_transactions_page.dart';
 import 'admin_users_page.dart';
+import '../../../events/domain/models/event_model.dart';
+import '../../../events/presentation/providers/event_provider.dart';
+import '../../../events/presentation/screens/add_event_page.dart';
+import '../../../events/presentation/screens/event_detail_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -34,6 +39,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           admin.fetchDashboard(auth.token!);
           admin.fetchTransaksi(auth.token!);
         }
+        context.read<EventProvider>().fetchEvents();
       } catch (_) {}
     });
   }
@@ -502,6 +508,201 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
+  Widget _buildEventImage(String? fotoPath) {
+    if (fotoPath == null || fotoPath.isEmpty) {
+      return Image.asset(
+        'assets/images/event_library.jpg',
+        width: 54,
+        height: 76,
+        fit: BoxFit.cover,
+      );
+    }
+    if (fotoPath.startsWith('http://') || fotoPath.startsWith('https://')) {
+      return Image.network(
+        fotoPath,
+        width: 54,
+        height: 76,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Container(
+          width: 54,
+          height: 76,
+          color: const Color(0xFFEDEAFE),
+          child: const Icon(
+            Icons.event_rounded,
+            color: AppColors.primary,
+            size: 24,
+          ),
+        ),
+      );
+    }
+    return Image.asset(
+      fotoPath,
+      width: 54,
+      height: 76,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => Container(
+        width: 54,
+        height: 76,
+        color: const Color(0xFFEDEAFE),
+        child: const Icon(
+          Icons.event_rounded,
+          color: AppColors.primary,
+          size: 24,
+        ),
+      ),
+    );
+  }
+
+  String _formatEventDate(DateTime dt) {
+    const hari = [
+      '',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ];
+    const bulan = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    final dayName = hari[dt.weekday];
+    final monthName = bulan[dt.month];
+    return '$dayName, ${dt.day} $monthName ${dt.year}';
+  }
+
+  Widget _buildEventItem({
+    required EventModel event,
+    VoidCallback? onTap,
+  }) {
+    final String formattedDate = _formatEventDate(event.tanggalMulai);
+    final bool isUpcoming = event.tanggalMulai.isAfter(DateTime.now());
+    final String status = isUpcoming ? 'Approved' : 'Pending';
+    final bool isApproved = status == 'Approved';
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: _buildEventImage(event.fotoEvent),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event.judul,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        CupertinoIcons.calendar,
+                        size: 13,
+                        color: Color(0xFF7E7A92),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          formattedDate,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF7E7A92),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      const Icon(
+                        CupertinoIcons.location_solid,
+                        size: 13,
+                        color: Color(0xFF7E7A92),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          event.lokasi,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: Color(0xFF7E7A92),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isApproved ? const Color(0xFFD1FADF) : const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                      color: isApproved ? const Color(0xFF12B76A) : const Color(0xFFD97706),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Icon(
+                  CupertinoIcons.chevron_right,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+
   void _bukaDetailActivity(AdminActivityItem item) {
     final adminProvider = context.read<AdminProvider>();
     AdminTransactionModel model;
@@ -777,6 +978,180 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                           ),
                       ],
                     ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Section Event Sesuai Mockup UI Admin Dashboard
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Event',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF130F26),
+                      ),
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const AddEventPage()),
+                            );
+                            if (context.mounted) {
+                              context.read<EventProvider>().fetchEvents(forceRefresh: true);
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEDEAFE),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(Icons.add_rounded, size: 15, color: AppColors.primary),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Tambah',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        InkWell(
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const AdminEventsPage()),
+                            );
+                            if (context.mounted) {
+                              context.read<EventProvider>().fetchEvents(forceRefresh: true);
+                            }
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4.0),
+                            child: Text(
+                              'View all',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF1E1A34).withValues(alpha: 0.04),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Builder(
+                    builder: (ctx) {
+                      final eventProvider = ctx.watch<EventProvider>();
+                      final events = eventProvider.events;
+
+                      if (eventProvider.isLoading && events.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24.0),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        );
+                      }
+
+                      if (events.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                const Text(
+                                  'Belum ada event kampus.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF7E7A92),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                TextButton.icon(
+                                  onPressed: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const AddEventPage()),
+                                    );
+                                    if (context.mounted) {
+                                      context.read<EventProvider>().fetchEvents(forceRefresh: true);
+                                    }
+                                  },
+                                  icon: const Icon(Icons.add, size: 16),
+                                  label: const Text('Buat Event Baru'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      final displayedEvents = events.take(2).toList();
+                      return Column(
+                        children: [
+                          for (int i = 0; i < displayedEvents.length; i++) ...[
+                            _buildEventItem(
+                              event: displayedEvents[i],
+                              onTap: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => EventDetailPage(
+                                      event: displayedEvents[i],
+                                      isAdmin: true,
+                                    ),
+                                  ),
+                                );
+                                if (context.mounted) {
+                                  context.read<EventProvider>().fetchEvents(forceRefresh: true);
+                                }
+                              },
+                            ),
+                            if (i < displayedEvents.length - 1)
+                              const Divider(
+                                color: Color(0xFFF0EEF8),
+                                height: 20,
+                                thickness: 1,
+                              ),
+                          ],
+                        ],
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 24),

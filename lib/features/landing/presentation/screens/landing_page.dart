@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/screens/login_page.dart';
 import '../../../auth/presentation/screens/register_page.dart';
+import '../../../auth/presentation/widgets/google_sign_in_modal.dart';
 
 class LandingPage extends StatelessWidget {
   const LandingPage({super.key});
+
+  void _loginWithGoogle(BuildContext context) {
+    showGoogleSignInConfirmationModal(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -160,36 +165,48 @@ class LandingPage extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 28),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            InkWell(
-                              borderRadius: BorderRadius.circular(24),
-                              onTap: () {},
-                              child: Padding(
-                                padding: const EdgeInsets.all(4.0),
-                                child: Image.asset(
-                                  'assets/images/google_logo.png',
-                                  width: 36,
-                                  height: 36,
-                                ),
+                        const SizedBox(height: 14),
+                        Center(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(24),
+                            onTap: () => _loginWithGoogle(context),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Image.asset(
+                                    'assets/images/google_logo.png',
+                                    width: 28,
+                                    height: 28,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Text(
+                                    'Continue with Google',
+                                    style: TextStyle(
+                                      color: Color(0xFF1E1A34),
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 28),
-                            InkWell(
-                              borderRadius: BorderRadius.circular(24),
-                              onTap: () {},
-                              child: Padding(
-                                padding: const EdgeInsets.all(4.0),
-                                child: Image.asset(
-                                  'assets/images/github_logo.png',
-                                  width: 36,
-                                  height: 36,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                         const SizedBox(height: 16),
                       ],
