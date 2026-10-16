@@ -22,14 +22,27 @@ class GoogleAuthService {
       }
     } catch (_) {}
 
-    final GoogleSignInAccount? account = await _googleSignIn.signIn();
-    if (account == null) {
-      // Pengguna membatalkan / menutup popup Google
-      return null;
-    }
+    try {
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      if (account == null) {
+        // Pengguna membatalkan / menutup popup Google
+        return null;
+      }
 
-    final GoogleSignInAuthentication auth = await account.authentication;
-    final token = auth.idToken ?? auth.accessToken;
-    return token;
+      final GoogleSignInAuthentication auth = await account.authentication;
+      final token = auth.idToken ?? auth.accessToken;
+      return token;
+    } catch (e) {
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('popup_closed') ||
+          errStr.contains('cancel') ||
+          errStr.contains('closed') ||
+          errStr.contains('abort') ||
+          errStr.contains('dismissed')) {
+        // Pengguna menutup / membatalkan jendela autentikasi Google tanpa login
+        return null;
+      }
+      rethrow;
+    }
   }
 }
