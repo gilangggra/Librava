@@ -36,10 +36,16 @@ export class BookRatingService {
   }
 
   static async upsert(bookId: number, userId: number, rating: number, komentar?: string | null) {
-    const book = await prisma.book.findUnique({ where: { id: bookId }, select: { id: true } });
+    const book = await prisma.book.findUnique({ where: { id: bookId }, select: { id: true, ownerId: true } });
     if (!book) {
       const error: any = new Error('Buku tidak ditemukan.');
       error.statusCode = 404;
+      throw error;
+    }
+
+    if (book.ownerId === userId) {
+      const error: any = new Error('Anda tidak dapat memberikan ulasan untuk buku milik sendiri.');
+      error.statusCode = 400;
       throw error;
     }
 

@@ -10,6 +10,7 @@ import '../../../profile/presentation/screens/profile_page.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../providers/transaction_provider.dart';
+import '../../domain/models/transaction_model.dart';
 import 'deposit_page.dart';
 import 'handover_modal.dart';
 import '../../../profile/presentation/screens/profile_view_page.dart';
@@ -31,25 +32,29 @@ class TransactionDetailPage extends StatefulWidget {
   final bool youConfirmed;
   final bool ownerConfirmed;
   final String? ownerId;
+  final DateTime? dueDate;
+  final bool? isOverdue;
 
   const TransactionDetailPage({
     super.key,
     this.transactionId,
     this.ownerId,
-    this.bookTitle = 'The Unknown',
-    this.bookAuthor = 'Riley Sager',
-    this.coverPath = 'assets/images/book_the_unknown.jpg',
+    this.bookTitle = 'Buku Kampus',
+    this.bookAuthor = 'Penulis',
+    this.coverPath = 'assets/images/bookshelf.jpg',
     this.type = 'Borrow',
-    this.requestedDate = 'Aug 21, 2026',
-    this.preferredPeriod = '2 weeks',
-    this.depositAmount = '50.000 Rupiah',
+    this.requestedDate = 'Hari ini',
+    this.preferredPeriod = '1 minggu',
+    this.depositAmount = '20.000 Rupiah',
     this.isDepositPaid = false,
-    this.handoverLocation = 'Set handover',
-    this.ownerName = 'Andi',
-    this.ownerUsername = '@andireads',
-    this.status = 'Waiting for owner’s response',
-    this.youConfirmed = true,
+    this.handoverLocation = 'Tentukan lokasi',
+    this.ownerName = 'Pemilik Buku',
+    this.ownerUsername = '@pemilik',
+    this.status = 'Menunggu Konfirmasi',
+    this.youConfirmed = false,
     this.ownerConfirmed = false,
+    this.dueDate,
+    this.isOverdue,
   });
 
   @override
@@ -58,6 +63,18 @@ class TransactionDetailPage extends StatefulWidget {
 
 class _TransactionDetailPageState extends State<TransactionDetailPage> {
   final int _selectedIndex = 2;
+
+  bool get _isOverdue {
+    if (widget.isOverdue == true) return true;
+    final s = _currentStatus.toLowerCase();
+    if (s == 'selesai' || s == 'ditolak' || s == 'dibatalkan' || s == 'pending' || s == 'menunggu konfirmasi') {
+      return false;
+    }
+    if (widget.dueDate != null) {
+      return DateTime.now().isAfter(widget.dueDate!);
+    }
+    return false;
+  }
   late bool _depositPaid;
   late String _currentHandoverLocation;
   late String _currentStatus;
@@ -118,32 +135,45 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 Navigator.pop(ctx);
                 setState(() {
                   _youConfirmed = true;
-                  if (_ownerConfirmed) {
-                    _currentStatus = 'selesai';
-                  } else {
-                    _currentStatus = 'sedang_dipinjam';
-                  }
                 });
 
                 if (widget.transactionId != null) {
                   try {
                     final auth = context.read<AuthProvider>();
                     if (auth.token != null) {
-                      await context
-                          .read<TransactionProvider>()
-                          .confirmHandoverApi(
-                            auth.token!,
-                            widget.transactionId!,
-                          );
+                      final trxProvider = context.read<TransactionProvider>();
+                      await trxProvider.confirmHandoverApi(
+                        auth.token!,
+                        widget.transactionId!,
+                      );
+                      await trxProvider.fetchTransaksiById(
+                        auth.token!,
+                        widget.transactionId!,
+                      );
                     }
                   } catch (_) {}
                 }
 
                 if (!mounted) return;
+                final txAfter = _getTrx(context);
+                final isOwner = _isCurrentUserOwner(context);
+                final partnerAlsoConfirmed = _ownerConfirmed ||
+                    (isOwner
+                        ? (txAfter?.requesterConfirmedAt != null)
+                        : (txAfter?.ownerConfirmedAt != null));
+
+                setState(() {
+                  if (partnerAlsoConfirmed ||
+                      txAfter?.status.toLowerCase() == 'selesai') {
+                    _currentStatus = 'selesai';
+                  }
+                });
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
-                      _ownerConfirmed
+                      partnerAlsoConfirmed ||
+                              txAfter?.status.toLowerCase() == 'selesai'
                           ? 'Serah terima selesai! Status transaksi kini Selesai.'
                           : 'Konfirmasi serah terima Anda berhasil dicatat.',
                     ),
@@ -194,8 +224,15 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 setState(() {
                   _depositPaid = true;
                 });
-                final auth = context.read<AuthProvider>();
-                final trxProvider = context.read<TransactionProvider>();
+                AuthProvider? auth;
+                try {
+                  auth = context.read<AuthProvider>();
+                } catch (_) {}
+                TransactionProvider? trxProvider;
+                try {
+                  trxProvider = context.read<TransactionProvider>();
+                } catch (_) {}
+
                 final messenger = ScaffoldMessenger.of(context);
                 final navigator = Navigator.of(ctx);
                 final depositNominal = double.tryParse(
@@ -203,41 +240,26 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     ) ??
                     20000.0;
 
-                // Memotong saldo dummy pengguna
-                auth.potongSaldoDummy(depositNominal);
+                // Memotong saldo dummy pengguna jika provider tersedia
+                auth?.potongSaldoDummy(depositNominal);
 
-                if (widget.transactionId != null) {
+                if (widget.transactionId != null && auth != null && auth.token != null && trxProvider != null) {
                   try {
-                    if (auth.token != null) {
-                      await trxProvider.updateStatusApi(
-                            auth.token!,
-                            widget.transactionId!,
-                            'DALAM_PROSES',
-                          );
-                      await auth.segarkanProfil();
-                    }
+                    await trxProvider.updateStatusApi(
+                          auth.token!,
+                          widget.transactionId!,
+                          'DALAM_PROSES',
+                        );
+                    await auth.segarkanProfil();
                   } catch (_) {}
                 }
                 navigator.pop();
                 if (!mounted) return;
-                final sisaSaldoFormatted =
-                    (auth.currentUser?.saldoDummy ?? 100000.0)
-                        .toInt()
-                        .toString()
-                        .replaceAllMapped(
-                          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                          (Match m) => '${m[1]}.',
-                        );
                 messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Pembayaran deposit Rp ${depositNominal.toInt()} berhasil diamankan! Sisa saldo dompet: Rp $sisaSaldoFormatted.',
-                    ),
-                    backgroundColor: const Color(0xFF2FD677),
+                  const SnackBar(
+                    content: Text('Payment successful! Deposit is now secured.'),
+                    backgroundColor: Color(0xFF2FD677),
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                   ),
                 );
               },
@@ -300,24 +322,77 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
+  TransactionModel? _getTrx(BuildContext context) {
+    if (widget.transactionId == null) return null;
+    try {
+      final trxProvider = context.read<TransactionProvider>();
+      return trxProvider.semuaTransaksi
+          .where((t) => t.id == widget.transactionId)
+          .firstOrNull;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _isCurrentUserOwner(BuildContext context) {
+    try {
+      final auth = context.read<AuthProvider>();
+      final currentUserName = auth.currentUser?.nama.toLowerCase() ?? '';
+      final currentUserId = auth.currentUser?.id;
+      final tx = _getTrx(context);
+
+      if (tx != null) {
+        if (currentUserId != null &&
+            tx.pemilikId.isNotEmpty &&
+            tx.pemilikId == currentUserId) {
+          return true;
+        }
+        if (currentUserName.isNotEmpty &&
+            tx.pemilikNama.toLowerCase() == currentUserName) {
+          return true;
+        }
+      }
+
+      if (currentUserName.isNotEmpty &&
+          widget.ownerName.toLowerCase() == currentUserName) {
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  String _getPartnerName(BuildContext context) {
+    final tx = _getTrx(context);
+    final isOwner = _isCurrentUserOwner(context);
+    if (isOwner) {
+      return (tx != null && tx.pemohonNama.isNotEmpty)
+          ? tx.pemohonNama
+          : 'Pemohon Buku';
+    }
+    return widget.ownerName.isNotEmpty
+        ? widget.ownerName
+        : (tx?.pemilikNama ?? 'Pemilik Buku');
+  }
+
+  String? _getPartnerId(BuildContext context) {
+    final tx = _getTrx(context);
+    final isOwner = _isCurrentUserOwner(context);
+    if (isOwner) {
+      return (tx != null && tx.pemohonId.isNotEmpty) ? tx.pemohonId : null;
+    }
+    return widget.ownerId ??
+        (tx != null && tx.pemilikId.isNotEmpty ? tx.pemilikId : null);
+  }
+
   void _bukaHalamanProfilPemilik() {
+    final partnerName = _getPartnerName(context);
+    final partnerId = _getPartnerId(context);
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ProfileViewPage(
-          userId: widget.ownerId ?? '1',
-          name: widget.ownerName,
-          role: 'User',
-          bio: 'A casual reader',
-          email: widget.ownerName.toLowerCase() == 'andi'
-              ? 'andi@example.com'
-              : (widget.ownerUsername.isNotEmpty
-                  ? '${widget.ownerUsername.replaceAll('@', '')}@example.com'
-                  : 'ujang@example.com'),
-          phone: '+62 8959982898',
-          booksRead: 12,
-          booksBorrowed: 3,
-          favorites: 5,
+          userId: partnerId,
+          name: partnerName,
           transactionId: widget.transactionId,
         ),
       ),
@@ -329,6 +404,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     required String depositAmount,
     required double updatedSaldo,
   }) {
+    final isOwner = _isCurrentUserOwner(context);
+    final partnerName = _getPartnerName(context);
     final formattedSaldo = updatedSaldo.toInt().toString().replaceAllMapped(
           RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (Match m) => '${m[1]}.',
@@ -389,10 +466,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Text(
-                    'Deposit Dikembalikan!',
+                  Text(
+                    isOwner
+                        ? 'Pengembalian Dikonfirmasi!'
+                        : 'Deposit Dikembalikan!',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF130F26),
@@ -400,7 +479,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Buku "${widget.bookTitle}" telah dikembalikan kepada ${widget.ownerName}. Jaminan peminjaman telah dikembalikan penuh ke saldo Anda.',
+                    isOwner
+                        ? 'Fisik buku "${widget.bookTitle}" telah diterima kembali dari $partnerName. Transaksi kini berstatus selesai.'
+                        : 'Buku "${widget.bookTitle}" telah dikembalikan kepada $partnerName. Jaminan peminjaman telah dikembalikan penuh ke saldo Anda.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 13,
@@ -424,16 +505,18 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Jumlah Dana Dicairkan',
-                              style: TextStyle(
+                            Text(
+                              isOwner
+                                  ? 'Status Transaksi'
+                                  : 'Jumlah Dana Dicairkan',
+                              style: const TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w500,
                                 color: Color(0xFF7E7A92),
                               ),
                             ),
                             Text(
-                              '+$depositAmount',
+                              isOwner ? 'Selesai' : '+$depositAmount',
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
@@ -452,16 +535,16 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Saldo Dompet Sekarang',
-                              style: TextStyle(
+                            Text(
+                              isOwner ? 'Peminjam' : 'Saldo Dompet Sekarang',
+                              style: const TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w500,
                                 color: Color(0xFF7E7A92),
                               ),
                             ),
                             Text(
-                              'Rp $formattedSaldo',
+                              isOwner ? partnerName : 'Rp $formattedSaldo',
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
@@ -492,7 +575,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         elevation: 0,
                       ),
                       child: Text(
-                        _hasReviewed ? 'Selesai' : 'Beri Ulasan Pemilik',
+                        _hasReviewed
+                            ? 'Selesai'
+                            : (isOwner
+                                ? 'Beri Ulasan Pemohon'
+                                : 'Beri Ulasan Pemilik'),
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -523,6 +610,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   Future<void> _konfirmasiPengembalianBuku() async {
+    final isOwner = _isCurrentUserOwner(context);
+    final partnerName = _getPartnerName(context);
+
     showDialog(
       context: context,
       builder: (ctx) {
@@ -530,16 +620,20 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text(
-            'Konfirmasi Pengembalian Buku',
-            style: TextStyle(
+          title: Text(
+            isOwner
+                ? 'Konfirmasi Buku Diterima'
+                : 'Konfirmasi Pengembalian Buku',
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: Color(0xFF130F26),
             ),
           ),
           content: Text(
-            'Apakah Anda sudah mengembalikan buku "${widget.bookTitle}" kepada ${widget.ownerName}?\n\nSetelah dikonfirmasi, transaksi akan selesai dan saldo jaminan deposit akan dikembalikan ke akun Anda.',
+            isOwner
+                ? 'Apakah Anda sudah menerima kembali fisik buku "${widget.bookTitle}" dari $partnerName dalam kondisi baik?\n\nSetelah dikonfirmasi, transaksi ini akan selesai.'
+                : 'Apakah Anda sudah mengembalikan buku "${widget.bookTitle}" kepada $partnerName?\n\nSetelah dikonfirmasi, transaksi akan selesai dan saldo jaminan deposit akan dicairkan kembali.',
             style: const TextStyle(
               fontSize: 14,
               color: Color(0xFF7E7A92),
@@ -572,8 +666,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   _isLoadingAction = true;
                 });
 
-                // Tambahkan kembali saldo jaminan ke dompet peminjam
-                auth.tambahSaldoDummy(depositNominal);
+                // Jika peminjam yang menyelesaikan, kembalikan saldo jaminan ke dompet peminjam
+                if (!isOwner) {
+                  auth.tambahSaldoDummy(depositNominal);
+                }
 
                 if (widget.transactionId != null && auth.token != null) {
                   try {
@@ -591,18 +687,22 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   _currentStatus = 'selesai';
                 });
 
-                final updatedSaldo =
-                    auth.currentUser?.saldoDummy ?? 100000.0;
-                _tampilkanDialogPengembalianDepositSukses(
-                  context: context,
-                  depositAmount: widget.depositAmount,
-                  updatedSaldo: updatedSaldo,
-                );
+                if (!isOwner) {
+                  final updatedSaldo =
+                      auth.currentUser?.saldoDummy ?? 100000.0;
+                  _tampilkanDialogPengembalianDepositSukses(
+                    context: context,
+                    depositAmount: widget.depositAmount,
+                    updatedSaldo: updatedSaldo,
+                  );
+                }
 
                 messenger.showSnackBar(
                   SnackBar(
-                    content: const Text(
-                      'Buku berhasil dikembalikan! Transaksi selesai dan saldo jaminan deposit telah dicairkan kembali.',
+                    content: Text(
+                      isOwner
+                          ? 'Konfirmasi penerimaan berhasil dicatat. Transaksi peminjaman kini selesai.'
+                          : 'Buku berhasil dikembalikan! Transaksi selesai dan saldo jaminan deposit telah dicairkan kembali.',
                     ),
                     backgroundColor: const Color(0xFF2FD677),
                     behavior: SnackBarBehavior.floating,
@@ -679,7 +779,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Bagikan pengalaman transaksi bersama ${widget.ownerName}',
+                    'Bagikan pengalaman transaksi bersama ${_getPartnerName(context)}',
                     style: const TextStyle(
                       fontSize: 13.5,
                       color: Color(0xFF7E7A92),
@@ -853,25 +953,49 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                Navigator.pop(ctx);
+
+                AuthProvider? auth;
+                try {
+                  auth = context.read<AuthProvider>();
+                } catch (_) {}
+
+                TransactionProvider? trxProvider;
+                try {
+                  trxProvider = context.read<TransactionProvider>();
+                } catch (_) {}
+
+                final messenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(context);
+                final depositNominal = double.tryParse(
+                      widget.depositAmount.replaceAll(RegExp(r'[^0-9]'), ''),
+                    ) ??
+                    20000.0;
+
                 setState(() {
                   _currentStatus = 'Dibatalkan';
                 });
-                if (widget.transactionId != null) {
+
+                // Jika deposit sudah dibayar sebelumnya dan transaksi dibatalkan, kembalikan saldo
+                if (_depositPaid && !_isCurrentUserOwner(context)) {
+                  auth?.tambahSaldoDummy(depositNominal);
+                }
+
+                if (widget.transactionId != null && auth?.token != null && trxProvider != null) {
                   try {
-                    final auth = context.read<AuthProvider>();
-                    if (auth.token != null) {
-                      context.read<TransactionProvider>().updateStatusApi(
-                            auth.token!,
-                            widget.transactionId!,
-                            'DIBATALKAN',
-                          );
-                    }
+                    await trxProvider.updateStatusApi(
+                      auth!.token!,
+                      widget.transactionId!,
+                      'DIBATALKAN',
+                    );
+                    await auth.segarkanProfil();
                   } catch (_) {}
                 }
-                Navigator.pop(ctx);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+
+                if (!mounted) return;
+                navigator.pop();
+                messenger.showSnackBar(
                   SnackBar(
                     content: const Text('Permintaan transaksi berhasil dibatalkan.'),
                     backgroundColor: const Color(0xFFFF4D4F),
@@ -1005,6 +1129,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   Widget _buildStatusBanner() {
+    final isOverdue = _isOverdue;
     Color dotColor = const Color(0xFFFFD027);
     String titleText = _currentStatus;
     String descText =
@@ -1017,19 +1142,21 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       descText =
           'Transaksi telah selesai! Buku telah berhasil diserahterimakan.';
     } else if (s == 'sedang_dipinjam') {
-      dotColor = const Color(0xFF388AF6);
-      titleText = 'Sedang Dipinjam';
-      descText =
-          'Buku sedang dipinjam. Harap jaga kondisi buku dan kembalikan tepat waktu.';
+      dotColor = isOverdue ? const Color(0xFFDC2626) : const Color(0xFF388AF6);
+      titleText = isOverdue ? 'Terlambat Pengembalian' : 'Sedang Dipinjam';
+      descText = isOverdue
+          ? 'Buku telah melewati batas jatuh tempo pengembalian. Mohon segera serahkan kembali kepada pemilik.'
+          : 'Buku sedang dipinjam. Harap jaga kondisi buku dan kembalikan tepat waktu.';
     } else if (s == 'dibatalkan' || s == 'ditolak') {
       dotColor = const Color(0xFFFF4D4F);
       titleText = _currentStatus == 'ditolak' ? 'Ditolak' : 'Dibatalkan';
       descText = 'Transaksi ini telah ditutup.';
     } else if (s == 'disetujui' || s == 'lokasi_ditentukan' || s == 'dalam_proses') {
-      dotColor = const Color(0xFF388AF6);
-      titleText = 'Disetujui / Dalam Proses';
-      descText =
-          'Permintaan disetujui. Selesaikan pembayaran deposit dan penentuan lokasi serah terima.';
+      dotColor = isOverdue ? const Color(0xFFDC2626) : const Color(0xFF388AF6);
+      titleText = isOverdue ? 'Jatuh Tempo / Terlambat' : 'Disetujui / Dalam Proses';
+      descText = isOverdue
+          ? 'Peminjaman telah melewati masa jatuh tempo. Harap segera koordinasikan pengembalian buku.'
+          : 'Permintaan disetujui. Selesaikan pembayaran deposit dan penentuan lokasi serah terima.';
     }
 
     return Padding(
@@ -1037,11 +1164,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isOverdue ? const Color(0xFFFFF5F5) : Colors.white,
           borderRadius: BorderRadius.circular(16),
+          border: isOverdue ? Border.all(color: const Color(0xFFFCA5A5), width: 1.5) : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: isOverdue
+                  ? const Color(0xFFDC2626).withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -1064,21 +1194,44 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    titleText,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF4A4960),
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          titleText,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: isOverdue ? const Color(0xFFB91C1C) : const Color(0xFF4A4960),
+                          ),
+                        ),
+                      ),
+                      if (isOverdue)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDC2626),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'OVERDUE',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   Text(
                     descText,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
-                      color: Color(0xFF8A88A5),
+                      color: isOverdue ? const Color(0xFF991B1B) : const Color(0xFF8A88A5),
                       height: 1.35,
                     ),
                   ),
@@ -1124,6 +1277,15 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             _buildInfoRow(label: 'Requested on', value: widget.requestedDate),
             const SizedBox(height: 12),
             _buildInfoRow(label: 'Preferred period', value: widget.preferredPeriod),
+            if (widget.dueDate != null) ...[
+              const SizedBox(height: 12),
+              _buildInfoRow(
+                label: 'Due date',
+                value:
+                    '${widget.dueDate!.day}/${widget.dueDate!.month}/${widget.dueDate!.year}${_isOverdue ? ' (Overdue)' : ''}',
+                valueColor: _isOverdue ? const Color(0xFFDC2626) : null,
+              ),
+            ],
             const SizedBox(height: 12),
             _buildInteractiveInfoRow(
               label: 'Deposit',
@@ -1144,7 +1306,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
-  Widget _buildInfoRow({required String label, required String value}) {
+  Widget _buildInfoRow({required String label, required String value, Color? valueColor}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -1163,10 +1325,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             textAlign: TextAlign.end,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF4A4960),
+              color: valueColor ?? const Color(0xFF4A4960),
             ),
           ),
         ),
@@ -1235,6 +1397,25 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   Widget _buildHandoverConfirmationCard() {
+    final isOwner = _isCurrentUserOwner(context);
+    final partnerRole = isOwner ? 'Requester' : 'Owner';
+    final tx = _getTrx(context);
+    final isDone = _currentStatus.toLowerCase() == 'selesai';
+
+    final bool youIsConfirmed = _youConfirmed ||
+        isDone ||
+        (isOwner
+            ? (tx?.ownerConfirmedAt != null)
+            : (tx?.requesterConfirmedAt != null));
+
+    final bool partnerIsConfirmed = _ownerConfirmed ||
+        isDone ||
+        (isOwner
+            ? (tx?.requesterConfirmedAt != null)
+            : (tx?.ownerConfirmedAt != null));
+
+    final bool bothConfirmed = youIsConfirmed && partnerIsConfirmed;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Container(
@@ -1268,7 +1449,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: _youConfirmed ? const Color(0xFF2FD677) : const Color(0xFFFFD027),
+                    color: youIsConfirmed
+                        ? const Color(0xFF2FD677)
+                        : const Color(0xFFFFD027),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -1290,14 +1473,16 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    color: _ownerConfirmed ? const Color(0xFF2FD677) : const Color(0xFFFFD027),
+                    color: partnerIsConfirmed
+                        ? const Color(0xFF2FD677)
+                        : const Color(0xFFFFD027),
                     shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Text(
-                  'Owner',
-                  style: TextStyle(
+                Text(
+                  partnerRole,
+                  style: const TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF4A4960),
@@ -1307,17 +1492,19 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             ),
             const SizedBox(height: 10),
             Row(
-              children: const [
-                Icon(
+              children: [
+                const Icon(
                   CupertinoIcons.info_circle_fill,
                   size: 15,
                   color: AppColors.primary,
                 ),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Transaction will complete after both parties confirm',
-                    style: TextStyle(
+                    bothConfirmed
+                        ? 'Kedua pihak telah mengonfirmasi serah terima'
+                        : 'Transaction will complete after both parties confirm',
+                    style: const TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w400,
                       color: Color(0xFF8A88A5),
@@ -1326,7 +1513,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ),
               ],
             ),
-            if (!_youConfirmed) ...[
+            if (!youIsConfirmed) ...[
               const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
@@ -1355,6 +1542,35 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                 ),
               ),
+            ] else if (!partnerIsConfirmed) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8FAF0),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      size: 18,
+                      color: Color(0xFF2FD677),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Anda telah konfirmasi. Menunggu $partnerRole mengonfirmasi serah terima.',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0C9A4B),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ] else ...[
               const SizedBox(height: 12),
               Container(
@@ -1373,7 +1589,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Anda telah mengonfirmasi serah terima buku.',
+                        'Serah terima buku telah dikonfirmasi oleh kedua pihak.',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -1392,6 +1608,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   Widget _buildOwnerInfoCard() {
+    final isOwner = _isCurrentUserOwner(context);
+    final partnerName = _getPartnerName(context);
+    final partnerUsername = isOwner
+        ? '@${partnerName.toLowerCase().replaceAll(' ', '')}'
+        : widget.ownerUsername;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Container(
@@ -1410,9 +1632,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Owner information',
-              style: TextStyle(
+            Text(
+              isOwner ? 'Requester information' : 'Owner information',
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF4A4960),
@@ -1456,7 +1678,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.ownerName,
+                        partnerName,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -1465,7 +1687,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        widget.ownerUsername,
+                        partnerUsername,
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -1502,6 +1724,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   Widget _buildReturnCard() {
+    final isOwner = _isCurrentUserOwner(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Container(
@@ -1539,10 +1763,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Pengembalian Buku Pinjaman',
-                    style: TextStyle(
+                    isOwner
+                        ? 'Konfirmasi Pengembalian Buku'
+                        : 'Pengembalian Buku Pinjaman',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF130F26),
@@ -1552,9 +1778,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ],
             ),
             const SizedBox(height: 10),
-            const Text(
-              'Buku saat ini sedang dalam masa peminjaman. Jika sudah selesai dibaca, lakukan konfirmasi pengembalian buku kepada pemilik untuk menyelesaikan transaksi dan mencairkan kembali saldo deposit jaminan Anda.',
-              style: TextStyle(
+            Text(
+              isOwner
+                  ? 'Buku sedang dipinjam oleh mahasiswa. Jika buku fisik telah dikembalikan dan Anda terima dengan kondisi baik, konfirmasi penerimaan untuk menyelesaikan transaksi.'
+                  : 'Buku saat ini sedang dalam masa peminjaman. Jika sudah selesai dibaca, lakukan konfirmasi pengembalian buku kepada pemilik untuk menyelesaikan transaksi dan mencairkan kembali saldo deposit jaminan Anda.',
+              style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFF7E7A92),
                 height: 1.4,
@@ -1590,7 +1818,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 label: Text(
                   _isLoadingAction
                       ? 'Memproses...'
-                      : 'Konfirmasi Pengembalian Buku',
+                      : (isOwner ? 'Konfirmasi Buku Diterima' : 'Konfirmasi Pengembalian Buku'),
                   style: const TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
@@ -1658,7 +1886,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             const SizedBox(height: 10),
             if (!_hasReviewed) ...[
               Text(
-                'Transaksi telah selesai! Bagikan ulasan dan berikan penilaian bintang untuk ${widget.ownerName} guna membantu membangun reputasi komunitas mahasiswa.',
+                'Transaksi telah selesai! Bagikan ulasan dan berikan penilaian bintang untuk ${_getPartnerName(context)} guna membantu membangun reputasi komunitas mahasiswa.',
                 style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF7E7A92),
@@ -1770,6 +1998,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final isDone = s == 'selesai';
     final isBorrowing = s == 'sedang_dipinjam';
     final isCancelled = s == 'dibatalkan' || s == 'ditolak';
+    final isOwner = _isCurrentUserOwner(context);
+    final partnerName = _getPartnerName(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -1784,7 +2014,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => ChatRoomPage(
-                        userName: widget.ownerName,
+                        userName: partnerName,
                         isOnline: true,
                         transactionId: widget.transactionId,
                       ),
@@ -1798,9 +2028,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                   elevation: 0,
                 ),
-                child: const Text(
-                  'Message Owner',
-                  style: TextStyle(
+                child: Text(
+                  isOwner ? 'Message Requester' : 'Message Owner',
+                  style: const TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
@@ -1826,9 +2056,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'Kembalikan Buku',
-                          style: TextStyle(
+                        child: Text(
+                          isOwner ? 'Konfirmasi Kembali' : 'Kembalikan Buku',
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
@@ -1867,9 +2097,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                               ),
                               elevation: 0,
                             ),
-                            child: const Text(
-                              'Cancel Request',
-                              style: TextStyle(
+                            child: Text(
+                              isOwner ? 'Tolak / Batalkan' : 'Cancel Request',
+                              style: const TextStyle(
                                 fontSize: 14.5,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.primary,

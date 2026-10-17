@@ -213,4 +213,30 @@ class AuthApiService {
       throw Exception(errorMessage);
     }
   }
+
+  Future<bool> resetPassword({
+    required String email,
+    required String newPassword,
+  }) async {
+    final url = Uri.parse('${ApiConstants.baseUrl}/auth/reset-password');
+    final response = await _client
+        .post(
+          url,
+          headers: ApiConstants.headers(),
+          body: jsonEncode({
+            'email': email,
+            'new_password': newPassword,
+          }),
+        )
+        .timeout(const Duration(seconds: 8));
+
+    final Map<String, dynamic> responseData = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return true;
+    } else {
+      final errorMessage =
+          responseData['message'] ?? 'Gagal mereset kata sandi (${response.statusCode})';
+      throw Exception(errorMessage);
+    }
+  }
 }

@@ -12,7 +12,9 @@ import '../../domain/models/book_request_item.dart';
 import 'request_detail_page.dart';
 
 class RequestListPage extends StatefulWidget {
-  const RequestListPage({super.key});
+  final List<BookRequestItem>? initialRequests;
+
+  const RequestListPage({super.key, this.initialRequests});
 
   @override
   State<RequestListPage> createState() => _RequestListPageState();
@@ -33,6 +35,7 @@ class _RequestListPageState extends State<RequestListPage> {
   }
 
   Future<void> _loadRealRequests() async {
+    if (widget.initialRequests != null) return;
     try {
       final auth = context.read<AuthProvider>();
       final trxProvider = context.read<TransactionProvider>();
@@ -72,7 +75,7 @@ class _RequestListPageState extends State<RequestListPage> {
         return BookRequestItem(
           id: 'api_${t.id}',
           bookTitle: t.judulBuku.isNotEmpty ? t.judulBuku : 'Buku Librava',
-          bookAuthor: 'Koleksi Saya',
+          bookAuthor: t.penulisBuku.isNotEmpty ? t.penulisBuku : 'Koleksi Saya',
           bookCover: t.coverBuku.isNotEmpty
               ? t.coverBuku
               : 'assets/images/book_the_unknown.jpg',
@@ -83,73 +86,37 @@ class _RequestListPageState extends State<RequestListPage> {
           status: statusMapped,
           exchangeBookTitle: isBarter && t.bukuBarter.isNotEmpty
               ? t.bukuBarter
-              : (isBarter ? 'Fruit Fly' : null),
-          exchangeBookAuthor: isBarter ? 'Josh Silver' : null,
-          exchangeBookCover:
-              isBarter ? 'assets/images/book_fruit_fly.jpg' : null,
+              : (isBarter ? 'Buku Penukar' : null),
+          exchangeBookAuthor: isBarter && t.barterPenulis.isNotEmpty
+              ? t.barterPenulis
+              : (isBarter ? 'Penulis' : null),
+          exchangeBookCover: isBarter
+              ? (t.barterCover.isNotEmpty
+                  ? t.barterCover
+                  : 'assets/images/book_the_unknown.jpg')
+              : null,
           requestedPeriod: '${t.durasiHari} hari',
           dateRange: t.tanggal,
-          requestedOn: t.tanggal.isNotEmpty ? t.tanggal : 'Aug 21, 2026',
+          requestedOn: t.tanggal.isNotEmpty ? t.tanggal : 'Hari ini',
+          requesterUserId: t.pemohonId,
           transactionId: int.tryParse(t.id),
         );
       }).toList();
 
       setState(() {
-        final existingTxIds = realItems.map((e) => e.transactionId).toSet();
-        final keptMock = _requestList
-            .where((m) => !existingTxIds.contains(m.transactionId))
-            .toList();
-        _requestList = [...realItems, ...keptMock];
+        _requestList = realItems;
+      });
+    } else {
+      setState(() {
+        _requestList = [];
       });
     }
   }
 
   void _inisialisasiData() {
-    _requestList = [
-      BookRequestItem(
-        id: 'req_1',
-        bookTitle: 'The Unknown',
-        bookAuthor: 'Riley Sager',
-        bookCover: 'assets/images/book_the_unknown.jpg',
-        requesterName: 'Andi',
-        requesterHandle: '@andireads',
-        type: 'Barter',
-        status: 'Pending',
-        exchangeBookTitle: 'Fruit Fly',
-        exchangeBookAuthor: 'Josh Silver',
-        exchangeBookCover: 'assets/images/book_fruit_fly.jpg',
-        requestedPeriod: '2 weeks',
-        requestedOn: 'Aug 21, 2026',
-      ),
-      BookRequestItem(
-        id: 'req_2',
-        bookTitle: 'Adversary to the Villain',
-        bookAuthor: 'Hannah Nicole Maehrer',
-        bookCover: 'assets/images/book_adversary.jpg',
-        requesterName: 'Sarah',
-        requesterHandle: '@sarahluv',
-        type: 'Borrow',
-        status: 'Pending',
-        requestedPeriod: '1 week',
-        dateRange: 'Sep 21, 2026 - Sep 28, 2026',
-        requestedOn: 'Sep 21, 2026',
-      ),
-      BookRequestItem(
-        id: 'req_3',
-        bookTitle: 'The Unknown',
-        bookAuthor: 'Riley Sager',
-        bookCover: 'assets/images/book_the_unknown.jpg',
-        requesterName: 'Andi',
-        requesterHandle: '@andireads',
-        type: 'Barter',
-        status: 'Accepted',
-        exchangeBookTitle: 'Fruit Fly',
-        exchangeBookAuthor: 'Josh Silver',
-        exchangeBookCover: 'assets/images/book_fruit_fly.jpg',
-        requestedPeriod: '2 weeks',
-        requestedOn: 'Aug 21, 2026',
-      ),
-    ];
+    _requestList = widget.initialRequests != null
+        ? List.from(widget.initialRequests!)
+        : [];
   }
 
   void _showAcceptDialog(BookRequestItem item) {
@@ -910,7 +877,49 @@ class _RequestListPageState extends State<RequestListPage> {
               ),
 
               // Request list items
-              ..._requestList.map((item) => _buildCard(item)),
+              if (_requestList.isEmpty)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+                  alignment: Alignment.center,
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEBE7FD),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.inbox_outlined,
+                          color: AppColors.primary,
+                          size: 40,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Belum Ada Permintaan Masuk',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1E1A34),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Permintaan pinjam atau barter dari mahasiswa lain untuk buku koleksi Anda akan ditampilkan di sini.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          color: Color(0xFF7E7A92),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ..._requestList.map((item) => _buildCard(item)),
             ],
           ),
         ),

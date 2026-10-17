@@ -25,25 +25,34 @@ export interface BookFilterParams {
   offset?: number;
 }
 
-const mapBookWithRelations = (book: any): Book => ({
-  id: book.id,
-  owner_id: book.ownerId,
-  judul: book.judul,
-  penulis: book.penulis,
-  penerbit: book.penerbit,
-  isbn: book.isbn,
-  deskripsi: book.deskripsi,
-  status: book.status,
-  foto_buku: book.fotoBuku,
-  kategori: book.kategori,
-  created_at: book.createdAt,
-  updated_at: book.updatedAt,
-  owner_nama: book.owner?.namaLengkap,
-  owner_universitas: book.owner?.universitas,
-  owner_foto: book.owner?.fotoProfil,
-  status_moderasi: book.statusModerasi,
-  catatan_moderasi: book.catatanModerasi,
-});
+const mapBookWithRelations = (book: any): Book => {
+  const ratings = book.ratings || [];
+  const avgRating = ratings.length > 0
+    ? ratings.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / ratings.length
+    : 0;
+
+  return {
+    id: book.id,
+    owner_id: book.ownerId,
+    judul: book.judul,
+    penulis: book.penulis,
+    penerbit: book.penerbit,
+    isbn: book.isbn,
+    deskripsi: book.deskripsi,
+    status: book.status,
+    foto_buku: book.fotoBuku,
+    kategori: book.kategori,
+    created_at: book.createdAt,
+    updated_at: book.updatedAt,
+    owner_nama: book.owner?.namaLengkap,
+    owner_universitas: book.owner?.universitas,
+    owner_foto: book.owner?.fotoProfil,
+    status_moderasi: book.statusModerasi,
+    catatan_moderasi: book.catatanModerasi,
+    rating: Number(avgRating.toFixed(1)),
+    total_ratings: ratings.length,
+  };
+};
 
 export class BookService {
   static async createBook(dto: CreateBookDTO): Promise<Book> {
@@ -103,6 +112,7 @@ export class BookService {
         where,
         include: {
           owner: true,
+          ratings: { select: { rating: true } },
         },
         orderBy: {
           createdAt: 'desc',
@@ -124,6 +134,7 @@ export class BookService {
       where: { id },
       include: {
         owner: true,
+        ratings: { select: { rating: true } },
       },
     });
 
@@ -177,6 +188,25 @@ export class BookService {
     if (existing.owner_id !== userId && userRole !== 'admin') {
       const error: any = new Error('Anda tidak memiliki hak akses untuk menghapus buku ini.');
       error.statusCode = 403;
+      throw error;
+    }
+
+    if (existing.status !== 'Tersedia') {
+      const error: any = new Error(`Buku tidak dapat dihapus karena saat ini sedang ${existing.status.toLowerCase()}.`);
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const activeTx = await prisma.transaction.findFirst({
+      where: {
+        OR: [{ bookId: id }, { barterBookId: id }],
+        status: { in: ['MENUNGGU_KONFIRMASI', 'DISETUJUI', 'DALAM_PROSES'] },
+      },
+    });
+
+    if (activeTx) {
+      const error: any = new Error('Buku tidak dapat dihapus karena sedang terlibat dalam transaksi yang berjalan.');
+      error.statusCode = 400;
       throw error;
     }
 

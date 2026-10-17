@@ -7,7 +7,9 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
+import '../../../transactions/domain/models/transaction_model.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
+import '../../../transactions/presentation/screens/transaction_detail_page.dart';
 import '../../domain/models/book_model.dart';
 import '../../domain/models/book_review_model.dart';
 import '../providers/book_provider.dart';
@@ -45,7 +47,6 @@ class BookDetailPage extends StatefulWidget {
 
 class _BookDetailPageState extends State<BookDetailPage> {
   final int _selectedIndex = 2;
-  bool _isBookmarked = false;
 
   List<BookReviewModel> _reviews = [];
   double _dynamicAverageRating = 0.0;
@@ -86,8 +87,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
   String get _title => widget.title ?? widget.book?.judul ?? 'The Unknown';
   String get _author => widget.author ?? widget.book?.penulis ?? 'Riley Sager';
-  String get _genre =>
-      widget.genre ?? widget.book?.kategori ?? 'Horror/Thriller';
+  String get _genre => widget.genre ?? widget.book?.kategori ?? 'Horror/Thriller';
   String get _status =>
       widget.status ??
       (widget.book != null
@@ -115,6 +115,203 @@ class _BookDetailPageState extends State<BookDetailPage> {
     return 'assets/images/book_the_unknown.jpg';
   }
 
+  TransactionModel? _getMyActiveTransaction(
+      BuildContext context, AuthProvider? auth, TransactionProvider? trxProvider) {
+    try {
+      final currentUser = auth?.currentUser;
+      final currentUserName = currentUser?.nama.trim().toLowerCase() ?? '';
+      final currentUserId = currentUser?.id ?? '';
+      if (currentUserName.isEmpty && currentUserId.isEmpty) return null;
+
+      final rawBookId = widget.book?.id ?? '';
+      final intBookId = int.tryParse(rawBookId);
+
+      final list = trxProvider?.semuaTransaksi ?? [];
+      for (final tx in list) {
+        final isMatchBook = (rawBookId.isNotEmpty && tx.bukuId == rawBookId) ||
+            (intBookId != null && tx.bukuId == intBookId.toString()) ||
+            (tx.judulBuku.trim().toLowerCase() == _title.trim().toLowerCase());
+
+        final isMatchUser = (currentUserId.isNotEmpty &&
+                tx.pemohonNama.trim().toLowerCase() == currentUserName) ||
+            (currentUserName.isNotEmpty &&
+                tx.pemohonNama.trim().toLowerCase() == currentUserName);
+
+        final isActive = tx.status != 'selesai' &&
+            tx.status != 'ditolak' &&
+            tx.status != 'dibatalkan';
+
+        if (isMatchBook && isMatchUser && isActive) {
+          return tx;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Widget _buildActiveTransactionBanner(TransactionModel tx) {
+    final s = tx.status.toLowerCase();
+    final isBarter = tx.jenisTransaksi.toLowerCase() == 'barter';
+    final tipeStr = isBarter ? 'Barter' : 'Peminjaman';
+
+    final Color bgColor;
+    final Color borderColor;
+    final Color titleColor;
+    final Color descColor;
+    final Color btnColor;
+    final IconData iconData;
+    final String title;
+    final String desc;
+    final String btnText;
+
+    if (s == 'pending') {
+      bgColor = const Color(0xFFFFFBEB);
+      borderColor = const Color(0xFFFDE68A);
+      titleColor = const Color(0xFF92400E);
+      descColor = const Color(0xFFB45309);
+      btnColor = const Color(0xFFD97706);
+      iconData = CupertinoIcons.clock_fill;
+      title = 'Permohonan Sedang Diproses';
+      desc =
+          'Anda telah mengajukan $tipeStr untuk buku ini. Menunggu persetujuan pemilik.';
+      btnText = 'Lihat Status Pengajuan';
+    } else if (s == 'disetujui' || s == 'lokasi_ditentukan') {
+      bgColor = const Color(0xFFECFDF5);
+      borderColor = const Color(0xFFA7F3D0);
+      titleColor = const Color(0xFF065F46);
+      descColor = const Color(0xFF047857);
+      btnColor = const Color(0xFF059669);
+      iconData = CupertinoIcons.checkmark_seal_fill;
+      title = 'Pengajuan Telah Disetujui!';
+      desc =
+          'Pengajuan $tipeStr Anda telah diterima. Silakan atur / konfirmasi serah terima buku.';
+      btnText = 'Buka Detail Serah Terima';
+    } else {
+      bgColor = const Color(0xFFEFF6FF);
+      borderColor = const Color(0xFFBFDBFE);
+      titleColor = const Color(0xFF1E40AF);
+      descColor = const Color(0xFF1D4ED8);
+      btnColor = const Color(0xFF2563EB);
+      iconData = Icons.menu_book_rounded;
+      title = 'Buku Sedang Anda Pinjam';
+      desc = tx.effectiveDueDate != null
+          ? 'Batas pengembalian buku: ${tx.effectiveDueDate!.day}/${tx.effectiveDueDate!.month}/${tx.effectiveDueDate!.year}.'
+          : 'Buku ini sedang aktif dalam masa peminjaman Anda.';
+      btnText = 'Lihat Detail Transaksi';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  iconData,
+                  color: btnColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: titleColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      desc,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
+                        color: descColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TransactionDetailPage(
+                      transactionId: tx.id,
+                      bookTitle: tx.judulBuku,
+                      bookAuthor: tx.pemilikNama,
+                      coverPath: _coverPath,
+                      status: tx.status,
+                      depositAmount: '${tx.depositSimulasi.toInt()} Rupiah',
+                      ownerName: tx.pemilikNama,
+                      type: tx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
+                      dueDate: tx.dueDate ?? tx.effectiveDueDate,
+                      isOverdue: tx.isOverdue,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(CupertinoIcons.arrow_right_circle_fill, size: 18),
+              label: Text(
+                btnText,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: btnColor,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _bukaModalPinjam(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final currentUser = auth.currentUser;
@@ -138,6 +335,26 @@ class _BookDetailPageState extends State<BookDetailPage> {
       return;
     }
 
+    final activeTx = _getMyActiveTransaction(
+      context,
+      auth,
+      context.read<TransactionProvider>(),
+    );
+    if (activeTx != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            activeTx.status == 'pending'
+                ? 'Anda sudah memiliki permohonan pinjam untuk buku ini yang sedang menunggu konfirmasi.'
+                : 'Anda saat ini sedang dalam proses transaksi aktif untuk buku ini.',
+          ),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     if ((currentUser?.saldoDummy ?? 100000.0) < 20000.0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -153,6 +370,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
 
     int durasiTerpilih = 7;
     final catatanController = TextEditingController();
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
@@ -290,62 +508,98 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: () {
-                        String pemohon = 'Gilang Ramadan';
-                        String? token;
-                        try {
-                          final auth = context.read<AuthProvider>();
-                          if (auth.currentUser?.nama != null) {
-                            pemohon = auth.currentUser!.nama;
-                          }
-                          token = auth.token;
-                        } catch (_) {}
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
+                              setModalState(() => isSubmitting = true);
+                              final auth = context.read<AuthProvider>();
+                              final pemohon =
+                                  auth.currentUser?.nama ?? 'Pemohon';
+                              final token = auth.token;
 
-                        final rawBookId = widget.book?.id ?? 'bk_unknown';
-                        final intBookId = int.tryParse(rawBookId);
+                              final rawBookId = widget.book?.id ?? 'bk_unknown';
+                              final intBookId = int.tryParse(rawBookId);
 
-                        if (token != null && intBookId != null) {
-                          context.read<TransactionProvider>().ajukanPinjamApi(
-                                token: token,
-                                bookId: intBookId,
-                                durasiHari: durasiTerpilih,
-                                judulBuku: _title,
-                                pemilikNama: widget.book?.pemilikNama ?? 'Pemilik Buku',
-                                coverBuku: _coverPath,
-                              );
-                        } else {
-                          context.read<TransactionProvider>().ajukanPinjam(
-                                bukuId: rawBookId,
-                                judulBuku: _title,
-                                pemohonNama: pemohon,
-                                durasiHari: durasiTerpilih,
-                              );
-                        }
+                              TransactionModel? result;
+                              if (token != null && intBookId != null) {
+                                result = await context
+                                    .read<TransactionProvider>()
+                                    .ajukanPinjamApi(
+                                      token: token,
+                                      bookId: intBookId,
+                                      durasiHari: durasiTerpilih,
+                                      judulBuku: _title,
+                                      pemilikNama: widget.book?.pemilikNama ??
+                                          'Pemilik Buku',
+                                      coverBuku: _coverPath,
+                                    );
+                              } else {
+                                result = context
+                                    .read<TransactionProvider>()
+                                    .ajukanPinjam(
+                                      bukuId: rawBookId,
+                                      judulBuku: _title,
+                                      pemohonNama: pemohon,
+                                      durasiHari: durasiTerpilih,
+                                    );
+                              }
 
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Permohonan pinjam "$_title" berhasil diajukan!',
-                            ),
-                            backgroundColor: AppColors.primary,
-                          ),
-                        );
-                      },
+                              if (!modalContext.mounted) return;
+
+                              if (result != null) {
+                                Navigator.pop(ctx);
+                                if (context.mounted) {
+                                  setState(() {});
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Permohonan pinjam "$_title" berhasil diajukan!',
+                                      ),
+                                      backgroundColor: AppColors.primary,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              } else {
+                                setModalState(() => isSubmitting = false);
+                                final errMsg = context
+                                        .read<TransactionProvider>()
+                                        .errorMessage ??
+                                    'Gagal mengajukan pinjaman.';
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(errMsg),
+                                      backgroundColor: const Color(0xFFDC2626),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: const Text(
-                        'Konfirmasi Pengajuan Pinjam',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: isSubmitting
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Konfirmasi Pengajuan Pinjam',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -380,46 +634,57 @@ class _BookDetailPageState extends State<BookDetailPage> {
       return;
     }
 
+    final activeTx = _getMyActiveTransaction(
+      context,
+      auth,
+      context.read<TransactionProvider>(),
+    );
+    if (activeTx != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            activeTx.status == 'pending'
+                ? 'Anda sudah memiliki permohonan barter untuk buku ini yang sedang menunggu konfirmasi.'
+                : 'Anda saat ini sedang dalam proses transaksi aktif untuk buku ini.',
+          ),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     List<BookModel> koleksi = [];
     try {
       final bp = context.read<BookProvider>();
-      koleksi = bp.koleksiSaya.where((b) => b.id != widget.book?.id).toList();
+      final tp = context.read<TransactionProvider>();
+      koleksi = bp.koleksiSaya.where((b) {
+        if (b.id == widget.book?.id) return false;
+        if (!b.tersedia) return false;
+        final hasActiveTx = tp.semuaTransaksi.any((t) =>
+            (t.bukuId == b.id || t.bukuBarter == b.judul) &&
+            t.status != 'selesai' &&
+            t.status != 'ditolak' &&
+            t.status != 'dibatalkan');
+        return !hasActiveTx;
+      }).toList();
     } catch (_) {}
 
     if (koleksi.isEmpty) {
-      koleksi = const [
-        BookModel(
-          id: '1',
-          judul: 'Clean Code',
-          penulis: 'Robert C. Martin',
-          kategori: 'Teknologi',
-          tahunTerbit: 2008,
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Tidak ada buku yang dapat ditukarkan saat ini. Pastikan Anda memiliki buku berstatus Tersedia dan tidak sedang dalam transaksi lain.',
+          ),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
         ),
-        BookModel(
-          id: '2',
-          judul: 'Design Patterns',
-          penulis: 'Erich Gamma',
-          kategori: 'Teknologi',
-          tahunTerbit: 1994,
-        ),
-        BookModel(
-          id: '3',
-          judul: 'The Unknown',
-          penulis: 'Riley Sager',
-          kategori: 'Horror',
-          tahunTerbit: 2022,
-        ),
-        BookModel(
-          id: '4',
-          judul: 'Fruit Fly',
-          penulis: 'Sarah Jenkins',
-          kategori: 'Sains',
-          tahunTerbit: 2021,
-        ),
-      ];
+      );
+      return;
     }
 
     BookModel bukuBarterTerpilih = koleksi.first;
+    bool isSubmittingBarter = false;
 
     showModalBottomSheet(
       context: context,
@@ -509,64 +774,100 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: () {
-                        String pemohon = 'Gilang Ramadan';
-                        String? token;
-                        try {
-                          final auth = context.read<AuthProvider>();
-                          if (auth.currentUser?.nama != null) {
-                            pemohon = auth.currentUser!.nama;
-                          }
-                          token = auth.token;
-                        } catch (_) {}
+                      onPressed: isSubmittingBarter
+                          ? null
+                          : () async {
+                              setModalState(() => isSubmittingBarter = true);
+                              final auth = context.read<AuthProvider>();
+                              final pemohon =
+                                  auth.currentUser?.nama ?? 'Pemohon';
+                              final token = auth.token;
 
-                        final rawBookId = widget.book?.id ?? 'bk_unknown';
-                        final intBookId = int.tryParse(rawBookId);
-                        final intBarterBookId =
-                            int.tryParse(bukuBarterTerpilih.id) ?? 1;
+                              final rawBookId = widget.book?.id ?? 'bk_unknown';
+                              final intBookId = int.tryParse(rawBookId);
+                              final intBarterBookId =
+                                  int.tryParse(bukuBarterTerpilih.id) ?? 1;
 
-                        if (token != null && intBookId != null) {
-                          context.read<TransactionProvider>().ajukanBarterApi(
-                                token: token,
-                                bookId: intBookId,
-                                barterBookId: intBarterBookId,
-                                judulBuku: _title,
-                                pemilikNama: widget.book?.pemilikNama ?? 'Pemilik Buku',
-                                coverBuku: _coverPath,
-                              );
-                        } else {
-                          context.read<TransactionProvider>().ajukanBarter(
-                                bukuId: rawBookId,
-                                judulBuku: _title,
-                                pemohonNama: pemohon,
-                                bukuBarter: bukuBarterTerpilih.judul,
-                              );
-                        }
+                              TransactionModel? result;
+                              if (token != null && intBookId != null) {
+                                result = await context
+                                    .read<TransactionProvider>()
+                                    .ajukanBarterApi(
+                                      token: token,
+                                      bookId: intBookId,
+                                      barterBookId: intBarterBookId,
+                                      judulBuku: _title,
+                                      pemilikNama: widget.book?.pemilikNama ??
+                                          'Pemilik Buku',
+                                      coverBuku: _coverPath,
+                                    );
+                              } else {
+                                result = context
+                                    .read<TransactionProvider>()
+                                    .ajukanBarter(
+                                      bukuId: rawBookId,
+                                      judulBuku: _title,
+                                      pemohonNama: pemohon,
+                                      bukuBarter: bukuBarterTerpilih.judul,
+                                    );
+                              }
 
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Permohonan barter $_title dengan ${bukuBarterTerpilih.judul} diajukan!',
-                            ),
-                            backgroundColor: AppColors.primary,
-                          ),
-                        );
-                      },
+                              if (!modalContext.mounted) return;
+
+                              if (result != null) {
+                                Navigator.pop(ctx);
+                                if (context.mounted) {
+                                  setState(() {});
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Permohonan barter $_title dengan ${bukuBarterTerpilih.judul} diajukan!',
+                                      ),
+                                      backgroundColor: AppColors.primary,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              } else {
+                                setModalState(() => isSubmittingBarter = false);
+                                final errMsg = context
+                                        .read<TransactionProvider>()
+                                        .errorMessage ??
+                                    'Gagal mengajukan barter.';
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(errMsg),
+                                      backgroundColor: const Color(0xFFDC2626),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: const Text(
-                        'Konfirmasi Pengajuan Barter',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
+                      child: isSubmittingBarter
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Konfirmasi Pengajuan Barter',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -812,7 +1113,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                   id: widget.title
                                           ?.toLowerCase()
                                           .replaceAll(' ', '_') ??
-                                      'bk_001',
+                                      'book_detail',
                                   judul: _title,
                                   penulis: _author,
                                   kategori: _genre,
@@ -820,19 +1121,16 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                   fotoBuku: widget.coverPath,
                                 );
                             final isBookmarked =
-                                bookProv.isBookmarked(effectiveBook.id) ||
-                                    _isBookmarked;
+                                bookProv.isBookmarked(effectiveBook.id);
 
                             return InkWell(
                               onTap: () {
-                                setState(() {
-                                  _isBookmarked = !isBookmarked;
-                                });
+                                final willBookmark = !isBookmarked;
                                 bookProv.toggleBookmark(effectiveBook);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      !isBookmarked
+                                      willBookmark
                                           ? 'Buku disimpan ke bookmark'
                                           : 'Buku dihapus dari bookmark',
                                     ),
@@ -1100,6 +1398,77 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       );
                     }
 
+                    TransactionProvider? trxProvider;
+                    try {
+                      trxProvider = context.watch<TransactionProvider>();
+                    } catch (_) {}
+
+                    final myActiveTx =
+                        _getMyActiveTransaction(context, auth, trxProvider);
+                    if (myActiveTx != null) {
+                      return _buildActiveTransactionBanner(myActiveTx);
+                    }
+
+                    final isTersedia = (widget.book?.tersedia ?? true) &&
+                        (widget.status == null ||
+                            widget.status!.toLowerCase() == 'tersedia' ||
+                            widget.status!.toLowerCase() == 'available');
+
+                    if (!isTersedia) {
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                              color: const Color(0xFFE5E7EB), width: 1.5),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFE5E7EB),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.lock_outline_rounded,
+                                color: Color(0xFF6B7280),
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Buku Sedang Tidak Tersedia',
+                                    style: TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF374151),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'Buku ini sedang dipinjam atau dalam proses transaksi lain.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF6B7280),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
                     return Row(
                       children: [
                         Expanded(
@@ -1231,6 +1600,27 @@ class _BookDetailPageState extends State<BookDetailPage> {
   }
 
   void _konfirmasiHapusBuku(BuildContext context, BookModel book) {
+    try {
+      final trxProvider = context.read<TransactionProvider>();
+      final hasActiveTx = trxProvider.semuaTransaksi.any((t) =>
+          t.bukuId == book.id &&
+          t.status != 'selesai' &&
+          t.status != 'ditolak' &&
+          t.status != 'dibatalkan');
+
+      if (hasActiveTx || !book.tersedia) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Buku "${book.judul}" sedang dipinjam atau dalam proses transaksi aktif sehingga tidak dapat dihapus.'),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    } catch (_) {}
+
     showDialog(
       context: context,
       builder: (confirmCtx) {
@@ -1346,6 +1736,37 @@ class _BookDetailPageState extends State<BookDetailPage> {
     );
   }
 
+  bool _isBukuMilikSaya(BuildContext context) {
+    try {
+      final auth = context.read<AuthProvider>();
+      final currentUser = auth.currentUser;
+      final bookProvider = context.read<BookProvider>();
+
+      if (currentUser == null) return false;
+
+      // 1. Cek dari koleksiSaya di BookProvider
+      if (widget.book != null &&
+          bookProvider.koleksiSaya.any((b) => b.id == widget.book!.id)) {
+        return true;
+      }
+
+      // 2. Cek dari pemilikId atau pemilikNama
+      if (widget.book != null) {
+        if (widget.book!.pemilikId != null &&
+            widget.book!.pemilikId == currentUser.id) {
+          return true;
+        }
+        if (widget.book!.pemilikNama != null &&
+            currentUser.nama.isNotEmpty &&
+            widget.book!.pemilikNama!.trim().toLowerCase() ==
+                currentUser.nama.trim().toLowerCase()) {
+          return true;
+        }
+      }
+    } catch (_) {}
+    return false;
+  }
+
   void _bukaModalTulisUlasan(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final messenger = ScaffoldMessenger.of(context);
@@ -1355,6 +1776,17 @@ class _BookDetailPageState extends State<BookDetailPage> {
       messenger.showSnackBar(
         const SnackBar(
           content: Text('Silakan login terlebih dahulu untuk memberikan ulasan.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_isBukuMilikSaya(context)) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Anda tidak dapat memberikan ulasan untuk buku koleksi Anda sendiri.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -1609,6 +2041,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
   Widget _buildSectionUlasan() {
     final double ratingTampil =
         _totalReviews > 0 ? _dynamicAverageRating : _rating;
+    final bool isMyBook = _isBukuMilikSaya(context);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -1647,20 +2080,52 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ),
                 ],
               ),
-              OutlinedButton.icon(
-                onPressed: () => _bukaModalTulisUlasan(context),
-                icon: const Icon(CupertinoIcons.pencil, size: 14),
-                label: const Text('Beri Ulasan'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: Color(0xFFC7BFF5)),
+              if (isMyBook)
+                Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  shape: RoundedRectangleBorder(
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F2FD),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.person_pin_rounded,
+                        size: 14,
+                        color: AppColors.primary,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Koleksi Anda',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                OutlinedButton.icon(
+                  onPressed: () => _bukaModalTulisUlasan(context),
+                  icon: const Icon(CupertinoIcons.pencil, size: 14),
+                  label: const Text('Beri Ulasan'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: Color(0xFFC7BFF5)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 14),

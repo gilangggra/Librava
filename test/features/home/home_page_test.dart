@@ -7,12 +7,15 @@ import 'package:librava/features/events/presentation/providers/event_provider.da
 import 'package:librava/features/transactions/presentation/providers/transaction_provider.dart';
 import 'package:librava/features/home/presentation/screens/home_page.dart';
 
-Widget createTestWidget() {
+Widget createTestWidget({TransactionProvider? customTrxProvider}) {
   return MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (_) => AuthProvider()),
       ChangeNotifierProvider(create: (_) => BookProvider()),
-      ChangeNotifierProvider(create: (_) => TransactionProvider(isiDataAwal: false)),
+      ChangeNotifierProvider(
+        create: (_) =>
+            customTrxProvider ?? TransactionProvider(isiDataAwal: false),
+      ),
       ChangeNotifierProvider(create: (_) => EventProvider()),
     ],
     child: const MaterialApp(
@@ -29,8 +32,7 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Event'), findsOneWidget);
     expect(find.text('Featured books'), findsOneWidget);
-    expect(find.text('The Unknown'), findsWidgets);
-    expect(find.text('View transaction'), findsOneWidget);
+    expect(find.text('Belum Ada Buku Dipinjam'), findsOneWidget);
     expect(find.text('Book Exchange Day'), findsOneWidget);
   });
 
@@ -49,32 +51,52 @@ void main() {
     expect(find.text('Reading Meetup'), findsOneWidget);
   });
 
-  testWidgets('Carousel buku pinjaman di HomePage dapat bergeser ke Fruit Fly',
+  testWidgets(
+      'Carousel buku pinjaman di HomePage dapat bergeser ke transaksi berikutnya',
       (WidgetTester tester) async {
-    await tester.pumpWidget(createTestWidget());
+    final trxProvider = TransactionProvider(isiDataAwal: false);
+    trxProvider.ajukanPinjam(
+      bukuId: 'bk_001',
+      judulBuku: 'Clean Code',
+      pemohonNama: 'Budi Santoso',
+      pemilikNama: 'Gilang Ramadan',
+    );
+    trxProvider.ajukanPinjam(
+      bukuId: 'bk_002',
+      judulBuku: 'Refactoring',
+      pemohonNama: 'Gilang Ramadan',
+      pemilikNama: 'Sarah',
+    );
 
-    expect(find.text('The Unknown'), findsWidgets);
-    expect(find.text('Borrowing from Andi'), findsOneWidget);
+    await tester.pumpWidget(createTestWidget(customTrxProvider: trxProvider));
+
+    expect(find.text('Refactoring'), findsWidgets);
 
     final borrowNextButton = find.byIcon(Icons.chevron_right_rounded).first;
     await tester.tap(borrowNextButton);
     await tester.pumpAndSettle();
 
-    expect(find.text('Fruit Fly'), findsWidgets);
-    expect(find.text('Borrowed from Sarah'), findsOneWidget);
-    expect(find.text('Due in 3 days'), findsOneWidget);
+    expect(find.text('Clean Code'), findsWidgets);
   });
 
-  testWidgets('Menekan tombol View transaction di HomePage membuka TransactionDetailPage',
+  testWidgets(
+      'Menekan tombol View transaction di HomePage membuka TransactionDetailPage',
       (WidgetTester tester) async {
-    await tester.pumpWidget(createTestWidget());
+    final trxProvider = TransactionProvider(isiDataAwal: false);
+    trxProvider.ajukanPinjam(
+      bukuId: 'bk_001',
+      judulBuku: 'Clean Code',
+      pemohonNama: 'Budi Santoso',
+      pemilikNama: 'Gilang Ramadan',
+    );
+
+    await tester.pumpWidget(createTestWidget(customTrxProvider: trxProvider));
 
     await tester.ensureVisible(find.text('View transaction'));
     await tester.tap(find.text('View transaction'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Waiting for owner’s response'), findsOneWidget);
     expect(find.text('Transaction Info'), findsOneWidget);
-    expect(find.text('Owner information'), findsOneWidget);
+    expect(find.text('Clean Code'), findsWidgets);
   });
 }

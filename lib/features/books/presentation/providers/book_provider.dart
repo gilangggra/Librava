@@ -7,7 +7,6 @@ import '../../domain/models/book_review_model.dart';
 
 class BookProvider extends ChangeNotifier {
   final BookFilterService _filterService;
-  final BookRepository _repository;
   final BookApiService _apiService;
 
   List<BookModel> _books = [];
@@ -24,22 +23,67 @@ class BookProvider extends ChangeNotifier {
     BookFilterService? filterService,
     BookRepository? repository,
     BookApiService? apiService,
+    bool isiDataAwal = false,
   })  : _filterService = filterService ?? BookFilterService(),
-        _repository = repository ?? BookRepository(),
         _apiService = apiService ?? BookApiService() {
-    _loadInitialBooks();
-  }
-
-  void _loadInitialBooks() {
-    _books = _repository.getInitialBooks();
+    if (isiDataAwal) {
+      _books = [
+        const BookModel(
+          id: '1',
+          judul: 'Clean Code',
+          penulis: 'Robert C. Martin',
+          kategori: 'Teknologi',
+          tahunTerbit: 2008,
+          tersedia: true,
+          rating: 4.8,
+        ),
+        const BookModel(
+          id: '2',
+          judul: 'Flutter Apprentice',
+          penulis: 'Ray Wenderlich',
+          kategori: 'Teknologi',
+          tahunTerbit: 2021,
+          tersedia: true,
+          rating: 4.6,
+        ),
+        const BookModel(
+          id: '3',
+          judul: 'Design Patterns',
+          penulis: 'Gang of Four',
+          kategori: 'Teknologi',
+          tahunTerbit: 1994,
+          tersedia: false,
+          rating: 4.9,
+        ),
+        const BookModel(
+          id: '4',
+          judul: 'Don\'t Make Me Think',
+          penulis: 'Steve Krug',
+          kategori: 'Desain',
+          tahunTerbit: 2014,
+          tersedia: true,
+          rating: 4.5,
+        ),
+        const BookModel(
+          id: '5',
+          judul: 'The Lean Startup',
+          penulis: 'Eric Ries',
+          kategori: 'Bisnis',
+          tahunTerbit: 2011,
+          tersedia: false,
+          rating: 4.4,
+        ),
+      ];
+    } else {
+      _books = [];
+      fetchBooksFromApi();
+    }
   }
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<BookModel> get allBooks => List.unmodifiable(_books);
-  List<BookModel> get koleksiSaya => List.unmodifiable(
-        _myBooks.isNotEmpty ? _myBooks : _books.take(3).toList(),
-      );
+  List<BookModel> get koleksiSaya => List.unmodifiable(_myBooks);
   List<BookModel> get bookmarkedBooks => List.unmodifiable(_bookmarkedBooks);
 
   bool isBookmarked(String bookId) =>
@@ -63,6 +107,28 @@ class BookProvider extends ChangeNotifier {
     final kategoriSet = _books.map((b) => b.kategori).toSet().toList();
     kategoriSet.sort();
     return ['Semua', ...kategoriSet];
+  }
+
+  List<BookModel> get recommendedBooks {
+    final list = _books.where((b) => !b.isDitolak).toList();
+    list.sort((a, b) {
+      final cmp = b.rating.compareTo(a.rating);
+      if (cmp != 0) return cmp;
+      if (a.tersedia && !b.tersedia) return -1;
+      if (!a.tersedia && b.tersedia) return 1;
+      return 0;
+    });
+    return list.take(10).toList();
+  }
+
+  List<BookModel> get trendingBooks {
+    final list = _books.where((b) => !b.isDitolak).toList();
+    return list.take(8).toList();
+  }
+
+  List<BookModel> get recentlyAddedBooks {
+    final list = _books.where((b) => !b.isDitolak).toList();
+    return list.reversed.take(8).toList();
   }
 
   List<BookModel> get filteredBooks {
@@ -92,8 +158,8 @@ class BookProvider extends ChangeNotifier {
         limit: 100,
       );
       _books = result.books;
-    } catch (_) {
-      _books = _repository.getInitialBooks();
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
     }
 
     _isLoading = false;
@@ -108,10 +174,8 @@ class BookProvider extends ChangeNotifier {
     try {
       final result = await _apiService.getMyBooks(token);
       _myBooks = result.books;
-    } catch (_) {
-      if (_myBooks.isEmpty && _books.isNotEmpty) {
-        _myBooks = _books.take(3).toList();
-      }
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
     }
 
     _isLoading = false;

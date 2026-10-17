@@ -76,6 +76,30 @@ MockClient buatBackendPalsu() {
       return sukses(email, akun['nama']!);
     }
 
+    if (path.endsWith('/reset-password')) {
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      final email = (body['email'] as String).toLowerCase();
+      if (!database.containsKey(email)) {
+        return http.Response(
+          jsonEncode({
+            'success': false,
+            'message': 'Pengguna dengan email tersebut tidak ditemukan.',
+          }),
+          404,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      database[email]!['password'] = body['new_password'] as String;
+      return http.Response(
+        jsonEncode({
+          'success': true,
+          'message': 'Password berhasil diperbarui.',
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+
     return http.Response(
       jsonEncode({'success': false, 'message': 'Not found'}),
       404,
@@ -234,7 +258,7 @@ void main() {
 
     test('resetPassword berhasil mengubah status loading dan mengembalikan true', () async {
       final suksesReset = await provider.resetPassword(
-        email: 'ujang@example.com',
+        email: 'gilang@telkomuniversity.ac.id',
         passwordBaru: 'newpassword123',
       );
 

@@ -58,10 +58,12 @@ void main() {
   group('AdminDashboardModel Unit Tests', () {
     test('default model initializes with expected values', () {
       const model = AdminDashboardModel();
-      expect(model.totalStudents, 320);
-      expect(model.totalBooks, 1245);
-      expect(model.totalRequests, 86);
-      expect(model.totalTransactions, 62);
+      expect(model.totalStudents, 0);
+      expect(model.totalBooks, 0);
+      expect(model.totalRequests, 0);
+      expect(model.totalTransactions, 0);
+      expect(model.recentActivity, isEmpty);
+      expect(model.recentTransactions, isEmpty);
     });
 
     test('fromApiJson parses API payload correctly', () {
@@ -157,11 +159,41 @@ void main() {
 
   group('AdminDashboardPage Widget Tests', () {
     testWidgets('renders all metric cards, recent activity, recent transactions, and bottom nav', (tester) async {
+      final sampleDashboard = AdminDashboardModel(
+        totalStudents: 320,
+        totalBooks: 1245,
+        totalRequests: 86,
+        totalTransactions: 62,
+        recentActivity: const [
+          AdminActivityItem(
+            id: '1',
+            title: 'The Unknown',
+            author: 'Penulis A',
+            coverPath: 'assets/images/book_cover1.jpg',
+            type: 'Barter',
+            personName: 'Andi Baker',
+            status: 'Accepted',
+          ),
+        ],
+        recentTransactions: const [
+          AdminTransactionItem(
+            id: '2',
+            title: 'Fruit Fly',
+            author: 'Josh Silver',
+            coverPath: 'assets/images/book_cover2.jpg',
+            type: 'Borrow',
+            personName: 'Sari Dewi',
+            status: 'Completed',
+          ),
+        ],
+      );
+      final adminProvider = AdminProvider(initialDashboard: sampleDashboard);
+
       await tester.pumpWidget(
         MultiProvider(
           providers: [
             ChangeNotifierProvider(create: (_) => AuthProvider()),
-            ChangeNotifierProvider(create: (_) => AdminProvider()),
+            ChangeNotifierProvider.value(value: adminProvider),
             ChangeNotifierProvider(create: (_) => EventProvider()),
           ],
           child: const MaterialApp(

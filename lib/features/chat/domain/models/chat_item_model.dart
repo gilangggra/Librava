@@ -5,6 +5,7 @@ class ChatItemModel {
   final String date;
   final bool isOnline;
   final bool hasUnread;
+  final int unreadCount;
 
   const ChatItemModel({
     required this.id,
@@ -13,6 +14,7 @@ class ChatItemModel {
     required this.date,
     this.isOnline = false,
     this.hasUnread = false,
+    this.unreadCount = 0,
   });
 
   ChatItemModel copyWith({
@@ -22,6 +24,7 @@ class ChatItemModel {
     String? date,
     bool? isOnline,
     bool? hasUnread,
+    int? unreadCount,
   }) {
     return ChatItemModel(
       id: id ?? this.id,
@@ -30,6 +33,7 @@ class ChatItemModel {
       date: date ?? this.date,
       isOnline: isOnline ?? this.isOnline,
       hasUnread: hasUnread ?? this.hasUnread,
+      unreadCount: unreadCount ?? this.unreadCount,
     );
   }
 }

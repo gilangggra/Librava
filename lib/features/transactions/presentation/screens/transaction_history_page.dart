@@ -336,6 +336,8 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                                     type: trx.jenisTransaksi == 'barter'
                                         ? 'Barter'
                                         : 'Borrow',
+                                    dueDate: trx.dueDate ?? trx.effectiveDueDate,
+                                    isOverdue: trx.isOverdue,
                                   ),
                                 ),
                               );
@@ -405,6 +407,31 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                                                 color: Color(0xFF8A88A5),
                                               ),
                                             ),
+                                            if (trx.isOverdue) ...[
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 6,
+                                                  vertical: 2,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      const Color(0xFFFEE2E2),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: const Text(
+                                                  'OVERDUE',
+                                                  style: TextStyle(
+                                                    fontSize: 9.5,
+                                                    fontWeight:
+                                                        FontWeight.w800,
+                                                    color: Color(0xFFDC2626),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ],
                                         ),
                                         const SizedBox(height: 6),
@@ -436,18 +463,24 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                                               width: 10,
                                               height: 10,
                                               decoration: BoxDecoration(
-                                                color: _getStatusColor(trx.status),
+                                                color: trx.isOverdue
+                                                    ? const Color(0xFFDC2626)
+                                                    : _getStatusColor(trx.status),
                                                 shape: BoxShape.circle,
                                               ),
                                             ),
                                             const SizedBox(width: 6),
                                             Expanded(
                                               child: Text(
-                                                _getStatusText(trx),
-                                                style: const TextStyle(
+                                                trx.isOverdue
+                                                    ? '${_getStatusText(trx)} (Terlambat)'
+                                                    : _getStatusText(trx),
+                                                style: TextStyle(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF4A4960),
+                                                  color: trx.isOverdue
+                                                      ? const Color(0xFFDC2626)
+                                                      : const Color(0xFF4A4960),
                                                 ),
                                               ),
                                             ),

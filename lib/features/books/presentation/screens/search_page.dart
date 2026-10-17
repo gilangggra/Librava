@@ -5,6 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/network/api_constants.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
+import '../../../chat/presentation/providers/chat_provider.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
 import '../../domain/models/book_model.dart';
 import '../providers/book_provider.dart';
@@ -793,12 +794,47 @@ class _SearchPageState extends State<SearchPage> {
           ),
         );
       },
-      child: _buildCoverImage(
-        assetPath,
-        width: 108,
-        height: 165,
-        borderRadius: 18,
-        iconSize: 36,
+      child: Stack(
+        children: [
+          _buildCoverImage(
+            assetPath,
+            width: 108,
+            height: 165,
+            borderRadius: 18,
+            iconSize: 36,
+          ),
+          if (book != null && book.rating > 0)
+            Positioned(
+              top: 8,
+              left: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.star_rounded,
+                      color: Color(0xFFFFD027),
+                      size: 13,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      book.rating.toStringAsFixed(1),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -839,25 +875,25 @@ class _SearchPageState extends State<SearchPage> {
                     );
                   }).toList()
                 : [
-                    _buildBookCover(
-                      'assets/images/book_the_unknown.jpg',
-                      title: 'The Unknown',
-                      author: 'Riley Sager',
-                      genre: 'Horror/Thriller',
-                    ),
-                    const SizedBox(width: 14),
-                    _buildBookCover(
-                      'assets/images/book_fruit_fly.jpg',
-                      title: 'Fruit Fly',
-                      author: 'Dr. John Doe',
-                      genre: 'Sains',
-                    ),
-                    const SizedBox(width: 14),
-                    _buildBookCover(
-                      'assets/images/book_adversary.jpg',
-                      title: 'Adversary',
-                      author: 'Jane Smith',
-                      genre: 'Fiksi',
+                    Container(
+                      width: 220,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFEBE8F4)),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: const Center(
+                        child: Text(
+                          'Belum ada buku tersedia',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF7E7A92),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
                     ),
                   ],
           ),
@@ -871,6 +907,7 @@ class _SearchPageState extends State<SearchPage> {
     required IconData activeIcon,
     required IconData inactiveIcon,
     bool isSearchActive = false,
+    int badgeCount = 0,
   }) {
     final isSelected = _selectedIndex == index;
     return InkWell(
@@ -930,8 +967,12 @@ class _SearchPageState extends State<SearchPage> {
           borderRadius: BorderRadius.circular(18),
         ),
         child: Center(
-          child: isSearchActive && isSelected
-              ? Stack(
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              if (isSearchActive && isSelected)
+                Stack(
                   alignment: Alignment.center,
                   children: [
                     const Icon(
@@ -953,12 +994,41 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   ],
                 )
-              : Icon(
+              else
+                Icon(
                   isSelected ? activeIcon : inactiveIcon,
                   color:
                       isSelected ? AppColors.primary : const Color(0xFF52518D),
                   size: 28,
                 ),
+              if (badgeCount > 0)
+                Positioned(
+                  top: -2,
+                  right: -6,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    constraints:
+                        const BoxConstraints(minWidth: 16, minHeight: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: Text(
+                      badgeCount > 9 ? '9+' : '$badgeCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -971,7 +1041,7 @@ class _SearchPageState extends State<SearchPage> {
       bookProvider = Provider.of<BookProvider>(context);
     } catch (_) {}
     final query = _searchController.text.trim();
-    final isSearching = query.isNotEmpty;
+    final isSearching = query.isNotEmpty || _hasActiveFilters;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -1269,6 +1339,17 @@ class _SearchPageState extends State<SearchPage> {
                                             : !b.tersedia);
                                 return matchQuery && matchGenre && matchStatus;
                               }).toList();
+
+                              if (_selectedRatingFilter == 'Highest') {
+                                results.sort((a, b) => b.rating.compareTo(a.rating));
+                              } else if (_selectedRatingFilter == 'Lowest') {
+                                results.sort((a, b) => a.rating.compareTo(b.rating));
+                              } else if (_selectedRatingFilter != 'Semua') {
+                                final minRating = double.tryParse(
+                                        _selectedRatingFilter.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+                                    0.0;
+                                results.removeWhere((b) => b.rating < minRating);
+                              }
                               if (results.isNotEmpty) {
                                 return results.map((b) {
                                   return _buildSearchResultCard(
@@ -1284,51 +1365,63 @@ class _SearchPageState extends State<SearchPage> {
                               }
                             }
                             return [
-                              _buildSearchResultCard(
-                                coverPath: 'assets/images/book_the_unknown.jpg',
-                                title: 'The Unknown',
-                                author: 'Riley Sager',
-                                rating: 4.5,
-                                reviewsCount: 20,
-                                genres: const ['Horror', 'Thriller'],
-                              ),
-                              _buildSearchResultCard(
-                                coverPath: 'assets/images/book_the_unknown.jpg',
-                                title: 'The Unknown',
-                                author: 'Riley Sager',
-                                rating: 4.5,
-                                reviewsCount: 20,
-                                genres: const ['Horror', 'Thriller'],
-                              ),
-                              _buildSearchResultCard(
-                                coverPath: 'assets/images/book_the_unknown.jpg',
-                                title: 'The Unknown',
-                                author: 'Riley Sager',
-                                rating: 4.5,
-                                reviewsCount: 20,
-                                genres: const ['Horror', 'Thriller'],
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 32),
+                                child: Center(
+                                  child: Text(
+                                    'Tidak ada buku yang sesuai dengan pencarian.',
+                                    style: TextStyle(
+                                      color: Color(0xFF7E7A92),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ];
                           }(),
                         )
                       : Column(
-                          children: [
-                            _buildAuthorCard(
-                              name: 'Riley Sager',
-                              bookCount: '8',
-                              genre: 'Horror / Thriller',
-                            ),
-                            _buildAuthorCard(
-                              name: 'Robert C. Martin',
-                              bookCount: '12',
-                              genre: 'Software Engineering',
-                            ),
-                            _buildAuthorCard(
-                              name: 'Eric Ries',
-                              bookCount: '5',
-                              genre: 'Startup / Business',
-                            ),
-                          ],
+                          children: () {
+                            final allBooks = bookProvider?.allBooks ?? [];
+                            final authors = allBooks
+                                .map((b) => b.penulis.trim())
+                                .where((p) => p.isNotEmpty)
+                                .toSet()
+                                .toList();
+                            if (authors.isEmpty) {
+                              return [
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 32),
+                                  child: Center(
+                                    child: Text(
+                                      'Belum ada data penulis terdaftar.',
+                                      style: TextStyle(
+                                        color: Color(0xFF7E7A92),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ];
+                            }
+                            return authors.map((author) {
+                              final count = allBooks
+                                  .where((b) =>
+                                      b.penulis.trim().toLowerCase() ==
+                                      author.toLowerCase())
+                                  .length;
+                              final genre = allBooks
+                                  .firstWhere((b) =>
+                                      b.penulis.trim().toLowerCase() ==
+                                      author.toLowerCase())
+                                  .kategori;
+                              return _buildAuthorCard(
+                                name: author,
+                                bookCount: count.toString(),
+                                genre: genre,
+                              );
+                            }).toList();
+                          }(),
                         ),
                 ),
                 const SizedBox(height: 24),
@@ -1336,31 +1429,17 @@ class _SearchPageState extends State<SearchPage> {
                 const SizedBox(height: 6),
                 _buildBookSection(
                   'Trending',
-                  books: (bookProvider != null &&
-                          bookProvider.allBooks.isNotEmpty)
-                      ? bookProvider.allBooks.take(8).toList()
-                      : null,
+                  books: bookProvider?.trendingBooks,
                 ),
                 const SizedBox(height: 24),
                 _buildBookSection(
                   'Recently added',
-                  books: (bookProvider != null &&
-                          bookProvider.allBooks.isNotEmpty)
-                      ? (bookProvider.allBooks.length > 8
-                          ? bookProvider.allBooks.skip(8).take(8).toList()
-                          : bookProvider.allBooks.reversed.toList())
-                      : null,
+                  books: bookProvider?.recentlyAddedBooks,
                 ),
                 const SizedBox(height: 24),
                 _buildBookSection(
                   'Recommended',
-                  books: (bookProvider != null &&
-                          bookProvider.allBooks.isNotEmpty)
-                      ? (bookProvider.allBooks.length > 16
-                          ? bookProvider.allBooks.skip(16).take(8).toList()
-                          : (List.of(bookProvider.allBooks)
-                            ..sort((a, b) => b.rating.compareTo(a.rating))))
-                      : null,
+                  books: bookProvider?.recommendedBooks,
                 ),
                 const SizedBox(height: 24),
               ],
@@ -1402,6 +1481,13 @@ class _SearchPageState extends State<SearchPage> {
               index: 3,
               activeIcon: CupertinoIcons.ellipses_bubble_fill,
               inactiveIcon: CupertinoIcons.ellipses_bubble,
+              badgeCount: () {
+                try {
+                  return context.watch<ChatProvider>().totalUnread;
+                } catch (_) {
+                  return 0;
+                }
+              }(),
             ),
             _buildNavItem(
               index: 4,

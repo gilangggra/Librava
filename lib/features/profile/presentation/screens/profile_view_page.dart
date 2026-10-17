@@ -463,7 +463,7 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
     final displayName = widget.name ??
         activeUser?.nama ??
         authUser?.nama ??
-        'Ujang Knalpot';
+        'Pengguna';
 
     final displayRole = widget.role ??
         (activeUser?.username != null && activeUser!.username.isNotEmpty
@@ -482,29 +482,29 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
     final displayEmail = widget.email ??
         activeUser?.email ??
         authUser?.email ??
-        'ujang@example.com';
+        '-';
 
     final displayPhone = widget.phone ??
         (activeUser?.phone != null && activeUser!.phone.isNotEmpty
             ? activeUser.phone
             : (authUser?.phone != null && authUser!.phone.isNotEmpty
                 ? authUser.phone
-                : '+62 8959982898'));
+                : '-'));
 
     final displayBooksRead = widget.booksRead ??
         activeUser?.booksRead ??
         authUser?.booksRead ??
-        12;
+        0;
 
     final displayBooksBorrowed = widget.booksBorrowed ??
         activeUser?.booksBorrowed ??
         authUser?.booksBorrowed ??
-        3;
+        0;
 
     final displayFavorites = widget.favorites ??
         activeUser?.favorites ??
         authUser?.favorites ??
-        5;
+        0;
 
     return Scaffold(
       backgroundColor: AppColors.background,

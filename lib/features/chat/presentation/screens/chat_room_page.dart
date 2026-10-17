@@ -2,12 +2,19 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
+import '../../../profile/presentation/screens/profile_view_page.dart';
+import '../../../transactions/presentation/providers/transaction_provider.dart';
+import '../../../transactions/presentation/screens/transaction_detail_page.dart';
+import '../../../../core/utils/image_upload_helper.dart';
+import '../../../books/data/services/book_api_service.dart';
 import '../../data/services/chat_api_service.dart';
+import '../providers/chat_provider.dart';
 
 class ChatBubbleMessage {
   final String id;
@@ -89,7 +96,7 @@ class ChatRoomPage extends StatefulWidget {
 
   const ChatRoomPage({
     super.key,
-    this.userName = 'User Test',
+    this.userName = 'Mitra Transaksi',
     this.isOnline = true,
     this.transactionId,
   });
@@ -104,33 +111,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   final ScrollController _scrollController = ScrollController();
   final ChatApiService _apiService = ChatApiService();
 
-  final List<ChatBubbleMessage> _messages = [
-    const ChatBubbleMessage(
-      id: 'm1',
-      text: 'Halo bang',
-      time: '13.30',
-      isOutgoing: false,
-    ),
-    const ChatBubbleMessage(
-      id: 'm2',
-      text: 'Mau nanya',
-      time: '13.31',
-      isOutgoing: false,
-    ),
-    const ChatBubbleMessage(
-      id: 'm3',
-      text: 'Iya kenapa?',
-      time: '13.39',
-      isOutgoing: true,
-    ),
-    const ChatBubbleMessage(
-      id: 'm4',
-      text: 'Ini foto kondisi fisik bukunya ya, mulus tanpa lipatan.',
-      time: '13.40',
-      isOutgoing: false,
-      imageUrl: 'assets/images/book_atomic_habits.jpg',
-    ),
-  ];
+  final List<ChatBubbleMessage> _messages = [];
+  bool _isLoadingMessages = false;
 
   @override
   void initState() {
@@ -141,6 +123,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   Future<void> _loadMessages() async {
     final txId = int.tryParse(widget.transactionId ?? '');
     if (txId == null) return;
+
+    setState(() => _isLoadingMessages = true);
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -155,46 +139,59 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         transactionId: txId,
       );
 
-      if (apiMessages.isNotEmpty && mounted) {
+      if (mounted) {
         setState(() {
           _messages.clear();
-          for (final m in apiMessages) {
+          _messages.addAll(apiMessages.map((m) {
             final isOut = (currentUserId.isNotEmpty &&
                     m.senderId == currentUserId) ||
                 (currentUserName.isNotEmpty &&
                     m.senderNama == currentUserName);
-            String formattedTime = '12.00';
-            if (m.sentAt.isNotEmpty) {
-              try {
-                final dt = DateTime.parse(m.sentAt).toLocal();
-                final hour = dt.hour.toString().padLeft(2, '0');
-                final min = dt.minute.toString().padLeft(2, '0');
-                formattedTime = '$hour.$min';
-              } catch (_) {}
-            }
-
-            String text = m.pesan;
-            String? imgUrl;
-            if (m.pesan.startsWith('[FOTO:') && m.pesan.contains(']')) {
-              final closeIdx = m.pesan.indexOf(']');
-              imgUrl = m.pesan.substring(6, closeIdx).trim();
-              text = m.pesan.substring(closeIdx + 1).trim();
-              if (text.isEmpty) text = 'Foto kondisi buku';
-            }
-
-            _messages.add(
-              ChatBubbleMessage(
-                id: m.id,
-                text: text,
-                time: formattedTime,
-                isOutgoing: isOut,
-                imageUrl: imgUrl,
-              ),
+            final content = _parseMessageContent(m.pesan);
+            return ChatBubbleMessage(
+              id: m.id,
+              text: content.text,
+              time: _formatMessageTime(m.sentAt),
+              isOutgoing: isOut,
+              imageUrl: content.imageUrl,
             );
-          }
+          }));
         });
+        try {
+          final chatProvider =
+              Provider.of<ChatProvider>(context, listen: false);
+          chatProvider.markAsRead(widget.transactionId ?? '');
+        } catch (_) {}
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingMessages = false);
+      }
+    }
+  }
+
+  String _formatMessageTime(String sentAt) {
+    if (sentAt.isEmpty) return '12.00';
+    try {
+      final dt = DateTime.parse(sentAt).toLocal();
+      final hour = dt.hour.toString().padLeft(2, '0');
+      final min = dt.minute.toString().padLeft(2, '0');
+      return '$hour.$min';
+    } catch (_) {
+      return '12.00';
+    }
+  }
+
+  ({String text, String? imageUrl}) _parseMessageContent(String raw) {
+    if (raw.startsWith('[FOTO:') && raw.contains(']')) {
+      final closeIdx = raw.indexOf(']');
+      final imgUrl = raw.substring(6, closeIdx).trim();
+      var text = raw.substring(closeIdx + 1).trim();
+      if (text.isEmpty) text = 'Foto kondisi buku';
+      return (text: text, imageUrl: imgUrl);
+    }
+    return (text: raw, imageUrl: null);
   }
 
   @override
@@ -433,31 +430,57 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                             color: Color(0xFF130F26),
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEDEAFE),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                CupertinoIcons.camera_fill,
-                                size: 14,
-                                color: AppColors.primary,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Kamera / Foto',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
+                        InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: () async {
+                            try {
+                              final auth = context.read<AuthProvider>();
+                              final picked = await pickImageFromDevice();
+                              if (picked == null) return;
+                              if (auth.token != null) {
+                                final uploaded = await BookApiService()
+                                    .uploadBookCover(
+                                  token: auth.token!,
+                                  bytes: picked.bytes,
+                                  filename: picked.name,
+                                );
+                                setModalState(() {
+                                  samplePhotos.insert(0, {
+                                    'title': 'Foto Saya',
+                                    'subtitle': 'Foto dari perangkat',
+                                    'asset': uploaded,
+                                  });
+                                  selectedAsset = uploaded;
+                                });
+                              }
+                            } catch (_) {}
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEDEAFE),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  CupertinoIcons.camera_fill,
+                                  size: 14,
                                   color: AppColors.primary,
                                 ),
-                              ),
-                            ],
+                                SizedBox(width: 4),
+                                Text(
+                                  'Pilih dari Perangkat',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -481,6 +504,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                         itemBuilder: (_, index) {
                           final item = samplePhotos[index];
                           final isSelected = selectedAsset == item['asset'];
+                          final assetStr = item['asset']!;
+                          final isNetwork = assetStr.startsWith('http://') ||
+                              assetStr.startsWith('https://') ||
+                              assetStr.startsWith('/uploads/') ||
+                              assetStr.startsWith('uploads/');
                           return GestureDetector(
                             onTap: () {
                               setModalState(() {
@@ -504,10 +532,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                 child: Stack(
                                   fit: StackFit.expand,
                                   children: [
-                                    Image.asset(
-                                      item['asset']!,
-                                      fit: BoxFit.cover,
-                                    ),
+                                    isNetwork
+                                        ? Image.network(
+                                            assetStr.startsWith('http')
+                                                ? assetStr
+                                                : '${ApiConstants.baseUrl.replaceAll('/api', '')}/${assetStr.replaceFirst(RegExp(r'^/+'), '')}',
+                                            fit: BoxFit.cover,
+                                          )
+                                        : Image.asset(
+                                            assetStr,
+                                            fit: BoxFit.cover,
+                                          ),
                                     Container(
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
@@ -726,6 +761,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     required int index,
     required IconData activeIcon,
     required IconData inactiveIcon,
+    int badgeCount = 0,
   }) {
     final isSelected = _selectedIndex == index;
     return InkWell(
@@ -783,10 +819,41 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           borderRadius: BorderRadius.circular(18),
         ),
         child: Center(
-          child: Icon(
-            isSelected ? activeIcon : inactiveIcon,
-            color: isSelected ? AppColors.primary : const Color(0xFF52518D),
-            size: 28,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                isSelected ? activeIcon : inactiveIcon,
+                color: isSelected ? AppColors.primary : const Color(0xFF52518D),
+                size: 28,
+              ),
+              if (badgeCount > 0)
+                Positioned(
+                  top: -2,
+                  right: -6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 5, vertical: 2),
+                    constraints:
+                        const BoxConstraints(minWidth: 16, minHeight: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: Text(
+                      badgeCount > 9 ? '9+' : '$badgeCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -828,96 +895,183 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                       ),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    const SizedBox(width: 10),
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFFF0EEF8),
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.person,
-                          size: 34,
-                          color: Color(0xFF130F26),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.userName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF130F26),
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: widget.isOnline
-                                    ? const Color(0xFF34C759)
-                                    : const Color(0xFFA09DB2),
-                                shape: BoxShape.circle,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProfileViewPage(
+                                name: widget.userName,
+                                transactionId: widget.transactionId,
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              widget.isOnline ? 'Online' : 'Offline',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF7E7A92),
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Color(0xFFF0EEF8),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.person,
+                                  size: 30,
+                                  color: Color(0xFF130F26),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.userName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF130F26),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: widget.isOnline
+                                              ? const Color(0xFF34C759)
+                                              : const Color(0xFFA09DB2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        widget.isOnline ? 'Online' : 'Offline',
+                                        style: const TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: Color(0xFF7E7A92),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
+                    if (widget.transactionId != null)
+                      IconButton(
+                        tooltip: 'Detail Transaksi',
+                        icon: const Icon(
+                          Icons.receipt_long_rounded,
+                          color: AppColors.primary,
+                          size: 24,
+                        ),
+                        onPressed: () {
+                          TransactionProvider? trxProvider;
+                          try {
+                            trxProvider = context.read<TransactionProvider>();
+                          } catch (_) {}
+                          final tx = trxProvider?.semuaTransaksi
+                              .where((t) => t.id == widget.transactionId)
+                              .firstOrNull;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TransactionDetailPage(
+                                transactionId: widget.transactionId,
+                                bookTitle: tx?.judulBuku ?? 'Buku Librava',
+                                bookAuthor: tx?.penulisBuku ?? 'Penulis',
+                                coverPath: tx?.coverBuku ??
+                                    'assets/images/book_the_unknown.jpg',
+                                status: tx?.status ?? 'Menunggu Konfirmasi',
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 6),
-            Center(
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2DEFD),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Text(
-                  '08/21',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF38335A),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
             Expanded(
-              child: ListView.separated(
-                controller: _scrollController,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-                itemCount: _messages.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  return _buildChatBubble(_messages[index]);
-                },
-              ),
+              child: _isLoadingMessages
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: AppColors.primary,
+                      ),
+                    )
+                  : _messages.isEmpty
+                      ? Center(
+                          child: SingleChildScrollView(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 36.0),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(18),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFF3F0FF),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.forum_outlined,
+                                      color: AppColors.primary,
+                                      size: 36,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  const Text(
+                                    'Mulai Obrolan',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF1E1A34),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    'Kirim pesan atau foto fisik buku untuk berkoordinasi dengan mitra transaksi Anda.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF7E7A92),
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20.0, vertical: 8.0),
+                          itemCount: _messages.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            return _buildChatBubble(_messages[index]);
+                          },
+                        ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -983,16 +1137,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Container(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: _messageController.text.trim().isNotEmpty
+                          ? AppColors.primary
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color:
-                              const Color(0xFF1E1A34).withValues(alpha: 0.05),
+                          color: _messageController.text.trim().isNotEmpty
+                              ? AppColors.primary.withValues(alpha: 0.35)
+                              : const Color(0xFF1E1A34).withValues(alpha: 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 3),
                         ),
@@ -1000,29 +1158,15 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                     ),
                     child: IconButton(
                       icon: Icon(
-                        _messageController.text.trim().isNotEmpty
-                            ? Icons.send_rounded
-                            : Icons.mic_none_rounded,
-                        color: const Color(0xFF4A4468),
-                        size: 26,
+                        Icons.send_rounded,
+                        color: _messageController.text.trim().isNotEmpty
+                            ? Colors.white
+                            : const Color(0xFFBBB7CC),
+                        size: 24,
                       ),
-                      onPressed: () {
-                        if (_messageController.text.trim().isNotEmpty) {
-                          _kirimPesan();
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text(
-                                  'Fitur pesan suara sedang disiapkan'),
-                              backgroundColor: AppColors.primary,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          );
-                        }
-                      },
+                      onPressed: _messageController.text.trim().isNotEmpty
+                          ? _kirimPesan
+                          : null,
                     ),
                   ),
                 ],
@@ -1064,6 +1208,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               index: 3,
               activeIcon: CupertinoIcons.chat_bubble_fill,
               inactiveIcon: CupertinoIcons.chat_bubble,
+              badgeCount: () {
+                try {
+                  return context.watch<ChatProvider>().totalUnread;
+                } catch (_) {
+                  return 0;
+                }
+              }(),
             ),
             _buildNavItem(
               index: 4,

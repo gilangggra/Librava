@@ -137,7 +137,7 @@ void main() {
     late BookProvider provider;
 
     setUp(() {
-      provider = BookProvider();
+      provider = BookProvider(isiDataAwal: true);
     });
 
     test('Inisialisasi awal provider memuat buku dan kategori default', () {

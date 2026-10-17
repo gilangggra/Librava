@@ -62,7 +62,7 @@ class BookModel {
       kategori: json['kategori'] as String? ?? 'Umum',
       tahunTerbit: 0,
       tersedia: tersedia,
-      rating: 0.0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       deskripsi: json['deskripsi'] as String? ?? '',
       fotoBuku: json['foto_buku'] as String?,
       pemilikId: json['owner_id']?.toString(),

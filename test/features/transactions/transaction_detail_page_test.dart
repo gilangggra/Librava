@@ -7,7 +7,17 @@ void main() {
       (WidgetTester tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: TransactionDetailPage(),
+        home: TransactionDetailPage(
+          bookTitle: 'The Unknown',
+          bookAuthor: 'Riley Sager',
+          status: 'Waiting for owner’s response',
+          requestedDate: 'Aug 21, 2026',
+          preferredPeriod: '2 weeks',
+          depositAmount: '50.000 Rupiah',
+          handoverLocation: 'Set handover',
+          ownerName: 'Andi',
+          ownerUsername: '@andireads',
+        ),
       ),
     );
 
@@ -53,7 +63,9 @@ void main() {
       (WidgetTester tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: TransactionDetailPage(),
+        home: TransactionDetailPage(
+          depositAmount: '50.000 Rupiah',
+        ),
       ),
     );
 
@@ -84,7 +96,9 @@ void main() {
       (WidgetTester tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: TransactionDetailPage(),
+        home: TransactionDetailPage(
+          handoverLocation: 'Set handover',
+        ),
       ),
     );
 
@@ -163,6 +177,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: TransactionDetailPage(
+          bookTitle: 'The Unknown',
           youConfirmed: false,
           ownerConfirmed: false,
           handoverLocation: 'Open Library Telkom University',
@@ -182,7 +197,7 @@ void main() {
     await tester.tap(find.text('Ya, Konfirmasi'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Anda telah mengonfirmasi serah terima buku.'), findsOneWidget);
+    expect(find.text('Konfirmasi serah terima Anda berhasil dicatat.'), findsOneWidget);
   });
 }
 

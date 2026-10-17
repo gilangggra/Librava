@@ -51,6 +51,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             builder: (context) => LoginPage(initialEmail: emailUser),
           ),
         );
+      } else if (mounted) {
+        final err = context.read<AuthProvider>().errorMessage ?? 'Gagal memperbarui kata sandi.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(err),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }

@@ -87,4 +87,59 @@ export class ChatService {
 
     return mapChatWithRelations(chat);
   }
+
+  static async getConversationsSummary(userId: number): Promise<{
+    totalUnread: number;
+    unreadMap: Record<string, number>;
+    latestMessages: Record<string, { pesan: string; sent_at: Date; sender_nama?: string }>;
+  }> {
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        OR: [{ requesterId: userId }, { ownerId: userId }],
+      },
+      select: { id: true },
+    });
+    const txIds = transactions.map((t) => t.id);
+
+    if (txIds.length === 0) {
+      return { totalUnread: 0, unreadMap: {}, latestMessages: {} };
+    }
+
+    const unreadChats = await prisma.chat.findMany({
+      where: {
+        transactionId: { in: txIds },
+        receiverId: userId,
+        isRead: false,
+      },
+      select: { id: true, transactionId: true },
+    });
+
+    const unreadMap: Record<string, number> = {};
+    for (const c of unreadChats) {
+      const k = c.transactionId.toString();
+      unreadMap[k] = (unreadMap[k] || 0) + 1;
+    }
+
+    const latestMessages: Record<string, { pesan: string; sent_at: Date; sender_nama?: string }> = {};
+    for (const txId of txIds) {
+      const last = await prisma.chat.findFirst({
+        where: { transactionId: txId },
+        orderBy: { sentAt: 'desc' },
+        include: { sender: true },
+      });
+      if (last) {
+        latestMessages[txId.toString()] = {
+          pesan: last.pesan,
+          sent_at: last.sentAt,
+          sender_nama: last.sender?.namaLengkap,
+        };
+      }
+    }
+
+    return {
+      totalUnread: unreadChats.length,
+      unreadMap,
+      latestMessages,
+    };
+  }
 }

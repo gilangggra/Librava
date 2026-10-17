@@ -6,6 +6,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
+import '../../../chat/presentation/screens/chat_room_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
 import '../../../profile/presentation/screens/profile_view_page.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
@@ -792,6 +793,52 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
+                                      builder: (_) => ChatRoomPage(
+                                        userName: _item.requesterName,
+                                        isOnline: true,
+                                        transactionId:
+                                            _item.transactionId?.toString(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                borderRadius: BorderRadius.circular(10),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF6356FF),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        CupertinoIcons.chat_bubble_text_fill,
+                                        size: 13,
+                                        color: Colors.white,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Chat',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              InkWell(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
                                       builder: (_) => ProfileViewPage(
                                         name: _item.requesterName,
                                         userId: _item.requesterUserId,
@@ -803,7 +850,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                                 borderRadius: BorderRadius.circular(10),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
+                                    horizontal: 14,
                                     vertical: 8,
                                   ),
                                   decoration: BoxDecoration(

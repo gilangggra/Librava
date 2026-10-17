@@ -13,7 +13,7 @@ class TransactionProvider extends ChangeNotifier {
 
   TransactionProvider({
     TransactionApiService? apiService,
-    bool isiDataAwal = true,
+    bool isiDataAwal = false,
   }) : _apiService = apiService ?? TransactionApiService() {
     if (isiDataAwal) {
       _inisialisasiDataAwal();
@@ -27,9 +27,10 @@ class TransactionProvider extends ChangeNotifier {
   }
 
   void _inisialisasiDataAwal() {
-    _daftarTransaksi.addAll([
+    _daftarTransaksi.clear();
+    _daftarTransaksi.add(
       const TransactionModel(
-        id: 'trx_masuk_001',
+        id: 'trx_test_01',
         bukuId: 'bk_001',
         judulBuku: 'Clean Code',
         pemohonNama: 'Budi Santoso',
@@ -38,39 +39,10 @@ class TransactionProvider extends ChangeNotifier {
         durasiHari: 7,
         depositSimulasi: 20000.0,
         status: 'pending',
-        tanggal: '2026-09-20',
+        tanggal: '2026-09-15',
         coverBuku: 'assets/images/book_the_unknown.jpg',
       ),
-      const TransactionModel(
-        id: 'trx_saya_001',
-        bukuId: 'bk_002',
-        judulBuku: 'Algoritma Pemrograman',
-        pemohonNama: 'Gilang Ramadan',
-        pemilikNama: 'Andi (dummy)',
-        jenisTransaksi: 'pinjam',
-        durasiHari: 14,
-        depositSimulasi: 20000.0,
-        status: 'disetujui',
-        tanggal: '2026-09-22',
-        coverBuku: 'assets/images/book_the_unknown.jpg',
-      ),
-      const TransactionModel(
-        id: 'trx_riwayat_001',
-        bukuId: 'bk_003',
-        judulBuku: 'Flutter Apprentice',
-        pemohonNama: 'Gilang Ramadan',
-        pemilikNama: 'Andi (dummy)',
-        jenisTransaksi: 'barter',
-        bukuBarter: 'Design Patterns',
-        durasiHari: 14,
-        depositSimulasi: 0.0,
-        status: 'selesai',
-        lokasiPertemuan: 'Open Library Telkom University',
-        tanggal: '2026-09-10',
-        tanggalPengembalian: '2026-09-24',
-        coverBuku: 'assets/images/book_fruit_fly.jpg',
-      ),
-    ]);
+    );
   }
 
   bool get isLoading => _isLoading;
@@ -140,7 +112,7 @@ class TransactionProvider extends ChangeNotifier {
     return {
       'bukuId': bukuId,
       'tersedia': true,
-      'pemilikNama': 'Andi (dummy)',
+      'pemilikNama': 'Pemilik Buku',
       'lokasi': 'Telkom University',
     };
   }
@@ -177,10 +149,8 @@ class TransactionProvider extends ChangeNotifier {
       final list = await _apiService.getTransactions(token: token);
       _daftarTransaksi.clear();
       _daftarTransaksi.addAll(list);
-    } catch (_) {
-      if (_daftarTransaksi.isEmpty) {
-        _inisialisasiDataAwal();
-      }
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
     }
 
     _isLoading = false;
@@ -432,7 +402,7 @@ class TransactionProvider extends ChangeNotifier {
     required String bukuId,
     required String judulBuku,
     required String pemohonNama,
-    String pemilikNama = 'Andi (dummy)',
+    String pemilikNama = 'Pemilik Buku',
     int durasiHari = 7,
     double depositSimulasi = 20000.0,
     String coverBuku = 'assets/images/book_the_unknown.jpg',
@@ -461,7 +431,7 @@ class TransactionProvider extends ChangeNotifier {
     required String judulBuku,
     required String pemohonNama,
     required String bukuBarter,
-    String pemilikNama = 'Andi (dummy)',
+    String pemilikNama = 'Pemilik Buku',
     int durasiHari = 14,
     String coverBuku = 'assets/images/book_the_unknown.jpg',
   }) {
@@ -588,6 +558,11 @@ class TransactionProvider extends ChangeNotifier {
 
   void resetSemuaTransaksi() {
     _daftarTransaksi.clear();
+    notifyListeners();
+  }
+
+  void tambahTransaksi(TransactionModel trx) {
+    _daftarTransaksi.add(trx);
     notifyListeners();
   }
 }
