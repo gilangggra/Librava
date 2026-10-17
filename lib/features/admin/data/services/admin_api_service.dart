@@ -158,50 +158,12 @@ class AdminApiService {
 
   AdminDashboardModel _getDefaultDashboard() {
     return const AdminDashboardModel(
-      totalStudents: 320,
-      totalBooks: 1245,
-      totalRequests: 86,
-      totalTransactions: 62,
-      recentActivity: [
-        AdminActivityItem(
-          id: 'act_1',
-          title: 'The Unknown',
-          author: 'Riley Sager',
-          coverPath: 'assets/images/book_the_unknown.jpg',
-          type: 'Barter',
-          personName: 'Andi',
-          status: 'Pending',
-        ),
-        AdminActivityItem(
-          id: 'act_2',
-          title: 'Fruit Fly',
-          author: 'Kaiju Shirai',
-          coverPath: 'assets/images/book_fruit_fly.jpg',
-          type: 'Borrow',
-          personName: 'Sarah',
-          status: 'Accepted',
-        ),
-      ],
-      recentTransactions: [
-        AdminTransactionItem(
-          id: 'trx_1',
-          title: 'The Unknown',
-          author: 'Riley Sager',
-          coverPath: 'assets/images/book_the_unknown.jpg',
-          type: 'Barter',
-          personName: 'Andi',
-          status: 'Incompleted',
-        ),
-        AdminTransactionItem(
-          id: 'trx_2',
-          title: 'Fruit Fly',
-          author: 'Kaiju Shirai',
-          coverPath: 'assets/images/book_fruit_fly.jpg',
-          type: 'Borrow',
-          personName: 'Sarah',
-          status: 'Completed',
-        ),
-      ],
+      totalStudents: 0,
+      totalBooks: 0,
+      totalRequests: 0,
+      totalTransactions: 0,
+      recentActivity: [],
+      recentTransactions: [],
     );
   }
 }

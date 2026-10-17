@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../chat/presentation/providers/chat_provider.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
@@ -259,6 +260,27 @@ class _MyBookPageState extends State<MyBookPage> {
   /// Menampilkan dialog konfirmasi penghapusan buku
   void _konfirmasiHapusBukuDariModal(
       BuildContext pageContext, BuildContext dialogCtx, BookModel book) {
+    try {
+      final trxProvider = pageContext.read<TransactionProvider>();
+      final hasActiveTx = trxProvider.semuaTransaksi.any((t) =>
+          (t.bukuId == book.id || t.bukuBarter == book.judul) &&
+          t.status != 'selesai' &&
+          t.status != 'ditolak' &&
+          t.status != 'dibatalkan');
+
+      if (hasActiveTx || !book.tersedia) {
+        ScaffoldMessenger.of(pageContext).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Buku "${book.judul}" sedang dipinjam atau dalam proses transaksi aktif sehingga tidak dapat dihapus.'),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    } catch (_) {}
+
     showDialog(
       context: dialogCtx,
       builder: (confirmCtx) {
@@ -733,6 +755,26 @@ class _MyBookPageState extends State<MyBookPage> {
   }
 
   Widget _buildCollectionRow(List<BookModel> books) {
+    if (books.isEmpty) {
+      return Container(
+        height: 100,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEBE8F4)),
+        ),
+        child: const Text(
+          'Belum ada koleksi buku yang Anda tambahkan.',
+          style: TextStyle(
+            fontSize: 13,
+            color: Color(0xFF8E8B9F),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
     return SizedBox(
       height: 165,
       child: ListView.separated(
@@ -808,6 +850,26 @@ class _MyBookPageState extends State<MyBookPage> {
   }
 
   Widget _buildTransactionRow(List<TransactionModel> transactions) {
+    if (transactions.isEmpty) {
+      return Container(
+        height: 100,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEBE8F4)),
+        ),
+        child: const Text(
+          'Tidak ada transaksi pada kategori ini.',
+          style: TextStyle(
+            fontSize: 13,
+            color: Color(0xFF8E8B9F),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
     return SizedBox(
       height: 165,
       child: ListView.separated(
@@ -832,6 +894,8 @@ class _MyBookPageState extends State<MyBookPage> {
                     depositAmount: '${trx.depositSimulasi.toInt()} Rupiah',
                     ownerName: trx.pemilikNama,
                     type: trx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
+                    dueDate: trx.dueDate ?? trx.effectiveDueDate,
+                    isOverdue: trx.isOverdue,
                   ),
                 ),
               );
@@ -842,17 +906,60 @@ class _MyBookPageState extends State<MyBookPage> {
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1E1A34).withValues(alpha: 0.08),
+                    color: trx.isOverdue
+                        ? const Color(0xFFDC2626).withValues(alpha: 0.25)
+                        : const Color(0xFF1E1A34).withValues(alpha: 0.08),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: _buildCoverWidget(
-                coverPath,
-                width: 108,
-                height: 165,
-                borderRadius: 18,
+              child: Stack(
+                children: [
+                  _buildCoverWidget(
+                    coverPath,
+                    width: 108,
+                    height: 165,
+                    borderRadius: 18,
+                  ),
+                  if (trx.isOverdue)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDC2626),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              CupertinoIcons.clock_fill,
+                              color: Colors.white,
+                              size: 10,
+                            ),
+                            SizedBox(width: 3),
+                            Text(
+                              'Telat',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           );
@@ -865,6 +972,7 @@ class _MyBookPageState extends State<MyBookPage> {
     required int index,
     required IconData activeIcon,
     required IconData inactiveIcon,
+    int badgeCount = 0,
   }) {
     final isSelected = _selectedIndex == index;
     return InkWell(
@@ -920,10 +1028,41 @@ class _MyBookPageState extends State<MyBookPage> {
           borderRadius: BorderRadius.circular(18),
         ),
         child: Center(
-          child: Icon(
-            isSelected ? activeIcon : inactiveIcon,
-            color: isSelected ? AppColors.primary : const Color(0xFF52518D),
-            size: 28,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                isSelected ? activeIcon : inactiveIcon,
+                color: isSelected ? AppColors.primary : const Color(0xFF52518D),
+                size: 28,
+              ),
+              if (badgeCount > 0)
+                Positioned(
+                  top: -2,
+                  right: -6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 5, vertical: 2),
+                    constraints:
+                        const BoxConstraints(minWidth: 16, minHeight: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: Text(
+                      badgeCount > 9 ? '9+' : '$badgeCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -949,43 +1088,14 @@ class _MyBookPageState extends State<MyBookPage> {
 
     final userNama = authProvider?.currentUser?.nama;
 
-    final myBooks = (bookProvider != null && bookProvider.koleksiSaya.isNotEmpty)
-        ? bookProvider.koleksiSaya
-        : [
-            const BookModel(
-              id: 'bk_the_unknown',
-              judul: 'The Unknown',
-              penulis: 'Riley Sager',
-              kategori: 'Horror',
-              tahunTerbit: 2022,
-              fotoBuku: 'assets/images/book_the_unknown.jpg',
-            ),
-            const BookModel(
-              id: 'bk_fruit_fly',
-              judul: 'Fruit Fly',
-              penulis: 'Sarah Jenkins',
-              kategori: 'Sains',
-              tahunTerbit: 2021,
-              fotoBuku: 'assets/images/book_fruit_fly.jpg',
-            ),
-            const BookModel(
-              id: 'bk_adversary',
-              judul: 'Adversary to the Villain',
-              penulis: 'Hannah Nicole',
-              kategori: 'Fiksi',
-              tahunTerbit: 2020,
-              fotoBuku: 'assets/images/book_adversary.jpg',
-            ),
-          ];
+    final myBooks = bookProvider?.koleksiSaya ?? [];
 
     final borrowedList = (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
         ? trxProvider.semuaTransaksi.where((t) {
             final isBorrow = t.jenisTransaksi == 'pinjam';
             final isActive = t.status != 'selesai' && t.status != 'ditolak';
-            final matchUser = userNama == null ||
-                t.pemohonNama == userNama ||
-                t.pemohonNama.contains('Gilang') ||
-                t.pemohonNama.contains('Budi');
+            final matchUser = userNama != null &&
+                t.pemohonNama.trim().toLowerCase() == userNama.trim().toLowerCase();
             return isBorrow && isActive && matchUser;
           }).toList()
         : <TransactionModel>[];
@@ -993,89 +1103,14 @@ class _MyBookPageState extends State<MyBookPage> {
     final lentOutList = (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
         ? trxProvider.semuaTransaksi.where((t) {
             final isActive = t.status != 'selesai' && t.status != 'ditolak';
-            final matchOwner = userNama == null ||
-                t.pemilikNama == userNama ||
-                t.pemilikNama.contains('Gilang') ||
-                t.pemilikNama.contains('Budi');
+            final matchOwner = userNama != null &&
+                t.pemilikNama.trim().toLowerCase() == userNama.trim().toLowerCase();
             return isActive && matchOwner;
           }).toList()
         : <TransactionModel>[];
 
-    final displayBorrowed = borrowedList.isNotEmpty
-        ? borrowedList
-        : [
-            const TransactionModel(
-              id: 'trx_demo_1',
-              bukuId: 'bk_the_unknown',
-              judulBuku: 'The Unknown',
-              pemohonNama: 'Gilang Ramadan',
-              pemilikNama: 'Andi',
-              jenisTransaksi: 'pinjam',
-              status: 'pending',
-              tanggal: '2026-09-20',
-              coverBuku: 'assets/images/book_the_unknown.jpg',
-            ),
-            const TransactionModel(
-              id: 'trx_demo_2',
-              bukuId: 'bk_fruit_fly',
-              judulBuku: 'Fruit Fly',
-              pemohonNama: 'Gilang Ramadan',
-              pemilikNama: 'Sarah',
-              jenisTransaksi: 'pinjam',
-              status: 'sedang_dipinjam',
-              tanggal: '2026-09-22',
-              coverBuku: 'assets/images/book_fruit_fly.jpg',
-            ),
-            const TransactionModel(
-              id: 'trx_demo_3',
-              bukuId: 'bk_adversary',
-              judulBuku: 'Adversary to the Villain',
-              pemohonNama: 'Gilang Ramadan',
-              pemilikNama: 'Kevin',
-              jenisTransaksi: 'pinjam',
-              status: 'selesai',
-              tanggal: '2026-09-18',
-              coverBuku: 'assets/images/book_adversary.jpg',
-            ),
-          ];
-
-    final displayLentOut = lentOutList.isNotEmpty
-        ? lentOutList
-        : [
-            const TransactionModel(
-              id: 'trx_demo_4',
-              bukuId: 'bk_the_unknown',
-              judulBuku: 'The Unknown',
-              pemohonNama: 'Budi Santoso',
-              pemilikNama: 'Gilang Ramadan',
-              jenisTransaksi: 'pinjam',
-              status: 'pending',
-              tanggal: '2026-09-21',
-              coverBuku: 'assets/images/book_the_unknown.jpg',
-            ),
-            const TransactionModel(
-              id: 'trx_demo_5',
-              bukuId: 'bk_fruit_fly',
-              judulBuku: 'Fruit Fly',
-              pemohonNama: 'Rina Kartika',
-              pemilikNama: 'Gilang Ramadan',
-              jenisTransaksi: 'pinjam',
-              status: 'sedang_dipinjam',
-              tanggal: '2026-09-23',
-              coverBuku: 'assets/images/book_fruit_fly.jpg',
-            ),
-            const TransactionModel(
-              id: 'trx_demo_6',
-              bukuId: 'bk_adversary',
-              judulBuku: 'Adversary to the Villain',
-              pemohonNama: 'Andi Pratama',
-              pemilikNama: 'Gilang Ramadan',
-              jenisTransaksi: 'barter',
-              status: 'selesai',
-              tanggal: '2026-09-15',
-              coverBuku: 'assets/images/book_adversary.jpg',
-            ),
-          ];
+    final displayBorrowed = borrowedList;
+    final displayLentOut = lentOutList;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -1242,6 +1277,13 @@ class _MyBookPageState extends State<MyBookPage> {
               index: 3,
               activeIcon: CupertinoIcons.ellipses_bubble_fill,
               inactiveIcon: CupertinoIcons.ellipses_bubble,
+              badgeCount: () {
+                try {
+                  return context.watch<ChatProvider>().totalUnread;
+                } catch (_) {
+                  return 0;
+                }
+              }(),
             ),
             _buildNavItem(
               index: 4,

@@ -132,11 +132,20 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 600));
-
-    _isLoading = false;
-    notifyListeners();
-    return true;
+    try {
+      final success = await _apiService.resetPassword(
+        email: email,
+        newPassword: passwordBaru,
+      );
+      _isLoading = false;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> updateProfil({

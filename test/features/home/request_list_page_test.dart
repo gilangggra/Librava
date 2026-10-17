@@ -11,9 +11,48 @@ void main() {
     );
   }
 
+  List<BookRequestItem> getSampleRequests() => [
+        BookRequestItem(
+          id: '1',
+          bookTitle: 'The Unknown',
+          bookAuthor: 'Riley Sager',
+          bookCover: 'assets/images/book_the_unknown.jpg',
+          requesterName: 'Andi',
+          requesterHandle: '@andi_telu',
+          requesterAvatar: 'assets/images/profile_placeholder.png',
+          type: 'Barter',
+          exchangeBookTitle: 'Fruit Fly',
+          exchangeBookAuthor: 'Josh Silver',
+          exchangeBookCover: 'assets/images/book_the_unknown.jpg',
+          requestedPeriod: '14 Days (12 - 26 Sep 2026)',
+          status: 'Pending',
+        ),
+        BookRequestItem(
+          id: '2',
+          bookTitle: 'Adversary to the Villain',
+          bookAuthor: 'Veronica Roth',
+          bookCover: 'assets/images/book_the_unknown.jpg',
+          requesterName: 'Sarah',
+          requesterHandle: '@sarah_reader',
+          requesterAvatar: 'assets/images/profile_placeholder.png',
+          type: 'Pinjam',
+          requestedPeriod: '7 Days (15 - 22 Sep 2026)',
+          status: 'Pending',
+        ),
+      ];
+
+  testWidgets('RequestListPage menampilkan empty state saat tidak ada request',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(createWidgetUnderTest(const RequestListPage(initialRequests: [])));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Request list'), findsOneWidget);
+    expect(find.text('Belum Ada Permintaan Masuk'), findsOneWidget);
+  });
+
   testWidgets('RequestListPage merender judul dan daftar request dengan benar',
       (WidgetTester tester) async {
-    await tester.pumpWidget(createWidgetUnderTest(const RequestListPage()));
+    await tester.pumpWidget(createWidgetUnderTest(RequestListPage(initialRequests: getSampleRequests())));
     await tester.pumpAndSettle();
 
     expect(find.text('Request list'), findsOneWidget);
@@ -28,7 +67,7 @@ void main() {
   testWidgets(
       'Menekan tombol Accept di RequestListPage memunculkan dialog konfirmasi',
       (WidgetTester tester) async {
-    await tester.pumpWidget(createWidgetUnderTest(const RequestListPage()));
+    await tester.pumpWidget(createWidgetUnderTest(RequestListPage(initialRequests: getSampleRequests())));
     await tester.pumpAndSettle();
 
     final acceptBtn = find.widgetWithText(ElevatedButton, 'Accept').first;
@@ -53,7 +92,7 @@ void main() {
   testWidgets(
       'Mengetuk sub-card request membuka halaman RequestDetailPage',
       (WidgetTester tester) async {
-    await tester.pumpWidget(createWidgetUnderTest(const RequestListPage()));
+    await tester.pumpWidget(createWidgetUnderTest(RequestListPage(initialRequests: getSampleRequests())));
     await tester.pumpAndSettle();
 
     final offerCard = find.text('Offers to exchange with:').first;

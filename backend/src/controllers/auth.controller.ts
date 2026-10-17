@@ -142,4 +142,27 @@ export class AuthController {
       next(error);
     }
   }
+
+  static async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { email, new_password, password } = req.body;
+      const targetPassword = new_password || password;
+      if (!email || !targetPassword) {
+        res.status(400).json({
+          success: false,
+          message: 'Email dan password baru wajib diisi.',
+        });
+        return;
+      }
+
+      const result = await AuthService.resetPassword(email, targetPassword);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

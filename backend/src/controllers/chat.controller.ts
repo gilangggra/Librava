@@ -53,4 +53,24 @@ export class ChatController {
       next(error);
     }
   }
+
+  static async getConversationsSummary(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ success: false, message: 'Autentikasi diperlukan.' });
+        return;
+      }
+
+      const summary = await ChatService.getConversationsSummary(userId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Berhasil mengambil ringkasan chat & unread notifikasi.',
+        data: summary,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

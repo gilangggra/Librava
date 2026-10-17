@@ -453,15 +453,31 @@ class _AddBookPageState extends State<AddBookPage> {
 
   /// Mempublikasikan buku baru ke server backend
   Future<void> _publishBook() async {
-    final titleText = _titleController.text.trim().isNotEmpty
-        ? _titleController.text.trim()
-        : 'The Unknown';
-    final authorText = _authorController.text.trim().isNotEmpty
-        ? _authorController.text.trim()
-        : 'Riley Sager';
-    final descText = _descriptionController.text.trim().isNotEmpty
-        ? _descriptionController.text.trim()
-        : 'A compelling and suspenseful novel that will keep readers on the edge of their seats from start to finish.';
+    final titleText = _titleController.text.trim();
+    final authorText = _authorController.text.trim();
+    final descText = _descriptionController.text.trim();
+
+    if (titleText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan masukkan judul buku.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (authorText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Silakan masukkan nama penulis buku.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     final auth = context.read<AuthProvider>();
     if (auth.token == null || auth.token!.isEmpty) {

@@ -60,4 +60,57 @@ class ChatApiService {
       throw Exception(errorMessage);
     }
   }
+
+  Future<
+      ({
+        int totalUnread,
+        Map<String, int> unreadMap,
+        Map<String, ({String text, String sentAt, String? senderNama})> latestMessages
+      })> getConversationsSummary({
+    required String token,
+  }) async {
+    try {
+      final uri =
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.chats}/summary');
+
+      final response = await _client
+          .get(uri, headers: ApiConstants.headers(token))
+          .timeout(const Duration(seconds: 10));
+
+      final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final data = responseData['data'] as Map<String, dynamic>? ?? {};
+        final totalUnread = (data['totalUnread'] as num?)?.toInt() ?? 0;
+        final rawUnreadMap = data['unreadMap'] as Map<String, dynamic>? ?? {};
+        final unreadMap =
+            rawUnreadMap.map((k, v) => MapEntry(k, (v as num).toInt()));
+
+        final rawLatest =
+            data['latestMessages'] as Map<String, dynamic>? ?? {};
+        final latestMessages = rawLatest.map((k, v) {
+          final val = v as Map<String, dynamic>;
+          return MapEntry(
+            k,
+            (
+              text: val['pesan'] as String? ?? '',
+              sentAt: val['sent_at']?.toString() ?? '',
+              senderNama: val['sender_nama'] as String?,
+            ),
+          );
+        });
+
+        return (
+          totalUnread: totalUnread,
+          unreadMap: unreadMap,
+          latestMessages: latestMessages,
+        );
+      }
+    } catch (_) {}
+    return (
+      totalUnread: 0,
+      unreadMap: <String, int>{},
+      latestMessages: <String, ({String text, String sentAt, String? senderNama})>{},
+    );
+  }
 }

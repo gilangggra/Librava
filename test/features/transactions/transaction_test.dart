@@ -56,7 +56,7 @@ void main() {
       expect(diubah.status, 'disetujui');
       expect(diubah.lokasiPertemuan, 'Gedung Tokong Nanas');
       expect(diubah.judulBuku, 'Algoritma Pemrograman');
-      expect(diubah.pemilikNama, 'Andi (dummy)');
+      expect(diubah.pemilikNama, 'Pemilik Buku');
     });
   });
 
@@ -80,7 +80,7 @@ void main() {
     test('FR-REQ-02: Matching Buku mengembalikan ketersediaan dan pemilik dummy', () {
       final matching = provider.matchingBuku('bk_001');
       expect(matching['tersedia'], true);
-      expect(matching['pemilikNama'], 'Andi (dummy)');
+      expect(matching['pemilikNama'], 'Pemilik Buku');
       expect(matching['lokasi'], 'Telkom University');
     });
 

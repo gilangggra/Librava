@@ -43,6 +43,8 @@ export interface Book {
   owner_nama?: string;
   owner_universitas?: string;
   owner_foto?: string;
+  rating?: number;
+  total_ratings?: number;
 }
 
 export type TransactionType = 'BORROW' | 'BARTER';
@@ -68,6 +70,8 @@ export interface Transaction {
   returned_at?: Date;
   lokasi_pertemuan?: string;
   waktu_pertemuan?: Date;
+  requester_confirmed_at?: Date;
+  owner_confirmed_at?: Date;
   created_at: Date;
   updated_at: Date;
   requester_nama?: string;
@@ -75,8 +79,11 @@ export interface Transaction {
   owner_nama?: string;
   owner_universitas?: string;
   book_judul?: string;
+  book_penulis?: string;
   book_foto?: string;
   barter_book_judul?: string;
+  barter_book_penulis?: string;
+  barter_book_foto?: string;
 }
 
 export interface Chat {

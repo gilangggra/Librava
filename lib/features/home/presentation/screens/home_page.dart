@@ -17,6 +17,7 @@ import '../../../transactions/presentation/screens/transaction_detail_page.dart'
 import '../../../events/domain/models/event_model.dart';
 import '../../../events/presentation/providers/event_provider.dart';
 import '../../../events/presentation/screens/event_detail_page.dart';
+import '../../../chat/presentation/providers/chat_provider.dart';
 import 'request_list_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -44,6 +45,7 @@ class _HomePageState extends State<HomePage> {
         final auth = context.read<AuthProvider>();
         if (auth.token != null) {
           context.read<TransactionProvider>().fetchTransaksi(auth.token!);
+          context.read<ChatProvider>().fetchSummary(auth.token!);
         }
       } catch (_) {}
       try {
@@ -51,30 +53,6 @@ class _HomePageState extends State<HomePage> {
       } catch (_) {}
     });
   }
-
-  final List<Map<String, dynamic>> _borrowedBooks = const [
-    {
-      'title': 'The Unknown',
-      'subtitle': 'Borrowing from Andi',
-      'status': 'Waiting for owner’s response',
-      'statusColor': Color(0xFFFFDD2D),
-      'image': 'assets/images/book_the_unknown.jpg',
-    },
-    {
-      'title': 'Fruit Fly',
-      'subtitle': 'Borrowed from Sarah',
-      'status': 'Due in 3 days',
-      'statusColor': Color(0xFF4C7BFE),
-      'image': 'assets/images/book_fruit_fly.jpg',
-    },
-    {
-      'title': 'Adversary to the Villain',
-      'subtitle': 'Bartered with Kevin',
-      'status': 'Barter completed',
-      'statusColor': Color(0xFF34C759),
-      'image': 'assets/images/book_adversary.jpg',
-    },
-  ];
 
   String _getCoverForBook(BookModel book) {
     if (book.fotoBuku != null && book.fotoBuku!.isNotEmpty) {
@@ -122,7 +100,7 @@ class _HomePageState extends State<HomePage> {
         };
       }).toList();
     }
-    return _borrowedBooks;
+    return const [];
   }
 
   @override
@@ -141,34 +119,31 @@ class _HomePageState extends State<HomePage> {
             builder: (_) => BookDetailPage(
               book: book,
               coverPath: assetPath,
-              title: book?.judul ??
-                  (assetPath.contains('unknown')
-                      ? 'The Unknown'
-                      : assetPath.contains('fruit')
-                          ? 'Fruit Fly'
-                          : 'Adversary to the Villain'),
-              author: book?.penulis ??
-                  (assetPath.contains('unknown')
-                      ? 'Riley Sager'
-                      : assetPath.contains('fruit')
-                          ? 'Dr. John Doe'
-                          : 'Jane Smith'),
+              title: book?.judul ?? 'Buku',
+              author: book?.penulis ?? 'Penulis',
               genre: book?.kategori ?? 'Umum',
             ),
           ),
         );
       },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: assetPath.startsWith('http://') ||
-                assetPath.startsWith('https://')
-            ? Image.network(
-                assetPath,
-                width: 108,
-                height: 165,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: () {
+              String? fullNetworkUrl;
+              if (assetPath.startsWith('http://') ||
+                  assetPath.startsWith('https://')) {
+                fullNetworkUrl = assetPath;
+              } else if (assetPath.startsWith('/uploads/') ||
+                  assetPath.startsWith('uploads/')) {
+                final clean =
+                    assetPath.startsWith('/') ? assetPath : '/$assetPath';
+                fullNetworkUrl =
+                    '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+              }
+
+              Widget fallback() => Container(
                     width: 108,
                     height: 165,
                     decoration: BoxDecoration(
@@ -183,31 +158,58 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   );
-                },
-              )
-            : Image.asset(
+
+              if (fullNetworkUrl != null) {
+                return Image.network(
+                  fullNetworkUrl,
+                  width: 108,
+                  height: 165,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => fallback(),
+                );
+              }
+
+              return Image.asset(
                 assetPath,
                 width: 108,
                 height: 165,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 108,
-                    height: 165,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE7E3FF),
-                      borderRadius: BorderRadius.circular(18),
+                errorBuilder: (context, error, stackTrace) => fallback(),
+              );
+            }(),
+          ),
+          if (book != null && book.rating > 0)
+            Positioned(
+              top: 8,
+              left: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.star_rounded,
+                      color: Color(0xFFFFD027),
+                      size: 13,
                     ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.book_rounded,
-                        color: AppColors.primary,
-                        size: 36,
+                    const SizedBox(width: 3),
+                    Text(
+                      book.rating.toStringAsFixed(1),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
+            ),
+        ],
       ),
     );
   }
@@ -221,11 +223,7 @@ class _HomePageState extends State<HomePage> {
             builder: (_) => TransactionDetailPage(
               transactionId: item['id'] as String?,
               bookTitle: item['title'] as String,
-              bookAuthor: item['title'] == 'The Unknown'
-                  ? 'Riley Sager'
-                  : item['title'] == 'Fruit Fly'
-                      ? 'Dr. John Doe'
-                      : 'Jane Smith',
+              bookAuthor: (item['author'] as String?) ?? 'Penulis',
               coverPath: item['image'] as String,
               status: item['status'] as String,
             ),
@@ -251,29 +249,54 @@ class _HomePageState extends State<HomePage> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                child: Image.asset(
-                  item['image'] as String,
-                  width: 104,
-                  height: 132,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
+                child: () {
+                  final imgPath = item['image'] as String;
+                  String? fullNetworkUrl;
+                  if (imgPath.startsWith('http://') ||
+                      imgPath.startsWith('https://')) {
+                    fullNetworkUrl = imgPath;
+                  } else if (imgPath.startsWith('/uploads/') ||
+                      imgPath.startsWith('uploads/')) {
+                    final clean =
+                        imgPath.startsWith('/') ? imgPath : '/$imgPath';
+                    fullNetworkUrl =
+                        '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+                  }
+
+                  Widget fallback() => Container(
+                        width: 104,
+                        height: 132,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE7E3FF),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.book_rounded,
+                            color: AppColors.primary,
+                            size: 36,
+                          ),
+                        ),
+                      );
+
+                  if (fullNetworkUrl != null) {
+                    return Image.network(
+                      fullNetworkUrl,
                       width: 104,
                       height: 132,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE7E3FF),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.book_rounded,
-                          color: AppColors.primary,
-                          size: 36,
-                        ),
-                      ),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => fallback(),
                     );
-                  },
-                ),
+                  }
+
+                  return Image.asset(
+                    imgPath,
+                    width: 104,
+                    height: 132,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => fallback(),
+                  );
+                }(),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -515,6 +538,7 @@ class _HomePageState extends State<HomePage> {
     required int index,
     required IconData activeIcon,
     required IconData inactiveIcon,
+    int badgeCount = 0,
   }) {
     final isSelected = _selectedIndex == index;
     return InkWell(
@@ -572,10 +596,39 @@ class _HomePageState extends State<HomePage> {
           borderRadius: BorderRadius.circular(18),
         ),
         child: Center(
-          child: Icon(
-            isSelected ? activeIcon : inactiveIcon,
-            color: isSelected ? AppColors.primary : const Color(0xFF52518D),
-            size: 28,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                isSelected ? activeIcon : inactiveIcon,
+                color: isSelected ? AppColors.primary : const Color(0xFF52518D),
+                size: 28,
+              ),
+              if (badgeCount > 0)
+                Positioned(
+                  top: -2,
+                  right: -6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: Text(
+                      badgeCount > 9 ? '9+' : '$badgeCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -684,14 +737,72 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.bottomCenter,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14.0),
-                      child: SizedBox(
-                        height: 220,
+                child: borrowedList.isEmpty
+                    ? Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 14.0),
+                        padding: const EdgeInsets.all(22),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: const Color(0xFFEBE8F4)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0ECFF),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(
+                                Icons.auto_stories_outlined,
+                                color: AppColors.primary,
+                                size: 32,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: const [
+                                  Text(
+                                    'Belum Ada Buku Dipinjam',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF1E1A34),
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Jelajahi koleksi buku kampus untuk meminjam atau barter buku pilihan Anda.',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: Color(0xFF7E7A92),
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.bottomCenter,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                            child: SizedBox(
+                              height: 220,
                         child: PageView.builder(
                           controller: _borrowPageController,
                           itemCount: borrowedList.length,
@@ -832,11 +943,7 @@ class _HomePageState extends State<HomePage> {
                                   transactionId:
                                       currentBook['id'] as String?,
                                   bookTitle: currentBook['title'] as String,
-                                  bookAuthor: currentBook['title'] == 'The Unknown'
-                                      ? 'Riley Sager'
-                                      : currentBook['title'] == 'Fruit Fly'
-                                          ? 'Dr. John Doe'
-                                          : 'Jane Smith',
+                                  bookAuthor: (currentBook['author'] as String?) ?? 'Penulis',
                                   coverPath: currentBook['image'] as String,
                                   status: currentBook['status'] as String,
                                 ),
@@ -1055,6 +1162,80 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 20),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 24.0),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome,
+                      color: Color(0xFFF5A623),
+                      size: 22,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Recommended for you',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF130F26),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 165,
+                child: (bookProvider != null &&
+                        bookProvider.recommendedBooks.isNotEmpty)
+                    ? ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        children: bookProvider.recommendedBooks.map((b) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 14.0),
+                            child: _buildBookCover(
+                              _getCoverForBook(b),
+                              book: b,
+                            ),
+                          );
+                        }).toList(),
+                      )
+                    : (bookProvider != null && bookProvider.allBooks.isNotEmpty)
+                        ? ListView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                            children: bookProvider.allBooks.map((b) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 14.0),
+                                child: _buildBookCover(
+                                  _getCoverForBook(b),
+                                  book: b,
+                                ),
+                              );
+                            }).toList(),
+                          )
+                        : Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 24.0),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: const Color(0xFFEBE8F4)),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'Belum ada rekomendasi buku tersedia saat ini.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF7E7A92),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+              ),
+              const SizedBox(height: 20),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.0),
                 child: Text(
                   'Featured books',
                   style: TextStyle(
@@ -1067,12 +1248,12 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 14),
               SizedBox(
                 height: 165,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  children: (bookProvider != null &&
-                          bookProvider.allBooks.isNotEmpty)
-                      ? bookProvider.allBooks.map((b) {
+                child: (bookProvider != null &&
+                        bookProvider.allBooks.isNotEmpty)
+                    ? ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        children: bookProvider.allBooks.map((b) {
                           return Padding(
                             padding: const EdgeInsets.only(right: 14.0),
                             child: _buildBookCover(
@@ -1080,15 +1261,27 @@ class _HomePageState extends State<HomePage> {
                               book: b,
                             ),
                           );
-                        }).toList()
-                      : [
-                          _buildBookCover('assets/images/book_the_unknown.jpg'),
-                          const SizedBox(width: 14),
-                          _buildBookCover('assets/images/book_fruit_fly.jpg'),
-                          const SizedBox(width: 14),
-                          _buildBookCover('assets/images/book_adversary.jpg'),
-                        ],
-                ),
+                        }).toList(),
+                      )
+                    : Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 24.0),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFEBE8F4)),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'Belum ada buku unggulan tersedia.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF7E7A92),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
               ),
               const SizedBox(height: 24),
             ],
@@ -1128,6 +1321,13 @@ class _HomePageState extends State<HomePage> {
               index: 3,
               activeIcon: CupertinoIcons.ellipses_bubble_fill,
               inactiveIcon: CupertinoIcons.ellipses_bubble,
+              badgeCount: () {
+                try {
+                  return context.watch<ChatProvider>().totalUnread;
+                } catch (_) {
+                  return 0;
+                }
+              }(),
             ),
             _buildNavItem(
               index: 4,

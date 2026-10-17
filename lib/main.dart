@@ -5,6 +5,7 @@ import 'features/admin/presentation/providers/admin_provider.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/books/presentation/providers/book_provider.dart';
 import 'features/events/presentation/providers/event_provider.dart';
+import 'features/chat/presentation/providers/chat_provider.dart';
 import 'features/landing/presentation/screens/landing_page.dart';
 import 'features/transactions/presentation/providers/transaction_provider.dart';
 
@@ -17,6 +18,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
         ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => EventProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
       child: const MyApp(),
     ),

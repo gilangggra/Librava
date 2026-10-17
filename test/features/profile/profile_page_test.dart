@@ -31,8 +31,7 @@ void main() {
     expect(find.text('Books Borrowed'), findsOneWidget);
     expect(find.text('Favorites'), findsOneWidget);
     expect(find.text('Recent activity'), findsOneWidget);
-    expect(find.text('The Unknown'), findsOneWidget);
-    expect(find.text('Fruit Fly'), findsOneWidget);
+    expect(find.text('Belum ada aktivitas transaksi terbaru.'), findsOneWidget);
   });
 
   testWidgets('Tombol Edit profile membuka halaman EditProfilePage',

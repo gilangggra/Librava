@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/screens/login_page.dart';
 import '../../../books/domain/models/book_model.dart';
@@ -9,6 +10,7 @@ import '../../../books/presentation/providers/book_provider.dart';
 import '../../../books/presentation/screens/book_detail_page.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
+import '../../../chat/presentation/providers/chat_provider.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../events/presentation/providers/event_provider.dart';
 import '../../../events/presentation/screens/event_detail_page.dart';
@@ -28,7 +30,6 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final int _selectedIndex = 4;
-  final String _phoneNumber = '+62 8959982898';
 
   @override
   void initState() {
@@ -721,113 +722,11 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildWalletCard(double saldo) {
-    final formattedSaldo = saldo.toInt().toString().replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]}.',
-        );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF6356FF),
-              Color(0xFF7E74FF),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF6356FF).withValues(alpha: 0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.account_balance_wallet_rounded,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'Saldo Deposit Jaminan',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.22),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'Simulasi Otomatis',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Rp $formattedSaldo',
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Saldo jaminan terpotong saat peminjaman dan dikembalikan penuh setelah buku dikembalikan & diserahterimakan.',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                color: Colors.white.withValues(alpha: 0.88),
-                height: 1.35,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildNavItem({
     required int index,
     required IconData activeIcon,
     required IconData inactiveIcon,
+    int badgeCount = 0,
   }) {
     final isSelected = _selectedIndex == index;
     return InkWell(
@@ -879,10 +778,41 @@ class _ProfilePageState extends State<ProfilePage> {
           borderRadius: BorderRadius.circular(18),
         ),
         child: Center(
-          child: Icon(
-            isSelected ? activeIcon : inactiveIcon,
-            color: isSelected ? AppColors.primary : const Color(0xFF52518D),
-            size: 28,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                isSelected ? activeIcon : inactiveIcon,
+                color: isSelected ? AppColors.primary : const Color(0xFF52518D),
+                size: 28,
+              ),
+              if (badgeCount > 0)
+                Positioned(
+                  top: -2,
+                  right: -6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 5, vertical: 2),
+                    constraints:
+                        const BoxConstraints(minWidth: 16, minHeight: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: Text(
+                      badgeCount > 9 ? '9+' : '$badgeCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -892,8 +822,8 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    final namaUser = authProvider.currentUser?.nama ?? 'Ujang Knalpot';
-    final emailUser = authProvider.currentUser?.email ?? 'ujang@example.com';
+    final namaUser = authProvider.currentUser?.nama ?? 'Pengguna';
+    final emailUser = authProvider.currentUser?.email ?? '-';
 
     TransactionProvider? trxProvider;
     try {
@@ -916,14 +846,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 .where((t) => t.status == 'selesai')
                 .length
                 .toString()
-            : '12';
+            : '0';
     final booksBorrowedStat =
         (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
             ? trxProvider.semuaTransaksi
                 .where((t) => t.jenisTransaksi == 'pinjam')
                 .length
                 .toString()
-            : '3';
+            : '0';
     final favoritesStat =
         (bookProvider != null && bookProvider.bookmarkedBooks.isNotEmpty)
             ? bookProvider.bookmarkedBooks.length.toString()
@@ -982,30 +912,21 @@ class _ProfilePageState extends State<ProfilePage> {
         }
       }
     } else {
-      recentWidgets.addAll([
-        _buildRecentItem(
-          image: 'assets/images/book_the_unknown.jpg',
-          title: 'The Unknown',
-          subtitle: 'Borrowing from Andi',
-          statusColor: const Color(0xFFFFDD2D),
-          status: "Waiting for owner's response",
-        ),
+      recentWidgets.add(
         const Padding(
-          padding: EdgeInsets.symmetric(vertical: 12.0),
-          child: Divider(
-            color: Color(0xFFEBE8F4),
-            thickness: 1,
-            height: 1,
+          padding: EdgeInsets.symmetric(vertical: 16.0),
+          child: Center(
+            child: Text(
+              'Belum ada aktivitas transaksi terbaru.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF8E8B9F),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ),
-        _buildRecentItem(
-          image: 'assets/images/book_fruit_fly.jpg',
-          title: 'Fruit Fly',
-          subtitle: 'Borrowed from Sarah',
-          statusColor: const Color(0xFF4C7BFE),
-          status: 'Due in 3 days',
-        ),
-      ]);
+      );
     }
 
     return Scaffold(
@@ -1096,13 +1017,32 @@ class _ProfilePageState extends State<ProfilePage> {
                                   ),
                                 ],
                               ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.person,
-                                  size: 52,
-                                  color: Color(0xFF130F26),
-                                ),
-                              ),
+                              child: (authProvider.currentUser?.fotoProfil != null &&
+                                      authProvider.currentUser!.fotoProfil!.isNotEmpty)
+                                  ? ClipOval(
+                                      child: Image.network(
+                                        authProvider.currentUser!.fotoProfil!.startsWith('http')
+                                            ? authProvider.currentUser!.fotoProfil!
+                                            : '${ApiConstants.baseUrl.replaceAll('/api', '')}/${authProvider.currentUser!.fotoProfil!.replaceFirst(RegExp(r'^/+'), '')}',
+                                        width: 84,
+                                        height: 84,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => const Center(
+                                          child: Icon(
+                                            Icons.person,
+                                            size: 52,
+                                            color: Color(0xFF130F26),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : const Center(
+                                      child: Icon(
+                                        Icons.person,
+                                        size: 52,
+                                        color: Color(0xFF130F26),
+                                      ),
+                                    ),
                             ),
                             const SizedBox(height: 12),
                             Text(
@@ -1127,7 +1067,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             _buildInfoRow('Email', emailUser),
                             _buildInfoRow(
                               'Phone',
-                              authProvider.currentUser?.phone ?? _phoneNumber,
+                              (authProvider.currentUser?.phone.isNotEmpty == true)
+                                  ? authProvider.currentUser!.phone
+                                  : '-',
                             ),
                           ],
                         ),
@@ -1178,10 +1120,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 20),
-              _buildWalletCard(
-                authProvider.currentUser?.saldoDummy ?? 100000.0,
               ),
               const SizedBox(height: 24),
               const Padding(
@@ -1451,6 +1389,13 @@ class _ProfilePageState extends State<ProfilePage> {
               index: 3,
               activeIcon: CupertinoIcons.ellipses_bubble_fill,
               inactiveIcon: CupertinoIcons.ellipses_bubble,
+              badgeCount: () {
+                try {
+                  return context.watch<ChatProvider>().totalUnread;
+                } catch (_) {
+                  return 0;
+                }
+              }(),
             ),
             _buildNavItem(
               index: 4,

@@ -26,3 +26,8 @@ export const updateProfileSchema = z.object({
   nomor_telepon: z.string().max(50).optional(),
   phone: z.string().max(50).optional(),
 });
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email('Format email tidak valid.').max(255),
+  new_password: z.string().min(6, 'Password minimal 6 karakter.').max(100),
+});

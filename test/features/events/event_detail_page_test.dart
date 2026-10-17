@@ -93,7 +93,8 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap on the main Approve button
+      // Scroll to make Approve visible and tap it
+      await tester.ensureVisible(find.text('Approve'));
       await tester.tap(find.text('Approve'));
       await tester.pumpAndSettle();
 
@@ -126,7 +127,8 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap on the main Reject button
+      // Scroll to make Reject visible and tap it
+      await tester.ensureVisible(find.text('Reject'));
       await tester.tap(find.text('Reject'));
       await tester.pumpAndSettle();
 

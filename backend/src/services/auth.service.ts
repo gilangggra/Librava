@@ -326,6 +326,33 @@ export class AuthService {
     return this.getProfile(userId);
   }
 
+  static async resetPassword(email: string, newPassword: string) {
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: email.trim(),
+          mode: 'insensitive',
+        },
+      },
+    });
+
+    if (!user) {
+      const error: any = new Error('Akun dengan email tersebut tidak ditemukan.');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+
+    return { success: true, message: 'Password berhasil diperbarui.' };
+  }
+
   private static generateToken(payload: UserPayload): string {
     const secret = getJwtSecret();
     const expiresIn = (process.env.JWT_EXPIRES_IN || '7d') as jwt.SignOptions['expiresIn'];

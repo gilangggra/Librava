@@ -13,11 +13,17 @@ import 'package:librava/features/transactions/presentation/providers/transaction
 import 'package:provider/provider.dart';
 
 void main() {
-  Widget buildTestableWidget({BookModel? book, String? coverPath}) {
+  Widget buildTestableWidget({
+    BookModel? book,
+    String? coverPath,
+    BookProvider? bookProvider,
+  }) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => BookProvider()),
+        bookProvider != null
+            ? ChangeNotifierProvider.value(value: bookProvider)
+            : ChangeNotifierProvider(create: (_) => BookProvider()),
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
       ],
       child: MaterialApp(
@@ -84,7 +90,19 @@ void main() {
 
   testWidgets('Menekan tombol Barter membuka modal barter dengan pilihan koleksi',
       (WidgetTester tester) async {
-    await tester.pumpWidget(buildTestableWidget());
+    final bookProvider = BookProvider();
+    bookProvider.tambahBuku(
+      const BookModel(
+        id: 'bk_clean',
+        judul: 'Clean Code',
+        penulis: 'Robert C. Martin',
+        kategori: 'Teknologi',
+        tahunTerbit: 2008,
+        tersedia: true,
+      ),
+    );
+
+    await tester.pumpWidget(buildTestableWidget(bookProvider: bookProvider));
 
     final barterButtonFinder = find.text('Barter');
     await tester.ensureVisible(barterButtonFinder);

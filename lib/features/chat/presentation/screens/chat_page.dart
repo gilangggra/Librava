@@ -6,9 +6,11 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
+import '../../../home/presentation/screens/request_list_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../../domain/models/chat_item_model.dart';
+import '../providers/chat_provider.dart';
 import 'chat_room_page.dart';
 
 class ChatPage extends StatefulWidget {
@@ -21,57 +23,6 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final int _selectedIndex = 3;
   final TextEditingController _searchController = TextEditingController();
-
-  final List<ChatItemModel> _chats = const [
-    ChatItemModel(
-      id: 'chat_1',
-      name: 'User Test',
-      lastMessage: 'Halo bang',
-      date: '08/21',
-      isOnline: true,
-      hasUnread: true,
-    ),
-    ChatItemModel(
-      id: 'chat_2',
-      name: 'User Test',
-      lastMessage: 'Halo bang',
-      date: '08/21',
-      isOnline: true,
-      hasUnread: true,
-    ),
-    ChatItemModel(
-      id: 'chat_3',
-      name: 'User Test',
-      lastMessage: 'Halo bang',
-      date: '08/21',
-      isOnline: true,
-      hasUnread: true,
-    ),
-    ChatItemModel(
-      id: 'chat_4',
-      name: 'User Test',
-      lastMessage: 'Halo bang',
-      date: '08/21',
-      isOnline: false,
-      hasUnread: true,
-    ),
-    ChatItemModel(
-      id: 'chat_5',
-      name: 'User Test',
-      lastMessage: 'Halo bang',
-      date: '08/21',
-      isOnline: false,
-      hasUnread: false,
-    ),
-    ChatItemModel(
-      id: 'chat_6',
-      name: 'User Test',
-      lastMessage: 'Halo bang',
-      date: '08/21',
-      isOnline: false,
-      hasUnread: false,
-    ),
-  ];
 
   @override
   void initState() {
@@ -86,6 +37,12 @@ class _ChatPageState extends State<ChatPage> {
                 Provider.of<TransactionProvider>(context, listen: false);
             trxProvider.fetchTransaksi(token);
           } catch (_) {}
+          try {
+            final chatProvider =
+                Provider.of<ChatProvider>(context, listen: false);
+            chatProvider.fetchSummary(token);
+            chatProvider.startPolling(token);
+          } catch (_) {}
         }
       } catch (_) {}
     });
@@ -93,35 +50,54 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
+    try {
+      Provider.of<ChatProvider>(context, listen: false).stopPolling();
+    } catch (_) {}
     _searchController.dispose();
     super.dispose();
   }
 
   List<ChatItemModel> _getDisplayChats(
-      AuthProvider? authProvider, TransactionProvider? trxProvider) {
+      AuthProvider? authProvider,
+      TransactionProvider? trxProvider,
+      ChatProvider? chatProvider) {
     if (trxProvider == null || trxProvider.semuaTransaksi.isEmpty) {
-      return _chats;
+      return [];
     }
-    final currentUserName = authProvider?.currentUser?.nama ?? '';
+    final currentUserId = authProvider?.currentUser?.id ?? '';
+    final currentUserName = authProvider?.currentUser?.nama.trim().toLowerCase() ?? '';
     final List<ChatItemModel> list = [];
     for (final trx in trxProvider.semuaTransaksi) {
-      final partnerName = trx.pemilikNama == currentUserName
-          ? trx.pemohonNama
-          : trx.pemilikNama;
+      final bool isOwner = currentUserId.isNotEmpty && trx.pemilikId.isNotEmpty
+          ? (trx.pemilikId == currentUserId)
+          : (currentUserName.isNotEmpty &&
+              trx.pemilikNama.trim().toLowerCase() == currentUserName);
+      final partnerName = isOwner ? trx.pemohonNama : trx.pemilikNama;
       final partnerDisplay =
           partnerName.isNotEmpty ? partnerName : 'Mitra Librava';
       final isBarter = trx.jenisTransaksi.toLowerCase() == 'barter';
-      final lastMsg = isBarter
-          ? 'Barter buku: ${trx.judulBuku}'
-          : 'Peminjaman: ${trx.judulBuku}';
+      
+      final unread = chatProvider?.unreadFor(trx.id) ?? (trx.status == 'pending' ? 1 : 0);
+      final latest = chatProvider?.latestMessageFor(trx.id);
+
+      final String lastMsg;
+      if (latest != null && latest.text.isNotEmpty) {
+        lastMsg = latest.text;
+      } else {
+        lastMsg = isBarter
+            ? 'Barter buku: ${trx.judulBuku}'
+            : 'Peminjaman: ${trx.judulBuku}';
+      }
+
       list.add(
         ChatItemModel(
           id: trx.id,
           name: partnerDisplay,
           lastMessage: lastMsg,
-          date: trx.tanggal.isNotEmpty ? trx.tanggal : '08/21',
+          date: trx.tanggal.isNotEmpty ? trx.tanggal : 'Hari ini',
           isOnline: true,
-          hasUnread: trx.status == 'pending',
+          hasUnread: unread > 0,
+          unreadCount: unread,
         ),
       );
     }
@@ -242,7 +218,28 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                if (chat.hasUnread)
+                if (chat.unreadCount > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 7, vertical: 2),
+                    constraints:
+                        const BoxConstraints(minWidth: 20, minHeight: 20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      chat.unreadCount > 9 ? '9+' : '${chat.unreadCount}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                else if (chat.hasUnread)
                   Container(
                     width: 8,
                     height: 8,
@@ -265,6 +262,7 @@ class _ChatPageState extends State<ChatPage> {
     required int index,
     required IconData activeIcon,
     required IconData inactiveIcon,
+    int badgeCount = 0,
   }) {
     final isSelected = _selectedIndex == index;
     return InkWell(
@@ -320,10 +318,41 @@ class _ChatPageState extends State<ChatPage> {
           borderRadius: BorderRadius.circular(18),
         ),
         child: Center(
-          child: Icon(
-            isSelected ? activeIcon : inactiveIcon,
-            color: isSelected ? AppColors.primary : const Color(0xFF52518D),
-            size: 28,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(
+                isSelected ? activeIcon : inactiveIcon,
+                color: isSelected ? AppColors.primary : const Color(0xFF52518D),
+                size: 28,
+              ),
+              if (badgeCount > 0)
+                Positioned(
+                  top: -2,
+                  right: -6,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    constraints:
+                        const BoxConstraints(minWidth: 16, minHeight: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDC2626),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: Text(
+                      badgeCount > 9 ? '9+' : '$badgeCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -342,7 +371,18 @@ class _ChatPageState extends State<ChatPage> {
       trxProvider = context.watch<TransactionProvider>();
     } catch (_) {}
 
-    final allChats = _getDisplayChats(authProvider, trxProvider);
+    ChatProvider? chatProvider;
+    try {
+      chatProvider = context.watch<ChatProvider>();
+    } catch (_) {}
+
+    final pendingRequestCount = trxProvider?.requestMasuk
+            .where((t) => t.status == 'pending')
+            .length ??
+        0;
+
+    final allChats =
+        _getDisplayChats(authProvider, trxProvider, chatProvider);
     final filteredList = _filterChats(allChats);
 
     return Scaffold(
@@ -366,8 +406,15 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                   ),
                   InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () {},
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RequestListPage(),
+                        ),
+                      );
+                    },
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -379,18 +426,39 @@ class _ChatPageState extends State<ChatPage> {
                             size: 28,
                           ),
                         ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
+                        if (pendingRequestCount > 0)
+                          Positioned(
+                            top: 2,
+                            right: 2,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(
+                                minWidth: 18,
+                                minHeight: 18,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDC2626),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  pendingRequestCount > 9
+                                      ? '9+'
+                                      : '$pendingRequestCount',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -445,18 +513,68 @@ class _ChatPageState extends State<ChatPage> {
               child: RefreshIndicator(
                 onRefresh: () async {
                   final token = authProvider?.token;
-                  if (token != null && trxProvider != null) {
-                    await trxProvider.fetchTransaksi(token);
+                  if (token != null) {
+                    if (trxProvider != null) {
+                      await trxProvider.fetchTransaksi(token);
+                    }
+                    if (chatProvider != null) {
+                      await chatProvider.fetchSummary(token);
+                    }
                   }
                 },
-                child: ListView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  itemCount: filteredList.length,
-                  itemBuilder: (context, index) {
-                    return _buildChatCard(filteredList[index]);
-                  },
-                ),
+                child: filteredList.isEmpty
+                    ? Center(
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(22),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFEBE7FD),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    CupertinoIcons.chat_bubble_2_fill,
+                                    color: AppColors.primary,
+                                    size: 38,
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                const Text(
+                                  'Belum Ada Obrolan',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF1E1A34),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Obrolan akan otomatis tersedia ketika Anda memiliki transaksi peminjaman atau barter buku yang sedang berlangsung.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    color: Color(0xFF7E7A92),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        itemCount: filteredList.length,
+                        itemBuilder: (context, index) {
+                          return _buildChatCard(filteredList[index]);
+                        },
+                      ),
               ),
             ),
           ],
@@ -495,6 +613,7 @@ class _ChatPageState extends State<ChatPage> {
               index: 3,
               activeIcon: CupertinoIcons.ellipses_bubble_fill,
               inactiveIcon: CupertinoIcons.ellipses_bubble,
+              badgeCount: chatProvider?.totalUnread ?? 0,
             ),
             _buildNavItem(
               index: 4,

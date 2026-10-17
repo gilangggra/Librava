@@ -8,6 +8,7 @@ const router = Router();
 
 router.use(authenticate);
 
+router.get('/summary', ChatController.getConversationsSummary);
 router.get('/:transactionId', ChatController.getMessages);
 router.post('/:transactionId', validate({ body: sendMessageSchema }), ChatController.sendMessage);
 

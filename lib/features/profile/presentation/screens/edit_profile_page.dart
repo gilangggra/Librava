@@ -1,8 +1,12 @@
+import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/image_upload_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../books/data/services/book_api_service.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
@@ -23,6 +27,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late final TextEditingController _phoneController;
 
   bool _isSaving = false;
+  Uint8List? _localPhotoBytes;
+  String? _uploadedPhotoUrl;
+  bool _isUploadingPhoto = false;
 
   @override
   void initState() {
@@ -35,6 +42,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _fullNameController = TextEditingController(text: user?.nama ?? 'Ujang Knalpot');
     _emailController = TextEditingController(text: user?.email ?? 'ujang@example.com');
     _phoneController = TextEditingController(text: user?.phone ?? '+62 8959982898');
+    _uploadedPhotoUrl = user?.fotoProfil;
   }
 
   @override
@@ -59,6 +67,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       username: _usernameController.text.trim(),
       bio: _bioController.text.trim(),
       phone: _phoneController.text.trim(),
+      fotoProfil: _uploadedPhotoUrl,
     );
 
     if (!mounted) return;
@@ -91,6 +100,68 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
         ),
       );
+    }
+  }
+
+  Future<void> _handlePilihFoto() async {
+    try {
+      final picked = await pickImageFromDevice();
+      if (picked == null) return;
+      if (!mounted) return;
+
+      setState(() {
+        _localPhotoBytes = picked.bytes;
+        _isUploadingPhoto = true;
+      });
+
+      final auth = context.read<AuthProvider>();
+      if (auth.token != null && auth.token!.isNotEmpty) {
+        final url = await BookApiService().uploadBookCover(
+          token: auth.token!,
+          bytes: picked.bytes,
+          filename: picked.name,
+        );
+
+        if (mounted) {
+          setState(() {
+            _uploadedPhotoUrl = url;
+            _isUploadingPhoto = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Foto profil berhasil diunggah! Klik Simpan untuk memperbarui.'),
+              backgroundColor: AppColors.primary,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isUploadingPhoto = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isUploadingPhoto = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengunggah foto profil: $e'),
+            backgroundColor: const Color(0xFFFF4D4F),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -131,16 +202,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   title: const Text('Ambil Foto dari Kamera'),
                   onTap: () {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Foto profil berhasil dipilih'),
-                        backgroundColor: AppColors.primary,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    );
+                    _handlePilihFoto();
                   },
                 ),
                 ListTile(
@@ -148,16 +210,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   title: const Text('Pilih dari Galeri'),
                   onTap: () {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Foto profil berhasil dipilih'),
-                        backgroundColor: AppColors.primary,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    );
+                    _handlePilihFoto();
                   },
                 ),
               ],
@@ -165,6 +218,61 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAvatarImage() {
+    if (_isUploadingPhoto) {
+      return const Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            color: AppColors.primary,
+          ),
+        ),
+      );
+    }
+
+    if (_localPhotoBytes != null) {
+      return ClipOval(
+        child: Image.memory(
+          _localPhotoBytes!,
+          width: 86,
+          height: 86,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+
+    if (_uploadedPhotoUrl != null && _uploadedPhotoUrl!.isNotEmpty) {
+      final url = _uploadedPhotoUrl!.startsWith('http')
+          ? _uploadedPhotoUrl!
+          : '${ApiConstants.baseUrl.replaceAll('/api', '')}/${_uploadedPhotoUrl!.replaceFirst(RegExp(r'^/+'), '')}';
+      return ClipOval(
+        child: Image.network(
+          url,
+          width: 86,
+          height: 86,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => const Center(
+            child: Icon(
+              Icons.person,
+              size: 54,
+              color: Color(0xFF130F26),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return const Center(
+      child: Icon(
+        Icons.person,
+        size: 54,
+        color: Color(0xFF130F26),
+      ),
     );
   }
 
@@ -362,13 +470,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               ),
                             ],
                           ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.person,
-                              size: 54,
-                              color: Color(0xFF130F26),
-                            ),
-                          ),
+                          child: _buildAvatarImage(),
                         ),
                         const SizedBox(height: 10),
                         InkWell(

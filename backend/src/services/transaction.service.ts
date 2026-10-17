@@ -26,6 +26,8 @@ const mapTransactionWithRelations = (tx: any): Transaction => ({
   returned_at: tx.returnedAt || undefined,
   lokasi_pertemuan: tx.lokasiPertemuan || undefined,
   waktu_pertemuan: tx.waktuPertemuan || undefined,
+  requester_confirmed_at: tx.requesterConfirmedAt || undefined,
+  owner_confirmed_at: tx.ownerConfirmedAt || undefined,
   created_at: tx.createdAt,
   updated_at: tx.updatedAt,
   requester_nama: tx.requester?.namaLengkap,
@@ -33,8 +35,11 @@ const mapTransactionWithRelations = (tx: any): Transaction => ({
   owner_nama: tx.owner?.namaLengkap,
   owner_universitas: tx.owner?.universitas,
   book_judul: tx.book?.judul,
+  book_penulis: tx.book?.penulis || undefined,
   book_foto: tx.book?.fotoBuku || undefined,
   barter_book_judul: tx.barterBook?.judul || undefined,
+  barter_book_penulis: tx.barterBook?.penulis || undefined,
+  barter_book_foto: tx.barterBook?.fotoBuku || undefined,
 });
 
 export class TransactionService {
@@ -51,6 +56,24 @@ export class TransactionService {
 
     if (requestedBook.ownerId === dto.requester_id) {
       const error: any = new Error('Anda tidak dapat meminjam atau membarter buku milik sendiri.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const existingActiveTx = await prisma.transaction.findFirst({
+      where: {
+        requesterId: dto.requester_id,
+        bookId: dto.book_id,
+        status: { in: ['MENUNGGU_KONFIRMASI', 'DISETUJUI', 'DALAM_PROSES'] },
+      },
+    });
+
+    if (existingActiveTx) {
+      const error: any = new Error(
+        existingActiveTx.status === 'MENUNGGU_KONFIRMASI'
+          ? 'Anda sudah memiliki pengajuan yang sedang menunggu konfirmasi untuk buku ini.'
+          : 'Anda saat ini sedang dalam proses transaksi aktif untuk buku ini.'
+      );
       error.statusCode = 400;
       throw error;
     }
@@ -98,6 +121,22 @@ export class TransactionService {
 
       if (barterBook.statusModerasi && barterBook.statusModerasi !== 'DISETUJUI') {
         const error: any = new Error('Buku penukar Anda belum disetujui oleh moderator.');
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const activeBarter = await prisma.transaction.findFirst({
+        where: {
+          OR: [
+            { bookId: dto.barter_book_id },
+            { barterBookId: dto.barter_book_id },
+          ],
+          status: { in: ['MENUNGGU_KONFIRMASI', 'DISETUJUI', 'DALAM_PROSES'] },
+        },
+      });
+
+      if (activeBarter) {
+        const error: any = new Error('Buku penukar Anda saat ini sedang terlibat dalam transaksi lain yang masih berjalan.');
         error.statusCode = 400;
         throw error;
       }
@@ -208,6 +247,8 @@ export class TransactionService {
 
     const allowedTransitions: Record<string, TransactionStatus[]> = {
       MENUNGGU_KONFIRMASI: ['DISETUJUI', 'DITOLAK', 'DIBATALKAN'],
+      DISETUJUI: ['DALAM_PROSES', 'DIBATALKAN'],
+      DALAM_PROSES: ['DIBATALKAN'],
     };
 
     if (userRole !== 'admin') {
@@ -216,8 +257,8 @@ export class TransactionService {
         error.statusCode = 403;
         throw error;
       }
-      if (newStatus === 'DIBATALKAN' && tx.requester_id !== userId) {
-        const error: any = new Error('Hanya pemohon yang dapat membatalkan transaksi.');
+      if (newStatus === 'DIBATALKAN' && tx.requester_id !== userId && tx.owner_id !== userId) {
+        const error: any = new Error('Hanya pihak yang terlibat yang dapat membatalkan transaksi.');
         error.statusCode = 403;
         throw error;
       }
@@ -270,6 +311,14 @@ export class TransactionService {
           });
         }
       } else if (['DITOLAK', 'DIBATALKAN'].includes(newStatus)) {
+        // Kembalikan saldo deposit jika transaksi dibatalkan setelah deposit dipotong
+        if (tx.deposit_dummy > 0 && ['DISETUJUI', 'DALAM_PROSES'].includes(tx.status)) {
+          await prismaTx.user.update({
+            where: { id: tx.requester_id },
+            data: { saldoDummy: { increment: tx.deposit_dummy } },
+          });
+        }
+
         // Kembalikan status buku jadi Tersedia
         await prismaTx.book.update({
           where: { id: tx.book_id },
@@ -281,7 +330,6 @@ export class TransactionService {
             data: { status: 'Tersedia' },
           });
         }
-
       }
     });
 
@@ -324,6 +372,9 @@ export class TransactionService {
 
   private static async confirmCompletion(id: number, userId: number, userRole: string): Promise<Transaction> {
     const tx = await this.getTransactionById(id, userId, userRole);
+    if (tx.status === 'SELESAI') {
+      return tx;
+    }
     if (tx.status !== 'DALAM_PROSES') {
       const error: any = new Error('Serah terima hanya dapat dikonfirmasi saat transaksi dalam proses.');
       error.statusCode = 400;
@@ -341,9 +392,18 @@ export class TransactionService {
       const confirmed = await prismaTx.transaction.findUniqueOrThrow({ where: { id } });
       if (!confirmed.requesterConfirmedAt || !confirmed.ownerConfirmedAt) return;
 
+      const durasiHari = tx.durasi_hari || 7;
+      const calculatedDueDate = tx.tipe_transaksi === 'BORROW'
+        ? (tx.due_date || new Date(now.getTime() + durasiHari * 24 * 60 * 60 * 1000))
+        : null;
+
       await prismaTx.transaction.update({
         where: { id },
-        data: { status: 'SELESAI', returnedAt: now },
+        data: {
+          status: 'SELESAI',
+          returnedAt: now,
+          ...(calculatedDueDate ? { dueDate: calculatedDueDate } : {}),
+        },
       });
 
       if (tx.tipe_transaksi === 'BARTER') {

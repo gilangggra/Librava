@@ -25,10 +25,10 @@ class UserModel {
     this.saldoDummy = 100000.0,
     this.username = 'User',
     this.bio = 'A casual reader',
-    this.phone = '+62 8959982898',
-    this.booksRead = 12,
-    this.booksBorrowed = 3,
-    this.favorites = 5,
+    this.phone = '-',
+    this.booksRead = 0,
+    this.booksBorrowed = 0,
+    this.favorites = 0,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -44,16 +44,16 @@ class UserModel {
       saldoDummy: (json['saldo_dummy'] as num?)?.toDouble() ?? 100000.0,
       username: json['username'] ?? 'User',
       bio: json['bio'] ?? 'A casual reader',
-      phone: json['phone'] ?? json['nomor_telepon'] ?? '+62 8959982898',
+      phone: json['phone'] ?? json['nomor_telepon'] ?? '-',
       booksRead: (activity?['books_read'] as num?)?.toInt() ??
           (json['books_read'] as num?)?.toInt() ??
-          12,
+          0,
       booksBorrowed: (activity?['books_borrowed'] as num?)?.toInt() ??
           (json['books_borrowed'] as num?)?.toInt() ??
-          3,
+          0,
       favorites: (activity?['favorites'] as num?)?.toInt() ??
           (json['favorites'] as num?)?.toInt() ??
-          5,
+          0,
     );
   }
 

@@ -49,6 +49,26 @@ class DepositModalContent extends StatelessWidget {
     this.depositAmount,
   });
 
+  String get _displayAmount {
+    if (depositAmount == null || depositAmount!.trim().isEmpty) {
+      return 'RP 50.000';
+    }
+    final trimmed = depositAmount!.trim();
+    if (trimmed.toUpperCase().startsWith('RP')) {
+      return trimmed.toUpperCase().replaceAll('RP.', 'RP ').replaceAll('RP  ', 'RP ');
+    }
+    final rawNumber = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+    if (rawNumber.isNotEmpty) {
+      final parsed = int.tryParse(rawNumber) ?? 50000;
+      final formatted = parsed.toString().replaceAllMapped(
+            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+            (Match m) => '${m[1]}.',
+          );
+      return 'RP $formatted';
+    }
+    return trimmed;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -152,7 +172,7 @@ class DepositModalContent extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    depositAmount ?? 'RP 20.000',
+                    _displayAmount,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,

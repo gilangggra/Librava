@@ -712,7 +712,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       );
     } catch (_) {
       model = AdminTransactionModel(
-        id: item.id.isNotEmpty ? item.id : '1',
+        id: item.id.isNotEmpty ? item.id : '-',
         tipeTransaksi: item.type.toUpperCase() == 'BARTER' ? 'BARTER' : 'PINJAM',
         status: item.status.toLowerCase() == 'accepted'
             ? 'DISETUJUI'
@@ -721,9 +721,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         createdAt: DateTime.now().toIso8601String(),
         updatedAt: DateTime.now().toIso8601String(),
         requesterNama: item.personName,
-        requesterEmail: '${item.personName.toLowerCase()}@librava.com',
-        ownerNama: 'Librava User',
-        ownerEmail: 'user@librava.com',
+        requesterEmail: '-',
+        ownerNama: '-',
+        ownerEmail: '-',
         bookJudul: item.title,
       );
     }
@@ -745,18 +745,18 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       );
     } catch (_) {
       model = AdminTransactionModel(
-        id: item.id.isNotEmpty ? item.id : '1',
+        id: item.id.isNotEmpty ? item.id : '-',
         tipeTransaksi: item.type.toUpperCase() == 'BARTER' ? 'BARTER' : 'PINJAM',
         status: item.status.toLowerCase() == 'completed' ? 'SELESAI' : 'DALAM_PROSES',
-        depositDummy: 50000,
-        lokasiPertemuan: 'Perpustakaan Pusat Tel-U Lt. 2',
-        waktuPertemuan: '2026-10-05 10:00 WIB',
+        depositDummy: 0,
+        lokasiPertemuan: null,
+        waktuPertemuan: null,
         createdAt: DateTime.now().toIso8601String(),
         updatedAt: DateTime.now().toIso8601String(),
         requesterNama: item.personName,
-        requesterEmail: '${item.personName.toLowerCase()}@librava.com',
-        ownerNama: 'Librava User',
-        ownerEmail: 'user@librava.com',
+        requesterEmail: '-',
+        ownerNama: '-',
+        ownerEmail: '-',
         bookJudul: item.title,
       );
     }
@@ -955,30 +955,43 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       ),
                     ],
                   ),
-                  child: Column(
-                    children: [
-                      for (int i = 0; i < dashboard.recentActivity.length; i++) ...[
-                        () {
-                          final act = dashboard.recentActivity[i];
-                          return _buildActivityItem(
-                            title: act.title,
-                            author: act.author,
-                            coverPath: act.coverPath,
-                            type: act.type,
-                            personName: act.personName,
-                            status: act.status,
-                            onTap: () => _bukaDetailActivity(act),
-                          );
-                        }(),
-                        if (i < dashboard.recentActivity.length - 1)
-                          const Divider(
-                            color: Color(0xFFF0EEF8),
-                            height: 20,
-                            thickness: 1,
+                  child: dashboard.recentActivity.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20.0),
+                          child: Center(
+                            child: Text(
+                              'Belum ada aktivitas request terbaru.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF7E7A92),
+                              ),
+                            ),
                           ),
-                      ],
-                    ],
-                  ),
+                        )
+                      : Column(
+                          children: [
+                            for (int i = 0; i < dashboard.recentActivity.length; i++) ...[
+                              () {
+                                final act = dashboard.recentActivity[i];
+                                return _buildActivityItem(
+                                  title: act.title,
+                                  author: act.author,
+                                  coverPath: act.coverPath,
+                                  type: act.type,
+                                  personName: act.personName,
+                                  status: act.status,
+                                  onTap: () => _bukaDetailActivity(act),
+                                );
+                              }(),
+                              if (i < dashboard.recentActivity.length - 1)
+                                const Divider(
+                                  color: Color(0xFFF0EEF8),
+                                  height: 20,
+                                  thickness: 1,
+                                ),
+                            ],
+                          ],
+                        ),
                 ),
                 const SizedBox(height: 24),
                 // Section Event Sesuai Mockup UI Admin Dashboard
@@ -1200,30 +1213,43 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       ),
                     ],
                   ),
-                  child: Column(
-                    children: [
-                      for (int i = 0; i < dashboard.recentTransactions.length; i++) ...[
-                        () {
-                          final trx = dashboard.recentTransactions[i];
-                          return _buildTransactionItem(
-                            title: trx.title,
-                            author: trx.author,
-                            coverPath: trx.coverPath,
-                            type: trx.type,
-                            personName: trx.personName,
-                            status: trx.status,
-                            onTap: () => _bukaDetailTransaction(trx),
-                          );
-                        }(),
-                        if (i < dashboard.recentTransactions.length - 1)
-                          const Divider(
-                            color: Color(0xFFF0EEF8),
-                            height: 20,
-                            thickness: 1,
+                  child: dashboard.recentTransactions.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20.0),
+                          child: Center(
+                            child: Text(
+                              'Belum ada transaksi terbaru.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF7E7A92),
+                              ),
+                            ),
                           ),
-                      ],
-                    ],
-                  ),
+                        )
+                      : Column(
+                          children: [
+                            for (int i = 0; i < dashboard.recentTransactions.length; i++) ...[
+                              () {
+                                final trx = dashboard.recentTransactions[i];
+                                return _buildTransactionItem(
+                                  title: trx.title,
+                                  author: trx.author,
+                                  coverPath: trx.coverPath,
+                                  type: trx.type,
+                                  personName: trx.personName,
+                                  status: trx.status,
+                                  onTap: () => _bukaDetailTransaction(trx),
+                                );
+                              }(),
+                              if (i < dashboard.recentTransactions.length - 1)
+                                const Divider(
+                                  color: Color(0xFFF0EEF8),
+                                  height: 20,
+                                  thickness: 1,
+                                ),
+                            ],
+                          ],
+                        ),
                 ),
                 const SizedBox(height: 18),
               ],
