@@ -96,6 +96,23 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   void _konfirmasiSerahTerima() {
+    if (_currentHandoverLocation == 'Set handover' ||
+        _currentHandoverLocation == 'Tentukan lokasi') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+              'Silakan tentukan jadwal & lokasi handover terlebih dahulu.'),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      _bukaModalSetHandover();
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) {
@@ -133,28 +150,52 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                setState(() {
-                  _youConfirmed = true;
-                });
 
+                bool success = true;
                 if (widget.transactionId != null) {
                   try {
                     final auth = context.read<AuthProvider>();
                     if (auth.token != null) {
                       final trxProvider = context.read<TransactionProvider>();
-                      await trxProvider.confirmHandoverApi(
+                      success = await trxProvider.confirmHandoverApi(
                         auth.token!,
                         widget.transactionId!,
                       );
-                      await trxProvider.fetchTransaksiById(
-                        auth.token!,
-                        widget.transactionId!,
-                      );
+                      if (success) {
+                        await trxProvider.fetchTransaksiById(
+                          auth.token!,
+                          widget.transactionId!,
+                        );
+                      }
                     }
-                  } catch (_) {}
+                  } catch (_) {
+                    success = false;
+                  }
                 }
 
                 if (!mounted) return;
+
+                if (!success) {
+                  final errMsg =
+                      context.read<TransactionProvider>().errorMessage ??
+                          'Gagal melakukan konfirmasi serah terima.';
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(errMsg),
+                      backgroundColor: const Color(0xFFF05151),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  );
+                  return;
+                }
+
+                setState(() {
+                  _youConfirmed = true;
+                });
+
                 final txAfter = _getTrx(context);
                 final isOwner = _isCurrentUserOwner(context);
                 final partnerAlsoConfirmed = _ownerConfirmed ||
@@ -286,7 +327,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ? 'Open Library Telkom University'
                   : _currentHandoverLocation,
               onClose: () => Navigator.pop(ctx),
-              onHandoverConfirmed: (selectedLocation) {
+              onHandoverConfirmed: (selectedLocation, [meetingTime]) {
                 setState(() {
                   _currentHandoverLocation = selectedLocation;
                 });
@@ -298,7 +339,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             auth.token!,
                             widget.transactionId!,
                             selectedLocation,
-                            null,
+                            meetingTime?.toIso8601String(),
                           );
                     }
                   } catch (_) {}
@@ -2027,13 +2068,17 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
-                child: Text(
-                  isOwner ? 'Message Requester' : 'Message Owner',
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    isOwner ? 'Message Requester' : 'Message Owner',
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -2055,13 +2100,17 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
                         ),
-                        child: Text(
-                          isOwner ? 'Konfirmasi Kembali' : 'Kembalikan Buku',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            isOwner ? 'Konfirmasi Kembali' : 'Kembalikan Buku',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       )
@@ -2076,15 +2125,19 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
                             ),
-                            child: Text(
-                              _hasReviewed ? 'Ubah Ulasan' : 'Beri Ulasan',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: _hasReviewed
-                                    ? const Color(0xFF0C9A4B)
-                                    : const Color(0xFFD48806),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                _hasReviewed ? 'Ubah Ulasan' : 'Beri Ulasan',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: _hasReviewed
+                                      ? const Color(0xFF0C9A4B)
+                                      : const Color(0xFFD48806),
+                                ),
                               ),
                             ),
                           )
@@ -2096,13 +2149,17 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
                             ),
-                            child: Text(
-                              isOwner ? 'Tolak / Batalkan' : 'Cancel Request',
-                              style: const TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                isOwner ? 'Batalkan' : 'Cancel Request',
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
                               ),
                             ),
                           ),

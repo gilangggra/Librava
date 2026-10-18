@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class SetHandoverPage extends StatelessWidget {
-  final Function(String location)? onHandoverConfirmed;
+  final Function? onHandoverConfirmed;
 
   const SetHandoverPage({
     super.key,
@@ -21,8 +21,14 @@ class SetHandoverPage extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 400),
               child: HandoverModalContent(
                 onClose: () => Navigator.pop(context),
-                onHandoverConfirmed: (loc) {
-                  onHandoverConfirmed?.call(loc);
+                onHandoverConfirmed: (loc, [meetingTime]) {
+                  if (onHandoverConfirmed != null) {
+                    try {
+                      (onHandoverConfirmed as dynamic)(loc, meetingTime);
+                    } catch (_) {
+                      (onHandoverConfirmed as dynamic)(loc);
+                    }
+                  }
                   Navigator.pop(context);
                 },
               ),
@@ -36,7 +42,7 @@ class SetHandoverPage extends StatelessWidget {
 
 class HandoverModalContent extends StatefulWidget {
   final VoidCallback onClose;
-  final Function(String location) onHandoverConfirmed;
+  final Function onHandoverConfirmed;
   final String initialLocation;
   final String buttonText;
 
@@ -45,7 +51,7 @@ class HandoverModalContent extends StatefulWidget {
     required this.onClose,
     required this.onHandoverConfirmed,
     this.initialLocation = 'Open Library Telkom University',
-    this.buttonText = "I've made the payment",
+    this.buttonText = 'Set Handover',
   });
 
   @override
@@ -57,20 +63,91 @@ class _HandoverModalContentState extends State<HandoverModalContent> {
   late final TextEditingController _timeController;
   late final TextEditingController _locationController;
 
+  DateTime _selectedDate = DateTime(2026, 8, 23);
+  TimeOfDay _selectedTime = const TimeOfDay(hour: 14, minute: 0);
+
   @override
   void initState() {
     super.initState();
-    _dateController = TextEditingController(text: 'Aug 23, 2026');
-    _timeController = TextEditingController(text: '14:00 WIB');
+    _dateController = TextEditingController(text: _formatDate(_selectedDate));
+    _timeController = TextEditingController(text: _formatTime(_selectedTime));
     _locationController = TextEditingController(text: widget.initialLocation);
   }
 
   @override
   void dispose() {
-    _dateController.dispose;
+    _dateController.dispose();
     _timeController.dispose();
     _locationController.dispose();
     super.dispose();
+  }
+
+  static String _formatDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  static String _formatTime(TimeOfDay time) {
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    return '$hh:$mm WIB';
+  }
+
+  Future<void> _pilihTanggal() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2024),
+      lastDate: DateTime(2035),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Color(0xFF130F26),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && mounted) {
+      setState(() {
+        _selectedDate = picked;
+        _dateController.text = _formatDate(picked);
+      });
+    }
+  }
+
+  Future<void> _pilihWaktu() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Color(0xFF130F26),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && mounted) {
+      setState(() {
+        _selectedTime = picked;
+        _timeController.text = _formatTime(picked);
+      });
+    }
   }
 
   Widget _buildInputField({
@@ -78,6 +155,7 @@ class _HandoverModalContentState extends State<HandoverModalContent> {
     required TextEditingController controller,
     required String hintText,
     VoidCallback? onTap,
+    bool readOnly = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,34 +169,39 @@ class _HandoverModalContentState extends State<HandoverModalContent> {
           ),
         ),
         const SizedBox(height: 6),
-        Container(
-          height: 48,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFFD2D2D6),
-              width: 1.1,
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFD2D2D6),
+                width: 1.1,
+              ),
             ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.centerLeft,
-          child: TextField(
-            controller: controller,
-            onTap: onTap,
-            style: const TextStyle(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF130F26),
-            ),
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
-              border: InputBorder.none,
-              hintText: hintText,
-              hintStyle: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFFB0ACC4),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            alignment: Alignment.centerLeft,
+            child: TextField(
+              controller: controller,
+              readOnly: readOnly,
+              onTap: onTap,
+              style: const TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF130F26),
+              ),
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+                border: InputBorder.none,
+                hintText: hintText,
+                hintStyle: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFFB0ACC4),
+                ),
               ),
             ),
           ),
@@ -186,13 +269,17 @@ class _HandoverModalContentState extends State<HandoverModalContent> {
             _buildInputField(
               label: 'Date',
               controller: _dateController,
-              hintText: 'e.g. Aug 23, 2026',
+              hintText: 'Select handover date',
+              readOnly: true,
+              onTap: _pilihTanggal,
             ),
             const SizedBox(height: 14),
             _buildInputField(
               label: 'Time',
               controller: _timeController,
-              hintText: 'e.g. 14:00 WIB',
+              hintText: 'Select handover time',
+              readOnly: true,
+              onTap: _pilihWaktu,
             ),
             const SizedBox(height: 14),
             _buildInputField(
@@ -262,7 +349,18 @@ class _HandoverModalContentState extends State<HandoverModalContent> {
                   final loc = _locationController.text.trim().isNotEmpty
                       ? _locationController.text.trim()
                       : widget.initialLocation;
-                  widget.onHandoverConfirmed(loc);
+                  final meetingDateTime = DateTime(
+                    _selectedDate.year,
+                    _selectedDate.month,
+                    _selectedDate.day,
+                    _selectedTime.hour,
+                    _selectedTime.minute,
+                  );
+                  try {
+                    (widget.onHandoverConfirmed as dynamic)(loc, meetingDateTime);
+                  } catch (_) {
+                    (widget.onHandoverConfirmed as dynamic)(loc);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,

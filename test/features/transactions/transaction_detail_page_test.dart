@@ -121,7 +121,7 @@ void main() {
       findsOneWidget,
     );
 
-    final actionButton = find.widgetWithText(ElevatedButton, "I've made the payment");
+    final actionButton = find.widgetWithText(ElevatedButton, 'Set Handover');
     await tester.ensureVisible(actionButton);
     await tester.tap(actionButton);
     await tester.pumpAndSettle();

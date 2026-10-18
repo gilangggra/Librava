@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class DepositPage extends StatelessWidget {
@@ -37,7 +39,7 @@ class DepositPage extends StatelessWidget {
   }
 }
 
-class DepositModalContent extends StatelessWidget {
+class DepositModalContent extends StatefulWidget {
   final VoidCallback onClose;
   final VoidCallback onPaymentConfirmed;
   final String? depositAmount;
@@ -49,13 +51,64 @@ class DepositModalContent extends StatelessWidget {
     this.depositAmount,
   });
 
+  @override
+  State<DepositModalContent> createState() => _DepositModalContentState();
+}
+
+class _BankOption {
+  final String code;
+  final String name;
+  final String vaNumber;
+
+  const _BankOption({
+    required this.code,
+    required this.name,
+    required this.vaNumber,
+  });
+}
+
+class _DepositModalContentState extends State<DepositModalContent> {
+  static const List<_BankOption> _banks = [
+    _BankOption(
+      code: 'BCA',
+      name: 'BCA Virtual Account',
+      vaNumber: '8801 2345 6789 0123',
+    ),
+    _BankOption(
+      code: 'Mandiri',
+      name: 'Mandiri Virtual Account',
+      vaNumber: '8902 4567 8901 2345',
+    ),
+    _BankOption(
+      code: 'BNI',
+      name: 'BNI Virtual Account',
+      vaNumber: '9883 5678 9012 3456',
+    ),
+    _BankOption(
+      code: 'BRI',
+      name: 'BRI Virtual Account',
+      vaNumber: '1284 6789 0123 4567',
+    ),
+  ];
+
+  late _BankOption _selectedBank;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedBank = _banks[0];
+  }
+
   String get _displayAmount {
-    if (depositAmount == null || depositAmount!.trim().isEmpty) {
+    if (widget.depositAmount == null || widget.depositAmount!.trim().isEmpty) {
       return 'RP 50.000';
     }
-    final trimmed = depositAmount!.trim();
+    final trimmed = widget.depositAmount!.trim();
     if (trimmed.toUpperCase().startsWith('RP')) {
-      return trimmed.toUpperCase().replaceAll('RP.', 'RP ').replaceAll('RP  ', 'RP ');
+      return trimmed
+          .toUpperCase()
+          .replaceAll('RP.', 'RP ')
+          .replaceAll('RP  ', 'RP ');
     }
     final rawNumber = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
     if (rawNumber.isNotEmpty) {
@@ -67,6 +120,125 @@ class DepositModalContent extends StatelessWidget {
       return 'RP $formatted';
     }
     return trimmed;
+  }
+
+  Widget _buildBankLogo(String code, {double width = 26, double height = 18}) {
+    final filename = code.toLowerCase();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(3),
+      child: SvgPicture.asset(
+        'assets/images/bank/$filename.svg',
+        width: width,
+        height: height,
+        fit: BoxFit.contain,
+        placeholderBuilder: (context) =>
+            _buildFallbackLogo(code, width: width, height: height),
+      ),
+    );
+  }
+
+  Widget _buildFallbackLogo(String code, {double width = 26, double height = 18}) {
+    switch (code.toUpperCase()) {
+      case 'BCA':
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: const Color(0xFF005BAC),
+            borderRadius: BorderRadius.circular(3.5),
+          ),
+          child: const Center(
+            child: Text(
+              'BCA',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 8.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        );
+      case 'MANDIRI':
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: const Color(0xFF002855),
+            borderRadius: BorderRadius.circular(3.5),
+          ),
+          child: const Center(
+            child: Text(
+              'mandiri',
+              style: TextStyle(
+                color: Color(0xFFF5A623),
+                fontSize: 6.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ),
+        );
+      case 'BNI':
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: const Color(0xFF005E6A),
+            borderRadius: BorderRadius.circular(3.5),
+          ),
+          child: const Center(
+            child: Text(
+              'BNI',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 8,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ),
+        );
+      case 'BRI':
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: const Color(0xFF00529C),
+            borderRadius: BorderRadius.circular(3.5),
+          ),
+          child: const Center(
+            child: Text(
+              'BRI',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 8.5,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        );
+      default:
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(3.5),
+          ),
+          child: Center(
+            child: Text(
+              code,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 8,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        );
+    }
   }
 
   @override
@@ -92,7 +264,7 @@ class DepositModalContent extends StatelessWidget {
             Align(
               alignment: Alignment.topRight,
               child: GestureDetector(
-                onTap: onClose,
+                onTap: widget.onClose,
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   color: Colors.transparent,
@@ -180,6 +352,188 @@ class DepositModalContent extends StatelessWidget {
                       letterSpacing: 0.2,
                     ),
                   ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Color(0xFFF0EFF8),
+                    ),
+                  ),
+                  const Text(
+                    'Virtual Account',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF757489),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      PopupMenuButton<_BankOption>(
+                        initialValue: _selectedBank,
+                        tooltip: 'Pilih Bank',
+                        elevation: 6,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        color: Colors.white,
+                        onSelected: (val) {
+                          setState(() {
+                            _selectedBank = val;
+                          });
+                        },
+                        itemBuilder: (context) {
+                          return _banks.map((bank) {
+                            final isSelected = bank.code == _selectedBank.code;
+                            return PopupMenuItem<_BankOption>(
+                              value: bank,
+                              child: Row(
+                                children: [
+                                  _buildBankLogo(bank.code, width: 28, height: 20),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      bank.name,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w800
+                                            : FontWeight.w600,
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : const Color(0xFF130F26),
+                                      ),
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    const Icon(
+                                      Icons.check_rounded,
+                                      color: AppColors.primary,
+                                      size: 18,
+                                    ),
+                                ],
+                              ),
+                            );
+                          }).toList();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 3.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F2FD),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildBankLogo(_selectedBank.code, width: 25, height: 18),
+                              const SizedBox(width: 5),
+                              Text(
+                                _selectedBank.code,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF130F26),
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 16,
+                                color: Color(0xFF757489),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _selectedBank.vaNumber,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF130F26),
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      InkWell(
+                        onTap: () {
+                          Clipboard.setData(
+                            ClipboardData(
+                              text: _selectedBank.vaNumber.replaceAll(' ', ''),
+                            ),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Nomor VA ${_selectedBank.code} disalin!',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: const Color(0xFF16A34A),
+                              duration: const Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFEEFF),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.copy_rounded,
+                                size: 13,
+                                color: AppColors.primary,
+                              ),
+                              SizedBox(width: 3),
+                              Text(
+                                'Salin',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -239,7 +593,7 @@ class DepositModalContent extends StatelessWidget {
                 ],
               ),
               child: ElevatedButton(
-                onPressed: onPaymentConfirmed,
+                onPressed: widget.onPaymentConfirmed,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.transparent,
                   shadowColor: Colors.transparent,

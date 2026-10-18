@@ -29,7 +29,26 @@ void main() {
       findsOneWidget,
     );
     expect(find.text("I've made the payment"), findsOneWidget);
-    expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+    expect(find.text('Virtual Account'), findsOneWidget);
+    expect(find.text('BCA'), findsWidgets);
+    expect(find.text('8801 2345 6789 0123'), findsOneWidget);
+    expect(find.text('Salin'), findsOneWidget);
+
+    // Ganti bank ke Mandiri lewat PopupMenu
+    await tester.ensureVisible(find.text('BCA').first);
+    await tester.tap(find.text('BCA').first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Mandiri Virtual Account'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('8902 4567 8901 2345'), findsOneWidget);
+
+    // Tekan tombol Salin
+    await tester.ensureVisible(find.text('Salin'));
+    await tester.tap(find.text('Salin'));
+    await tester.pump();
+    expect(find.text('Nomor VA Mandiri disalin!'), findsOneWidget);
 
     await tester.ensureVisible(find.text("I've made the payment"));
     await tester.tap(find.text("I've made the payment"));
