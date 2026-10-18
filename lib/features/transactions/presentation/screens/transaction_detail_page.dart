@@ -2068,13 +2068,17 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                 ),
-                child: Text(
-                  isOwner ? 'Message Requester' : 'Message Owner',
-                  style: const TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    isOwner ? 'Message Requester' : 'Message Owner',
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -2096,13 +2100,17 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
                         ),
-                        child: Text(
-                          isOwner ? 'Konfirmasi Kembali' : 'Kembalikan Buku',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            isOwner ? 'Konfirmasi Kembali' : 'Kembalikan Buku',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       )
@@ -2117,15 +2125,19 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
                             ),
-                            child: Text(
-                              _hasReviewed ? 'Ubah Ulasan' : 'Beri Ulasan',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: _hasReviewed
-                                    ? const Color(0xFF0C9A4B)
-                                    : const Color(0xFFD48806),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                _hasReviewed ? 'Ubah Ulasan' : 'Beri Ulasan',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: _hasReviewed
+                                      ? const Color(0xFF0C9A4B)
+                                      : const Color(0xFFD48806),
+                                ),
                               ),
                             ),
                           )
@@ -2137,13 +2149,17 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
                             ),
-                            child: Text(
-                              isOwner ? 'Tolak / Batalkan' : 'Cancel Request',
-                              style: const TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                isOwner ? 'Batalkan' : 'Cancel Request',
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
                               ),
                             ),
                           ),
