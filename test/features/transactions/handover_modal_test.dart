@@ -31,9 +31,26 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.widgetWithText(ElevatedButton, "I've made the payment"), findsOneWidget);
+    expect(find.widgetWithText(ElevatedButton, 'Set Handover'), findsOneWidget);
 
-    final actionButton = find.widgetWithText(ElevatedButton, "I've made the payment");
+    expect(find.text('Aug 23, 2026'), findsOneWidget);
+    expect(find.text('14:00 WIB'), findsOneWidget);
+
+    // Buka DatePicker dengan mengetuk input tanggal
+    await tester.tap(find.text('Aug 23, 2026'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    // Buka TimePicker dengan mengetuk input waktu
+    await tester.tap(find.text('14:00 WIB'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TimePickerDialog), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    final actionButton = find.widgetWithText(ElevatedButton, 'Set Handover');
     await tester.ensureVisible(actionButton);
     await tester.tap(actionButton);
     await tester.pumpAndSettle();

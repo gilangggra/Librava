@@ -52,15 +52,17 @@ class _BookDetailPageState extends State<BookDetailPage> {
   double _dynamicAverageRating = 0.0;
   int _totalReviews = 0;
   bool _isLoadingReviews = false;
+  late BookModel? _currentBook;
 
   @override
   void initState() {
     super.initState();
+    _currentBook = widget.book;
     _muatUlasanBuku();
   }
 
   Future<void> _muatUlasanBuku() async {
-    final bookIdNum = int.tryParse(widget.book?.id ?? '');
+    final bookIdNum = int.tryParse((_currentBook ?? widget.book)?.id ?? '');
     if (bookIdNum == null) return;
 
     setState(() {
@@ -85,17 +87,45 @@ class _BookDetailPageState extends State<BookDetailPage> {
     }
   }
 
-  String get _title => widget.title ?? widget.book?.judul ?? 'The Unknown';
-  String get _author => widget.author ?? widget.book?.penulis ?? 'Riley Sager';
-  String get _genre => widget.genre ?? widget.book?.kategori ?? 'Horror/Thriller';
+  Future<void> _bukaEditBuku() async {
+    final bookToEdit = _currentBook ?? widget.book;
+    if (bookToEdit == null) return;
+
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditBookPage(book: bookToEdit),
+      ),
+    );
+
+    if (updated == true && mounted) {
+      final bookProv = context.read<BookProvider>();
+      final fresh = bookProv.allBooks.where((b) => b.id == bookToEdit.id).firstOrNull ??
+          bookProv.koleksiSaya.where((b) => b.id == bookToEdit.id).firstOrNull;
+      if (fresh != null) {
+        setState(() {
+          _currentBook = fresh;
+        });
+      }
+    }
+  }
+
+  String get _title => _currentBook?.judul ?? widget.title ?? widget.book?.judul ?? 'The Unknown';
+  String get _author => _currentBook?.penulis ?? widget.author ?? widget.book?.penulis ?? 'Riley Sager';
+  String get _genre => _currentBook?.kategori ?? widget.genre ?? widget.book?.kategori ?? 'Horror/Thriller';
   String get _status =>
       widget.status ??
-      (widget.book != null
-          ? (widget.book!.tersedia ? 'Available' : 'Unavailable')
-          : 'Available');
+      (_currentBook != null
+          ? (_currentBook!.tersedia ? 'Available' : 'Unavailable')
+          : (widget.book != null
+              ? (widget.book!.tersedia ? 'Available' : 'Unavailable')
+              : 'Available'));
   String get _language => widget.language ?? 'English';
-  double get _rating => widget.rating ?? widget.book?.rating ?? 4.5;
+  double get _rating => _currentBook?.rating ?? widget.rating ?? widget.book?.rating ?? 4.5;
   String get _description {
+    if (_currentBook != null && _currentBook!.deskripsi.isNotEmpty) {
+      return _currentBook!.deskripsi;
+    }
     if (widget.description != null && widget.description!.isNotEmpty) {
       return widget.description!;
     }
@@ -106,6 +136,9 @@ class _BookDetailPageState extends State<BookDetailPage> {
   }
 
   String get _coverPath {
+    if (_currentBook?.fotoBuku != null && _currentBook!.fotoBuku!.isNotEmpty) {
+      return _currentBook!.fotoBuku!;
+    }
     if (widget.book?.fotoBuku != null && widget.book!.fotoBuku!.isNotEmpty) {
       return widget.book!.fotoBuku!;
     }
@@ -1065,15 +1098,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                   Padding(
                                     padding: const EdgeInsets.only(right: 6.0),
                                     child: InkWell(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) =>
-                                                EditBookPage(book: widget.book!),
-                                          ),
-                                        );
-                                      },
+                                      onTap: () => _bukaEditBuku(),
                                       borderRadius: BorderRadius.circular(20),
                                       child: const Padding(
                                         padding: EdgeInsets.all(4.0),
@@ -1340,62 +1365,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                               currentUser.nama.trim().toLowerCase()));
 
                     if (isMyBook) {
-                      return Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF3F2FD),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.35),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.auto_stories_rounded,
-                                color: AppColors.primary,
-                                size: 22,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Ini Adalah Buku Milik Anda',
-                                    style: TextStyle(
-                                      fontSize: 14.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF130F26),
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    'Anda tidak dapat meminjam atau membarter koleksi sendiri.',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF7E7A92),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
+                      return const SizedBox.shrink();
                     }
 
                     TransactionProvider? trxProvider;

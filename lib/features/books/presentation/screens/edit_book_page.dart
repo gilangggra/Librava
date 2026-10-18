@@ -577,7 +577,7 @@ class _EditBookPageState extends State<EditBookPage> {
         ),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       setState(() {

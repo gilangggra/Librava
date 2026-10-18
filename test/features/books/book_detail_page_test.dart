@@ -140,7 +140,7 @@ void main() {
     expect(find.text('Panduan lengkap algoritma dan struktur data.'), findsOneWidget);
   });
 
-  testWidgets('Jika buku milik sendiri, tombol Borrow dan Barter digantikan oleh banner Ini Adalah Buku Milik Anda',
+  testWidgets('Jika buku milik sendiri, tombol Borrow dan Barter tidak ditampilkan',
       (WidgetTester tester) async {
     const myBook = BookModel(
       id: 'bk_my',
@@ -187,7 +187,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Ini Adalah Buku Milik Anda'), findsOneWidget);
     expect(find.text('Borrow'), findsNothing);
     expect(find.text('Barter'), findsNothing);
   });
