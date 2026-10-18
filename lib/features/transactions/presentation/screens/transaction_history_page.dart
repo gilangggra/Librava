@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
@@ -118,29 +119,40 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   }
 
   Widget _buildCoverWidget(String coverPath) {
+    String? fullNetworkUrl;
     if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
+      fullNetworkUrl = coverPath;
+    } else if (coverPath.startsWith('/uploads/') ||
+        coverPath.startsWith('uploads/')) {
+      final clean = coverPath.startsWith('/') ? coverPath : '/$coverPath';
+      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+    }
+
+    Widget fallback() {
+      return Container(
+        width: 64,
+        height: 84,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE7E3FF),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.book_rounded,
+            color: AppColors.primary,
+            size: 28,
+          ),
+        ),
+      );
+    }
+
+    if (fullNetworkUrl != null) {
       return Image.network(
-        coverPath,
+        fullNetworkUrl,
         width: 64,
         height: 84,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: 64,
-            height: 84,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE7E3FF),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.book_rounded,
-                color: AppColors.primary,
-                size: 28,
-              ),
-            ),
-          );
-        },
+        errorBuilder: (context, error, stackTrace) => fallback(),
       );
     }
     return Image.asset(
@@ -148,23 +160,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
       width: 64,
       height: 84,
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          width: 64,
-          height: 84,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE7E3FF),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.book_rounded,
-              color: AppColors.primary,
-              size: 28,
-            ),
-          ),
-        );
-      },
+      errorBuilder: (context, error, stackTrace) => fallback(),
     );
   }
 
@@ -327,7 +323,9 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                                   builder: (_) => TransactionDetailPage(
                                     transactionId: trx.id,
                                     bookTitle: trx.judulBuku,
-                                    bookAuthor: trx.pemilikNama,
+                                    bookAuthor: trx.penulisBuku.isNotEmpty && trx.penulisBuku != 'Penulis'
+                                        ? trx.penulisBuku
+                                        : trx.pemilikNama,
                                     coverPath: _getCoverForTransaction(trx),
                                     status: trx.status,
                                     depositAmount:

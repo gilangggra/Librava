@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../chat/presentation/screens/chat_room_page.dart';
 import '../../domain/models/admin_transaction_model.dart';
 import '../widgets/admin_bottom_nav.dart';
@@ -24,11 +25,19 @@ class AdminTransactionDetailPage extends StatelessWidget {
 
   Widget _buildCoverBuku() {
     final foto = (transaksi.bookFoto ?? '').trim();
+    String? fullNetworkUrl;
     if (foto.startsWith('http://') || foto.startsWith('https://')) {
+      fullNetworkUrl = foto;
+    } else if (foto.startsWith('/uploads/') || foto.startsWith('uploads/')) {
+      final clean = foto.startsWith('/') ? foto : '/$foto';
+      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+    }
+
+    if (fullNetworkUrl != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(10),
         child: Image.network(
-          foto,
+          fullNetworkUrl,
           width: 80,
           height: 100,
           fit: BoxFit.cover,

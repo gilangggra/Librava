@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../domain/models/admin_book_model.dart';
 
 class AdminBookCover extends StatelessWidget {
@@ -31,8 +32,12 @@ class AdminBookCover extends StatelessWidget {
 
   Widget _buildGambar() {
     if (buku.punyaFotoOnline) {
+      final foto = buku.fotoBuku!;
+      final fullUrl = (foto.startsWith('http://') || foto.startsWith('https://'))
+          ? foto
+          : '${ApiConstants.baseUrl.replaceAll('/api', '')}${foto.startsWith('/') ? foto : '/$foto'}';
       return Image.network(
-        buku.fotoBuku!,
+        fullUrl,
         width: lebar,
         height: tinggi,
         fit: BoxFit.cover,

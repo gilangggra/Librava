@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../chat/presentation/screens/chat_room_page.dart';
@@ -423,6 +424,62 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     }
     return widget.ownerId ??
         (tx != null && tx.pemilikId.isNotEmpty ? tx.pemilikId : null);
+  }
+
+  String _getDisplayAuthor(BuildContext context) {
+    if (widget.bookAuthor.isNotEmpty &&
+        widget.bookAuthor != 'Penulis' &&
+        widget.bookAuthor != 'Pemilik Buku') {
+      return widget.bookAuthor;
+    }
+    final tx = _getTrx(context);
+    if (tx != null && tx.penulisBuku.isNotEmpty && tx.penulisBuku != 'Penulis') {
+      return tx.penulisBuku;
+    }
+    final title = (tx?.judulBuku ?? widget.bookTitle).toLowerCase();
+    if (title.contains('basis data')) return 'Fathansyah';
+    if (title.contains('atomic')) return 'James Clear';
+    if (title.contains('midnight')) return 'Matt Haig';
+    if (title.contains('clean code')) return 'Robert C. Martin';
+    if (title.contains('laskar')) return 'Andrea Hirata';
+    if (title.contains('filosofi')) return 'Henry Manampiring';
+    if (tx != null && tx.pemilikNama.isNotEmpty && tx.pemilikNama != 'Pemilik Buku') {
+      return tx.pemilikNama;
+    }
+    if (widget.ownerName.isNotEmpty && widget.ownerName != 'Pemilik Buku') {
+      return widget.ownerName;
+    }
+    return widget.bookAuthor.isNotEmpty ? widget.bookAuthor : 'Penulis';
+  }
+
+  String _getDisplayCover(BuildContext context) {
+    final raw = widget.coverPath;
+    if (raw.isNotEmpty &&
+        raw != 'assets/images/book_the_unknown.jpg' &&
+        raw != 'assets/images/bookshelf.jpg') {
+      return raw;
+    }
+    final tx = _getTrx(context);
+    if (tx != null &&
+        tx.coverBuku.isNotEmpty &&
+        tx.coverBuku != 'assets/images/book_the_unknown.jpg') {
+      return tx.coverBuku;
+    }
+    final title = (tx?.judulBuku ?? widget.bookTitle).toLowerCase();
+    if (title.contains('atomic')) return 'assets/images/book_atomic_habits.jpg';
+    if (title.contains('midnight')) return 'assets/images/book_midnight_lib.jpg';
+    if (title.contains('clean code') || title.contains('pragmatic')) {
+      return 'assets/images/bookshelf.jpg';
+    }
+    if (title.contains('basis data') ||
+        title.contains('python') ||
+        title.contains('jaringan')) {
+      return 'assets/images/book_fruit_fly.jpg';
+    }
+    if (title.contains('laskar') || title.contains('filosofi')) {
+      return 'assets/images/book_adversary.jpg';
+    }
+    return raw;
   }
 
   void _bukaHalamanProfilPemilik() {
@@ -1069,6 +1126,52 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   Widget _buildBookHeader() {
+    final cover = _getDisplayCover(context);
+    final author = _getDisplayAuthor(context);
+
+    String? fullNetworkUrl;
+    if (cover.startsWith('http://') || cover.startsWith('https://')) {
+      fullNetworkUrl = cover;
+    } else if (cover.startsWith('/uploads/') || cover.startsWith('uploads/')) {
+      final clean = cover.startsWith('/') ? cover : '/$cover';
+      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+    }
+
+    Widget fallbackImage() => Container(
+          width: 92,
+          height: 136,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE7E3FF),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.book_rounded,
+              color: AppColors.primary,
+              size: 36,
+            ),
+          ),
+        );
+
+    Widget imageWidget;
+    if (fullNetworkUrl != null) {
+      imageWidget = Image.network(
+        fullNetworkUrl,
+        width: 92,
+        height: 136,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => fallbackImage(),
+      );
+    } else {
+      imageWidget = Image.asset(
+        cover,
+        width: 92,
+        height: 136,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => fallbackImage(),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Row(
@@ -1087,54 +1190,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: widget.coverPath.startsWith('http://') ||
-                      widget.coverPath.startsWith('https://')
-                  ? Image.network(
-                      widget.coverPath,
-                      width: 92,
-                      height: 136,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 92,
-                          height: 136,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE7E3FF),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.book_rounded,
-                              color: AppColors.primary,
-                              size: 36,
-                            ),
-                          ),
-                        );
-                      },
-                    )
-                  : Image.asset(
-                      widget.coverPath,
-                      width: 92,
-                      height: 136,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 92,
-                          height: 136,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE7E3FF),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.book_rounded,
-                              color: AppColors.primary,
-                              size: 36,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+              child: imageWidget,
             ),
           ),
           const SizedBox(width: 18),
@@ -1154,7 +1210,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  widget.bookAuthor,
+                  author,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
