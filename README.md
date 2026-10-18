@@ -309,7 +309,13 @@ Tabel kredensial akun bawaan database (*seeder*) untuk keperluan pengujian dan d
 
 Proyek ini dikembangkan sebagai karya rekayasa perangkat lunak pada **ASE Lab 2026** (Advanced Software Engineering Laboratory) - **Telkom University**:
 
-* **Gilang Ramadan** — *Lead Mobile & Fullstack Developer* ([@gilangggra](https://github.com/gilangggra))
+* **Aufa Azzaky Arief** — *PIC*
+
+* **Syahdan Mansiz Kurniawan** — *Software QA* 
+* **Laila Uswatun Hasanah** — *System Analyst*
+* **Muhammad Wahyu Firmandana** — *UI/UX*
+* **Gilang Ramadan** — *Mobile Dev*
+* **Muhamad Wifi Shobron A.S** — *Backend Dev*  
 
 ---
 
