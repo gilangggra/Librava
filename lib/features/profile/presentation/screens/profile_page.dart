@@ -294,14 +294,14 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(height: 12),
                     if (bookmarks.isEmpty)
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 40.0),
+                        padding: const EdgeInsets.symmetric(vertical: 36.0),
                         child: Center(
                           child: Column(
-                            children: const [
-                              Icon(CupertinoIcons.bookmark,
+                            children: [
+                              const Icon(CupertinoIcons.bookmark,
                                   size: 48, color: Color(0xFFB4B0C7)),
-                              SizedBox(height: 12),
-                              Text(
+                              const SizedBox(height: 12),
+                              const Text(
                                 'Belum Ada Buku Tersimpan',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
@@ -309,14 +309,48 @@ class _ProfilePageState extends State<ProfilePage> {
                                   color: Color(0xFF4A4468),
                                 ),
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Tekan ikon bookmark pada halaman detail buku untuk menyimpannya di sini.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF8A88A5),
+                              const SizedBox(height: 6),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 24.0),
+                                child: Text(
+                                  'Tekan ikon bookmark pada halaman detail buku untuk menyimpannya ke daftar favorit Anda.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF8A88A5),
+                                    height: 1.3,
+                                  ),
                                 ),
+                              ),
+                              const SizedBox(height: 18),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 10),
+                                ),
+                                icon: const Icon(CupertinoIcons.search, size: 16),
+                                label: const Text(
+                                  'Jelajahi Katalog Buku',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const SearchPage(),
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                           ),
@@ -833,8 +867,10 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
-    final namaUser = authProvider.currentUser?.nama ?? 'Pengguna';
-    final emailUser = authProvider.currentUser?.email ?? '-';
+    final currentUser = authProvider.currentUser;
+    final currentUserId = currentUser?.id ?? '';
+    final namaUser = currentUser?.nama ?? 'Pengguna';
+    final emailUser = currentUser?.email ?? '-';
 
     TransactionProvider? trxProvider;
     try {
@@ -851,29 +887,76 @@ class _ProfilePageState extends State<ProfilePage> {
       eventProvider = context.watch<EventProvider>();
     } catch (_) {}
 
-    final booksReadStat =
-        (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
-            ? trxProvider.semuaTransaksi
-                .where((t) => t.status == 'selesai')
-                .length
-                .toString()
-            : '0';
-    final booksBorrowedStat =
-        (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
-            ? trxProvider.semuaTransaksi
-                .where((t) => t.jenisTransaksi == 'pinjam')
-                .length
-                .toString()
-            : '0';
-    final favoritesStat =
-        (bookProvider != null && bookProvider.bookmarkedBooks.isNotEmpty)
-            ? bookProvider.bookmarkedBooks.length.toString()
-            : (bookProvider != null && bookProvider.koleksiSaya.isNotEmpty
-                ? bookProvider.koleksiSaya.length.toString()
-                : '0');
+    bool isCurrentUserBorrower(TransactionModel t) {
+      if (currentUserId.isNotEmpty && t.pemohonId.isNotEmpty) {
+        if (t.pemohonId == currentUserId) return true;
+      }
+      if (namaUser != 'Pengguna' && namaUser.isNotEmpty) {
+        if (t.pemohonNama.trim().toLowerCase() == namaUser.trim().toLowerCase()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // 1. Books Read: buku yang dipinjam oleh user ini dan transaksi selesai
+    final completedBooksRead = (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
+        ? trxProvider.semuaTransaksi.where((t) {
+            final isBorrower = isCurrentUserBorrower(t);
+            final isFinished = t.status.toLowerCase() == 'selesai';
+            return isBorrower && isFinished;
+          }).toList()
+        : <TransactionModel>[];
+
+    final booksReadStat = completedBooksRead.isNotEmpty
+        ? completedBooksRead.length.toString()
+        : (currentUser != null && currentUser.booksRead > 0
+            ? currentUser.booksRead.toString()
+            : '0');
+
+    // 2. Books Borrowed: buku yang sedang/pernah diajukan pinjam oleh user ini
+    final borrowedBooks = (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
+        ? trxProvider.semuaTransaksi.where((t) {
+            final isBorrower = isCurrentUserBorrower(t);
+            final isPinjam = t.jenisTransaksi.toLowerCase() == 'pinjam';
+            final notRejected = t.status.toLowerCase() != 'ditolak' &&
+                t.status.toLowerCase() != 'dibatalkan';
+            return isBorrower && isPinjam && notRejected;
+          }).toList()
+        : <TransactionModel>[];
+
+    final booksBorrowedStat = borrowedBooks.isNotEmpty
+        ? borrowedBooks.length.toString()
+        : (currentUser != null && currentUser.booksBorrowed > 0
+            ? currentUser.booksBorrowed.toString()
+            : '0');
+
+    // 3. Favorites: murni buku yang disimpan / di-bookmark oleh user (tidak fallback ke koleksi)
+    final favoritesStat = (bookProvider != null)
+        ? bookProvider.bookmarkedBooks.length.toString()
+        : (currentUser != null && currentUser.favorites > 0
+            ? currentUser.favorites.toString()
+            : '0');
 
     final List<Widget> recentWidgets = [];
-    final transactions = trxProvider?.semuaTransaksi ?? [];
+    final allTxs = trxProvider?.semuaTransaksi ?? [];
+    final userSpecificTxs = allTxs.where((t) {
+      if (currentUserId.isNotEmpty && (t.pemohonId.isNotEmpty || t.pemilikId.isNotEmpty)) {
+        if (t.pemohonId == currentUserId || t.pemilikId == currentUserId) return true;
+      }
+      if (namaUser != 'Pengguna' && namaUser.isNotEmpty) {
+        final pNama = t.pemohonNama.trim().toLowerCase();
+        final oNama = t.pemilikNama.trim().toLowerCase();
+        final uNama = namaUser.trim().toLowerCase();
+        if (pNama == uNama || oNama == uNama) return true;
+      }
+      return false;
+    }).toList();
+    final transactions = userSpecificTxs.isNotEmpty
+        ? userSpecificTxs
+        : (currentUserId.isEmpty && (namaUser == 'Pengguna' || namaUser.isEmpty)
+            ? allTxs
+            : <TransactionModel>[]);
     if (transactions.isNotEmpty) {
       final recentList = transactions.take(5).toList();
       for (int i = 0; i < recentList.length; i++) {
@@ -1173,7 +1256,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const TransactionHistoryPage(),
+                                builder: (_) => const TransactionHistoryPage(
+                                  initialFilterIndex: 3, // Otomatis filter ke tab "Selesai"
+                                ),
                               ),
                             );
                           },
@@ -1192,7 +1277,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const TransactionHistoryPage(),
+                                builder: (_) => const TransactionHistoryPage(
+                                  initialFilterIndex: 1, // Otomatis filter ke tab "Pinjam"
+                                ),
                               ),
                             );
                           },
