@@ -263,7 +263,7 @@ export class AuthService {
     // Hitung statistik aktivitas langsung dari database
     const booksRead = await prisma.transaction.count({
       where: {
-        OR: [{ requesterId: userId }, { ownerId: userId }],
+        requesterId: userId,
         status: 'SELESAI',
       },
     });
@@ -296,9 +296,9 @@ export class AuthService {
       phone: userAny.nomorTelepon || '+62 8959982898',
       nomor_telepon: userAny.nomorTelepon || '+62 8959982898',
       activity: {
-        books_read: booksRead > 0 ? booksRead : 12,
-        books_borrowed: booksBorrowed > 0 ? booksBorrowed : 3,
-        favorites: totalBooks > 0 ? totalBooks : 5,
+        books_read: booksRead,
+        books_borrowed: booksBorrowed,
+        favorites: 0,
       },
       created_at: user.createdAt,
       updated_at: user.updatedAt,

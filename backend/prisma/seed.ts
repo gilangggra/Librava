@@ -323,7 +323,25 @@ async function main() {
       durasiHari: 7,
     },
   });
-  console.log(` TX-${tx4.id}: Budi mau pinjam "Sistem Basis Data" dari Andi [MENUNGGU_KONFIRMASI]`);
+  console.log(`  TX-${tx4.id}: Budi mau pinjam "Sistem Basis Data" dari Andi [MENUNGGU_KONFIRMASI]`);
+
+  // TX5: Budi meminjam "Atomic Habits" dari Andi — SELESAI
+  const tx5 = await prisma.transaction.create({
+    data: {
+      requesterId: budi.id,
+      ownerId: andi.id,
+      bookId: books[5].id, // Atomic Habits
+      tipeTransaksi: 'pinjam',
+      status: 'SELESAI',
+      durasiHari: 14,
+      lokasiPertemuan: 'Perpustakaan Telkom University',
+      waktuPertemuan: new Date('2026-09-15T10:00:00Z'),
+      requesterConfirmedAt: new Date('2026-09-16T10:00:00Z'),
+      ownerConfirmedAt: new Date('2026-09-16T10:30:00Z'),
+      returnedAt: new Date('2026-09-30T14:00:00Z'),
+    },
+  });
+  console.log(`  TX-${tx5.id}: Budi pinjam "Atomic Habits" dari Andi [SELESAI]`);
 
   // ══════════════════════════════════════════════════════════════
   // 4. CHATS
@@ -338,6 +356,10 @@ async function main() {
     { transactionId: tx1.id, senderId: budi.id, receiverId: sari.id, pesan: 'Oke siap! Sampai ketemu ya 👍', isRead: true, sentAt: new Date('2026-09-18T08:25:00Z') },
     { transactionId: tx1.id, senderId: sari.id, receiverId: budi.id, pesan: 'Bukunya udah selesai aku baca, bagus banget! Kapan bisa balikin?', isRead: true, sentAt: new Date('2026-09-22T10:00:00Z') },
     { transactionId: tx1.id, senderId: budi.id, receiverId: sari.id, pesan: 'Nanti sore aja langsung di tempat yang sama ya', isRead: true, sentAt: new Date('2026-09-22T10:10:00Z') },
+
+    // Chat di TX5 (Budi ↔ Andi — Atomic Habits SELESAI)
+    { transactionId: tx5.id, senderId: budi.id, receiverId: andi.id, pesan: 'Hai Andi, terima kasih banyak ya pinjaman buku Atomic Habits-nya! Bukunya sangat bermanfaat.', isRead: true, sentAt: new Date('2026-09-30T13:00:00Z') },
+    { transactionId: tx5.id, senderId: andi.id, receiverId: budi.id, pesan: 'Sama-sama Budi! Senang bukunya bisa bermanfaat. Next time kalau mau pinjam lagi kabari aja ya 👍', isRead: true, sentAt: new Date('2026-09-30T13:15:00Z') },
 
     // Chat di TX2 (Andi ↔ Sari — Filosofi Teras)
     { transactionId: tx2.id, senderId: andi.id, receiverId: sari.id, pesan: 'Sari, buku Filosofi Teras-nya boleh aku pinjam 2 minggu gak?', isRead: true, sentAt: new Date('2026-09-25T09:00:00Z') },
@@ -379,6 +401,14 @@ async function main() {
       revieweeId: sari.id,
       rating: 5,
       komentar: 'Sari sangat bertanggung jawab, buku dikembalikan tepat waktu dan dalam kondisi rapi. Terima kasih!',
+    },
+    // Review untuk TX5 (SELESAI) — Budi review Andi
+    {
+      transactionId: tx5.id,
+      reviewerId: budi.id,
+      revieweeId: andi.id,
+      rating: 5,
+      komentar: 'Buku Atomic Habits sangat bagus dan terawat. Andi sangat ramah dan kooperatif. Recommended!',
     },
   ];
 

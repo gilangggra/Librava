@@ -11,14 +11,15 @@ import 'transaction_detail_page.dart';
 /// Halaman Riwayat Transaksi (SRS FR-TRX-02)
 /// Menampilkan daftar seluruh transaksi pinjam & barter dengan filter status lengkap.
 class TransactionHistoryPage extends StatefulWidget {
-  const TransactionHistoryPage({super.key});
+  final int initialFilterIndex;
+  const TransactionHistoryPage({super.key, this.initialFilterIndex = 0});
 
   @override
   State<TransactionHistoryPage> createState() => _TransactionHistoryPageState();
 }
 
 class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
-  int _selectedFilterIndex = 0;
+  late int _selectedFilterIndex;
   final List<String> _filters = const [
     'Semua',
     'Pinjam',
@@ -30,6 +31,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   @override
   void initState() {
     super.initState();
+    _selectedFilterIndex = widget.initialFilterIndex;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = context.read<AuthProvider>();
       if (auth.token != null) {
@@ -167,9 +169,29 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final namaUser = auth.currentUser?.nama ?? 'User';
+    final currentUser = auth.currentUser;
+    final currentUserId = currentUser?.id ?? '';
+    final namaUser = currentUser?.nama ?? 'User';
     final trxProvider = context.watch<TransactionProvider>();
-    final allList = trxProvider.semuaTransaksi;
+    final userSpecificList = trxProvider.semuaTransaksi.where((t) {
+      if (currentUserId.isNotEmpty && (t.pemohonId.isNotEmpty || t.pemilikId.isNotEmpty)) {
+        if (t.pemohonId == currentUserId || t.pemilikId == currentUserId) return true;
+      }
+      if (namaUser != 'User' && namaUser.isNotEmpty) {
+        final pNama = t.pemohonNama.trim().toLowerCase();
+        final oNama = t.pemilikNama.trim().toLowerCase();
+        final uNama = namaUser.trim().toLowerCase();
+        if (pNama == uNama || oNama == uNama) return true;
+      }
+      return false;
+    }).toList();
+
+    // Gunakan userSpecificList jika ada transaksi untuk user ini, atau fallback ke semua jika testing tanpa login
+    final allList = userSpecificList.isNotEmpty
+        ? userSpecificList
+        : (currentUserId.isEmpty && (namaUser == 'User' || namaUser.isEmpty)
+            ? trxProvider.semuaTransaksi
+            : <TransactionModel>[]);
     final filteredList = _filterTransactions(allList);
 
     return Scaffold(
