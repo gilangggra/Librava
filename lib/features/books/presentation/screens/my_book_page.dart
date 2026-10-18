@@ -888,7 +888,9 @@ class _MyBookPageState extends State<MyBookPage> {
                   builder: (_) => TransactionDetailPage(
                     transactionId: trx.id,
                     bookTitle: trx.judulBuku,
-                    bookAuthor: trx.pemilikNama,
+                    bookAuthor: trx.penulisBuku.isNotEmpty && trx.penulisBuku != 'Penulis'
+                        ? trx.penulisBuku
+                        : trx.pemilikNama,
                     coverPath: coverPath,
                     status: trx.status,
                     depositAmount: '${trx.depositSimulasi.toInt()} Rupiah',

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/screens/login_page.dart';
 import '../../domain/models/admin_dashboard_model.dart';
@@ -192,46 +193,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: coverPath.startsWith('http://') || coverPath.startsWith('https://')
-              ? Image.network(
-                  coverPath,
-                  width: 54,
-                  height: 76,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 54,
-                      height: 76,
-                      color: const Color(0xFFE7E3FF),
-                      child: const Icon(
-                        Icons.book_rounded,
-                        color: AppColors.primary,
-                        size: 24,
-                      ),
-                    );
-                  },
-                )
-              : Image.asset(
-                  coverPath,
-                  width: 54,
-                  height: 76,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: 54,
-                      height: 76,
-                      color: const Color(0xFFE7E3FF),
-                      child: const Icon(
-                        Icons.book_rounded,
-                        color: AppColors.primary,
-                        size: 24,
-                      ),
-                    );
-                  },
-                ),
-        ),
+        _buildBookCoverWidget(coverPath),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -360,46 +322,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: coverPath.startsWith('http://') || coverPath.startsWith('https://')
-                  ? Image.network(
-                      coverPath,
-                      width: 54,
-                      height: 76,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 54,
-                          height: 76,
-                          color: const Color(0xFFE7E3FF),
-                          child: const Icon(
-                            Icons.book_rounded,
-                            color: AppColors.primary,
-                            size: 24,
-                          ),
-                        );
-                      },
-                    )
-                  : Image.asset(
-                      coverPath,
-                      width: 54,
-                      height: 76,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 54,
-                          height: 76,
-                          color: const Color(0xFFE7E3FF),
-                          child: const Icon(
-                            Icons.book_rounded,
-                            color: AppColors.primary,
-                            size: 24,
-                          ),
-                        );
-                      },
-                    ),
-            ),
+            _buildBookCoverWidget(coverPath),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -508,6 +431,52 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
+  Widget _buildBookCoverWidget(String coverPath) {
+    String? fullNetworkUrl;
+    if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
+      fullNetworkUrl = coverPath;
+    } else if (coverPath.startsWith('/uploads/') ||
+        coverPath.startsWith('uploads/')) {
+      final clean = coverPath.startsWith('/') ? coverPath : '/$coverPath';
+      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+    }
+
+    Widget fallback() => Container(
+          width: 54,
+          height: 76,
+          color: const Color(0xFFE7E3FF),
+          child: const Icon(
+            Icons.book_rounded,
+            color: AppColors.primary,
+            size: 24,
+          ),
+        );
+
+    Widget img;
+    if (fullNetworkUrl != null) {
+      img = Image.network(
+        fullNetworkUrl,
+        width: 54,
+        height: 76,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => fallback(),
+      );
+    } else {
+      img = Image.asset(
+        coverPath,
+        width: 54,
+        height: 76,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => fallback(),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: img,
+    );
+  }
+
   Widget _buildEventImage(String? fotoPath) {
     if (fotoPath == null || fotoPath.isEmpty) {
       return Image.asset(
@@ -517,13 +486,16 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         fit: BoxFit.cover,
       );
     }
+    String? fullNetworkUrl;
     if (fotoPath.startsWith('http://') || fotoPath.startsWith('https://')) {
-      return Image.network(
-        fotoPath,
-        width: 54,
-        height: 76,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => Container(
+      fullNetworkUrl = fotoPath;
+    } else if (fotoPath.startsWith('/uploads/') ||
+        fotoPath.startsWith('uploads/')) {
+      final clean = fotoPath.startsWith('/') ? fotoPath : '/$fotoPath';
+      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+    }
+
+    Widget fallback() => Container(
           width: 54,
           height: 76,
           color: const Color(0xFFEDEAFE),
@@ -532,7 +504,15 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             color: AppColors.primary,
             size: 24,
           ),
-        ),
+        );
+
+    if (fullNetworkUrl != null) {
+      return Image.network(
+        fullNetworkUrl,
+        width: 54,
+        height: 76,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback(),
       );
     }
     return Image.asset(
@@ -540,16 +520,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       width: 54,
       height: 76,
       fit: BoxFit.cover,
-      errorBuilder: (_, _, _) => Container(
-        width: 54,
-        height: 76,
-        color: const Color(0xFFEDEAFE),
-        child: const Icon(
-          Icons.event_rounded,
-          color: AppColors.primary,
-          size: 24,
-        ),
-      ),
+      errorBuilder: (_, _, _) => fallback(),
     );
   }
 

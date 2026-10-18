@@ -80,7 +80,10 @@ class AdminBookModel {
 
   bool get punyaFotoOnline {
     final foto = fotoBuku ?? '';
-    return foto.startsWith('http://') || foto.startsWith('https://');
+    return foto.startsWith('http://') ||
+        foto.startsWith('https://') ||
+        foto.startsWith('/uploads/') ||
+        foto.startsWith('uploads/');
   }
 
   bool get punyaFotoAsset {

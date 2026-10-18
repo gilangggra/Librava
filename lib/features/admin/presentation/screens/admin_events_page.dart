@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../events/domain/models/event_model.dart';
 import '../../../events/presentation/providers/event_provider.dart';
 import '../../../events/presentation/screens/event_detail_page.dart';
@@ -67,7 +68,13 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
 
   Widget _buildEventThumbnail(String? foto) {
     final String path = (foto ?? '').trim();
-    final bool isNetwork = path.startsWith('http://') || path.startsWith('https://');
+    String? fullNetworkUrl;
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      fullNetworkUrl = path;
+    } else if (path.startsWith('/uploads/') || path.startsWith('uploads/')) {
+      final clean = path.startsWith('/') ? path : '/$path';
+      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+    }
 
     Widget fallbackWidget() {
       return Container(
@@ -82,9 +89,9 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
       );
     }
 
-    if (isNetwork) {
+    if (fullNetworkUrl != null) {
       return Image.network(
-        path,
+        fullNetworkUrl,
         width: 56,
         height: 74,
         fit: BoxFit.cover,

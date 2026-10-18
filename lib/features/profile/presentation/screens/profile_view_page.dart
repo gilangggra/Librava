@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
@@ -506,6 +507,8 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
         authUser?.favorites ??
         0;
 
+    final displayFoto = activeUser?.fotoProfil ?? authUser?.fotoProfil;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -589,13 +592,31 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                               width: 2.2,
                             ),
                           ),
-                          child: const Center(
-                            child: Icon(
-                              Icons.person,
-                              size: 52,
-                              color: Color(0xFF130F26),
-                            ),
-                          ),
+                          child: (displayFoto != null && displayFoto.isNotEmpty)
+                              ? ClipOval(
+                                  child: Image.network(
+                                    displayFoto.startsWith('http')
+                                        ? displayFoto
+                                        : '${ApiConstants.baseUrl.replaceAll('/api', '')}/${displayFoto.replaceFirst(RegExp(r'^/+'), '')}',
+                                    width: 84,
+                                    height: 84,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => const Center(
+                                      child: Icon(
+                                        Icons.person,
+                                        size: 52,
+                                        color: Color(0xFF130F26),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : const Center(
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 52,
+                                    color: Color(0xFF130F26),
+                                  ),
+                                ),
                         ),
                         const SizedBox(height: 12),
                         Text(

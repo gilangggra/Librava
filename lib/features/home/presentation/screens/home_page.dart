@@ -54,11 +54,8 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  String _getCoverForBook(BookModel book) {
-    if (book.fotoBuku != null && book.fotoBuku!.isNotEmpty) {
-      return book.fotoBuku!;
-    }
-    final j = book.judul.toLowerCase();
+  String _getCoverForJudul(String judul) {
+    final j = judul.toLowerCase();
     if (j.contains('atomic')) return 'assets/images/book_atomic_habits.jpg';
     if (j.contains('midnight')) return 'assets/images/book_midnight_lib.jpg';
     if (j.contains('clean code') || j.contains('pragmatic')) {
@@ -73,13 +70,30 @@ class _HomePageState extends State<HomePage> {
     return 'assets/images/book_the_unknown.jpg';
   }
 
+  String _getCoverForBook(BookModel book) {
+    if (book.fotoBuku != null && book.fotoBuku!.isNotEmpty) {
+      return book.fotoBuku!;
+    }
+    return _getCoverForJudul(book.judul);
+  }
+
   List<Map<String, dynamic>> _getBorrowedBooks(
       TransactionProvider? trxProvider) {
     if (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty) {
       return trxProvider.semuaTransaksi.map((t) {
+        final author = t.penulisBuku.isNotEmpty && t.penulisBuku != 'Penulis'
+            ? t.penulisBuku
+            : (t.judulBuku.toLowerCase().contains('basis data')
+                ? 'Fathansyah'
+                : (t.pemilikNama.isNotEmpty ? t.pemilikNama : 'Penulis'));
+        final cover = t.coverBuku.isNotEmpty &&
+                t.coverBuku != 'assets/images/book_the_unknown.jpg'
+            ? t.coverBuku
+            : _getCoverForJudul(t.judulBuku);
         return {
           'id': t.id,
           'title': t.judulBuku,
+          'author': author,
           'subtitle':
               '${t.jenisTransaksi == "barter" ? "Bartered with" : "Borrowing from"} ${t.pemilikNama}',
           'status': t.status == 'pending'
@@ -94,9 +108,7 @@ class _HomePageState extends State<HomePage> {
               : t.status == 'disetujui'
                   ? const Color(0xFF4C7BFE)
                   : const Color(0xFF34C759),
-          'image': t.coverBuku.isNotEmpty
-              ? t.coverBuku
-              : 'assets/images/book_the_unknown.jpg',
+          'image': cover,
         };
       }).toList();
     }

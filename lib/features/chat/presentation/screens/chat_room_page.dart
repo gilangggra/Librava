@@ -249,9 +249,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   Widget _buildImageWidget(String path) {
+    String? fullNetworkUrl;
     if (path.startsWith('http://') || path.startsWith('https://')) {
+      fullNetworkUrl = path;
+    } else if (path.startsWith('/uploads/') || path.startsWith('uploads/')) {
+      final clean = path.startsWith('/') ? path : '/$path';
+      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+    }
+
+    if (fullNetworkUrl != null) {
       return Image.network(
-        path,
+        fullNetworkUrl,
         height: 160,
         width: double.infinity,
         fit: BoxFit.cover,
@@ -280,6 +288,15 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   void _previewFoto(String imagePath) {
+    String? fullNetworkUrl;
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      fullNetworkUrl = imagePath;
+    } else if (imagePath.startsWith('/uploads/') ||
+        imagePath.startsWith('uploads/')) {
+      final clean = imagePath.startsWith('/') ? imagePath : '/$imagePath';
+      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+    }
+
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.85),
@@ -299,8 +316,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             ),
             ClipRRect(
               borderRadius: BorderRadius.circular(18),
-              child: imagePath.startsWith('http')
-                  ? Image.network(imagePath, fit: BoxFit.contain)
+              child: fullNetworkUrl != null
+                  ? Image.network(fullNetworkUrl, fit: BoxFit.contain)
                   : Image.asset(imagePath, fit: BoxFit.contain),
             ),
           ],

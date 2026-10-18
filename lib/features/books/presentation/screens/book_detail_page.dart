@@ -310,7 +310,9 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     builder: (_) => TransactionDetailPage(
                       transactionId: tx.id,
                       bookTitle: tx.judulBuku,
-                      bookAuthor: tx.pemilikNama,
+                      bookAuthor: tx.penulisBuku.isNotEmpty && tx.penulisBuku != 'Penulis'
+                          ? tx.penulisBuku
+                          : tx.pemilikNama,
                       coverPath: _coverPath,
                       status: tx.status,
                       depositAmount: '${tx.depositSimulasi.toInt()} Rupiah',

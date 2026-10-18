@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/network/api_constants.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
@@ -348,9 +349,17 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
   }
 
   Widget _buildCoverImage(String path, {double width = 95, double height = 135}) {
+    String? fullNetworkUrl;
     if (path.startsWith('http://') || path.startsWith('https://')) {
+      fullNetworkUrl = path;
+    } else if (path.startsWith('/uploads/') || path.startsWith('uploads/')) {
+      final clean = path.startsWith('/') ? path : '/$path';
+      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+    }
+
+    if (fullNetworkUrl != null) {
       return Image.network(
-        path,
+        fullNetworkUrl,
         width: width,
         height: height,
         fit: BoxFit.cover,

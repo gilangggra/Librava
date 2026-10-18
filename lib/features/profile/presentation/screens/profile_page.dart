@@ -206,8 +206,24 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   String _getCoverForBook(BookModel book) {
-    if (book.fotoBuku != null && book.fotoBuku!.isNotEmpty) {
+    if (book.fotoBuku != null &&
+        book.fotoBuku!.isNotEmpty &&
+        book.fotoBuku != 'assets/images/book_the_unknown.jpg') {
       return book.fotoBuku!;
+    }
+    final j = book.judul.toLowerCase();
+    if (j.contains('atomic')) return 'assets/images/book_atomic_habits.jpg';
+    if (j.contains('midnight')) return 'assets/images/book_midnight_lib.jpg';
+    if (j.contains('clean code') || j.contains('pragmatic')) {
+      return 'assets/images/bookshelf.jpg';
+    }
+    if (j.contains('basis data') ||
+        j.contains('python') ||
+        j.contains('jaringan')) {
+      return 'assets/images/book_fruit_fly.jpg';
+    }
+    if (j.contains('laskar') || j.contains('filosofi')) {
+      return 'assets/images/book_adversary.jpg';
     }
     return 'assets/images/book_the_unknown.jpg';
   }
@@ -536,29 +552,40 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildCoverWidget(String coverPath) {
+    String? fullNetworkUrl;
     if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
+      fullNetworkUrl = coverPath;
+    } else if (coverPath.startsWith('/uploads/') ||
+        coverPath.startsWith('uploads/')) {
+      final clean = coverPath.startsWith('/') ? coverPath : '/$coverPath';
+      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+    }
+
+    Widget fallback() {
+      return Container(
+        width: 56,
+        height: 68,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE7E3FF),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.book_rounded,
+            color: AppColors.primary,
+            size: 24,
+          ),
+        ),
+      );
+    }
+
+    if (fullNetworkUrl != null) {
       return Image.network(
-        coverPath,
+        fullNetworkUrl,
         width: 56,
         height: 68,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: 56,
-            height: 68,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE7E3FF),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.book_rounded,
-                color: AppColors.primary,
-                size: 24,
-              ),
-            ),
-          );
-        },
+        errorBuilder: (context, error, stackTrace) => fallback(),
       );
     }
     return Image.asset(
@@ -566,23 +593,7 @@ class _ProfilePageState extends State<ProfilePage> {
       width: 56,
       height: 68,
       fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          width: 56,
-          height: 68,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE7E3FF),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.book_rounded,
-              color: AppColors.primary,
-              size: 24,
-            ),
-          ),
-        );
-      },
+      errorBuilder: (context, error, stackTrace) => fallback(),
     );
   }
 
@@ -886,7 +897,9 @@ class _ProfilePageState extends State<ProfilePage> {
                   builder: (_) => TransactionDetailPage(
                     transactionId: trx.id,
                     bookTitle: trx.judulBuku,
-                    bookAuthor: trx.pemilikNama,
+                    bookAuthor: trx.penulisBuku.isNotEmpty && trx.penulisBuku != 'Penulis'
+                        ? trx.penulisBuku
+                        : trx.pemilikNama,
                     coverPath: _getCoverForTransaction(trx),
                     status: trx.status,
                     depositAmount: '${trx.depositSimulasi.toInt()} Rupiah',
