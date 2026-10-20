@@ -410,6 +410,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                               _item.bookCover,
                               width: 96,
                               height: 136,
+                              fallbackJudul: _item.bookTitle,
                             ),
                           ),
                         ),
@@ -633,42 +634,51 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                                 ),
                               ),
                               if (_item.isBarter && _item.exchangeBookTitle != null)
-                                Row(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: _buildCoverImage(
-                                        BookCoverHelper.getCover(
-                                          fotoBuku: _item.exchangeBookCover,
-                                          judul: _item.exchangeBookTitle ?? '',
+                                Expanded(
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: _buildCoverImage(
+                                          BookCoverHelper.getCover(
+                                            fotoBuku: _item.exchangeBookCover,
+                                            judul: _item.exchangeBookTitle ?? '',
+                                          ),
+                                          width: 36,
+                                          height: 48,
+                                          fallbackJudul: _item.exchangeBookTitle,
                                         ),
-                                        width: 36,
-                                        height: 48,
-                                        fallbackJudul: _item.exchangeBookTitle,
                                       ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _item.exchangeBookTitle!,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF130F26),
-                                          ),
+                                      const SizedBox(width: 10),
+                                      Flexible(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _item.exchangeBookTitle!,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: Color(0xFF130F26),
+                                              ),
+                                            ),
+                                            Text(
+                                              _item.exchangeBookAuthor ?? '',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF8F8E9D),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        Text(
-                                          _item.exchangeBookAuthor ?? '',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Color(0xFF8F8E9D),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                      ),
+                                    ],
+                                  ),
                                 )
                               else
                                 Text(

@@ -77,9 +77,10 @@ class _RequestListPageState extends State<RequestListPage> {
           id: 'api_${t.id}',
           bookTitle: t.judulBuku.isNotEmpty ? t.judulBuku : 'Buku Librava',
           bookAuthor: t.penulisBuku.isNotEmpty ? t.penulisBuku : 'Koleksi Saya',
-          bookCover: t.coverBuku.isNotEmpty
-              ? t.coverBuku
-              : 'assets/images/book_the_unknown.jpg',
+          bookCover: BookCoverHelper.getCover(
+            fotoBuku: t.coverBuku,
+            judul: t.judulBuku,
+          ),
           requesterName: t.pemohonNama.isNotEmpty ? t.pemohonNama : 'Mahasiswa',
           requesterHandle:
               '@${t.pemohonNama.toLowerCase().replaceAll(' ', '')}',
@@ -92,9 +93,10 @@ class _RequestListPageState extends State<RequestListPage> {
               ? t.barterPenulis
               : (isBarter ? 'Penulis' : null),
           exchangeBookCover: isBarter
-              ? (t.barterCover.isNotEmpty
-                  ? t.barterCover
-                  : 'assets/images/book_the_unknown.jpg')
+              ? BookCoverHelper.getCover(
+                  fotoBuku: t.barterCover,
+                  judul: t.bukuBarter,
+                )
               : null,
           requestedPeriod: '${t.durasiHari} hari',
           dateRange: t.tanggal,

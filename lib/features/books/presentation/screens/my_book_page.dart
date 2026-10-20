@@ -1027,31 +1027,66 @@ class _MyBookPageState extends State<MyBookPage> {
       trxProvider = Provider.of<TransactionProvider>(context);
     } catch (_) {}
 
+    final currentUserId = authProvider?.currentUser?.id;
     final userNama = authProvider?.currentUser?.nama;
 
     final myBooks = bookProvider?.koleksiSaya ?? [];
 
-    final borrowedList = (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
+    final rawBorrowedList = (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
         ? trxProvider.semuaTransaksi.where((t) {
             final isBorrow = t.jenisTransaksi == 'pinjam';
-            final isActive = t.status != 'selesai' && t.status != 'ditolak';
-            final matchUser = userNama != null &&
-                t.pemohonNama.trim().toLowerCase() == userNama.trim().toLowerCase();
+            final isActive = t.status != 'selesai' &&
+                t.status != 'ditolak' &&
+                t.status != 'dibatalkan';
+            final matchUser = (currentUserId != null &&
+                    currentUserId.isNotEmpty &&
+                    t.pemohonId == currentUserId) ||
+                (userNama != null &&
+                    userNama.isNotEmpty &&
+                    t.pemohonNama.trim().toLowerCase() ==
+                        userNama.trim().toLowerCase());
             return isBorrow && isActive && matchUser;
           }).toList()
         : <TransactionModel>[];
 
-    final lentOutList = (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
+    final rawLentOutList = (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
         ? trxProvider.semuaTransaksi.where((t) {
-            final isActive = t.status != 'selesai' && t.status != 'ditolak';
-            final matchOwner = userNama != null &&
-                t.pemilikNama.trim().toLowerCase() == userNama.trim().toLowerCase();
+            final isActive = t.status != 'selesai' &&
+                t.status != 'ditolak' &&
+                t.status != 'dibatalkan';
+            final matchOwner = (currentUserId != null &&
+                    currentUserId.isNotEmpty &&
+                    t.pemilikId == currentUserId) ||
+                (userNama != null &&
+                    userNama.isNotEmpty &&
+                    t.pemilikNama.trim().toLowerCase() ==
+                        userNama.trim().toLowerCase());
             return isActive && matchOwner;
           }).toList()
         : <TransactionModel>[];
 
-    final displayBorrowed = borrowedList;
-    final displayLentOut = lentOutList;
+    // Deduplikasi per buku (bukuId atau judul) agar tidak ada kartu buku kembar
+    final Map<String, TransactionModel> uniqueBorrowed = {};
+    for (final t in rawBorrowedList) {
+      final key = t.bukuId.isNotEmpty && t.bukuId != '0'
+          ? t.bukuId
+          : t.judulBuku.trim().toLowerCase();
+      if (!uniqueBorrowed.containsKey(key)) {
+        uniqueBorrowed[key] = t;
+      }
+    }
+    final displayBorrowed = uniqueBorrowed.values.toList();
+
+    final Map<String, TransactionModel> uniqueLentOut = {};
+    for (final t in rawLentOutList) {
+      final key = t.bukuId.isNotEmpty && t.bukuId != '0'
+          ? t.bukuId
+          : t.judulBuku.trim().toLowerCase();
+      if (!uniqueLentOut.containsKey(key)) {
+        uniqueLentOut[key] = t;
+      }
+    }
+    final displayLentOut = uniqueLentOut.values.toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,

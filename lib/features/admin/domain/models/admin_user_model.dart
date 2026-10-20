@@ -1,3 +1,5 @@
+import '../../../../core/network/api_constants.dart';
+
 class AdminUserModel {
   final String id;
   final String nama;
@@ -23,9 +25,23 @@ class AdminUserModel {
 
   bool get punyaNim => nim != null && nim!.trim().isNotEmpty;
 
+  String? get fotoProfilUrl {
+    final foto = (fotoProfil ?? '').trim();
+    if (foto.isEmpty) return null;
+    if (foto.startsWith('http://') || foto.startsWith('https://')) return foto;
+    if (foto.startsWith('assets/')) return foto;
+    final clean = foto.startsWith('/') ? foto : '/$foto';
+    return '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
+  }
+
   bool get punyaFotoOnline {
-    final foto = fotoProfil ?? '';
-    return foto.startsWith('http://') || foto.startsWith('https://');
+    final url = fotoProfilUrl;
+    return url != null && (url.startsWith('http://') || url.startsWith('https://'));
+  }
+
+  bool get punyaFotoAsset {
+    final foto = (fotoProfil ?? '').trim();
+    return foto.startsWith('assets/');
   }
 
   factory AdminUserModel.fromJson(Map<String, dynamic> json) {

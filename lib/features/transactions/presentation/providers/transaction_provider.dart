@@ -16,7 +16,21 @@ class TransactionProvider extends ChangeNotifier {
     bool isiDataAwal = false,
   }) : _apiService = apiService ?? TransactionApiService() {
     if (isiDataAwal) {
-      _inisialisasiDataAwal();
+      _daftarTransaksi.add(
+        const TransactionModel(
+          id: 'trx_test_01',
+          bukuId: 'bk_001',
+          judulBuku: 'Clean Code',
+          pemohonNama: 'Budi Santoso',
+          pemilikNama: 'Gilang Ramadan',
+          jenisTransaksi: 'pinjam',
+          durasiHari: 7,
+          depositSimulasi: 20000.0,
+          status: 'pending',
+          tanggal: '2026-09-15',
+          coverBuku: 'assets/images/book_the_unknown.jpg',
+        ),
+      );
     }
   }
 
@@ -24,25 +38,6 @@ class TransactionProvider extends ChangeNotifier {
     _currentUserId = id;
     _currentUserName = name;
     notifyListeners();
-  }
-
-  void _inisialisasiDataAwal() {
-    _daftarTransaksi.clear();
-    _daftarTransaksi.add(
-      const TransactionModel(
-        id: 'trx_test_01',
-        bukuId: 'bk_001',
-        judulBuku: 'Clean Code',
-        pemohonNama: 'Budi Santoso',
-        pemilikNama: 'Gilang Ramadan',
-        jenisTransaksi: 'pinjam',
-        durasiHari: 7,
-        depositSimulasi: 20000.0,
-        status: 'pending',
-        tanggal: '2026-09-15',
-        coverBuku: 'assets/images/book_the_unknown.jpg',
-      ),
-    );
   }
 
   bool get isLoading => _isLoading;

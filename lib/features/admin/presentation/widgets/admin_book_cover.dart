@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/book_cover_helper.dart';
 import '../../domain/models/admin_book_model.dart';
 
 class AdminBookCover extends StatelessWidget {
@@ -17,52 +16,18 @@ class AdminBookCover extends StatelessWidget {
     this.radius = 10,
   });
 
-  Widget _buildCoverKosong() {
-    return Container(
-      width: lebar,
-      height: tinggi,
-      color: const Color(0xFFE7E3FF),
-      child: Icon(
-        Icons.book_rounded,
-        color: AppColors.primary,
-        size: lebar * 0.45,
-      ),
-    );
-  }
-
-  Widget _buildGambar() {
-    if (buku.punyaFotoOnline) {
-      final foto = buku.fotoBuku!;
-      final fullUrl = (foto.startsWith('http://') || foto.startsWith('https://'))
-          ? foto
-          : '${ApiConstants.baseUrl.replaceAll('/api', '')}${foto.startsWith('/') ? foto : '/$foto'}';
-      return Image.network(
-        fullUrl,
-        width: lebar,
-        height: tinggi,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildCoverKosong(),
-      );
-    }
-
-    if (buku.punyaFotoAsset) {
-      return Image.asset(
-        buku.fotoBuku!,
-        width: lebar,
-        height: tinggi,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildCoverKosong(),
-      );
-    }
-
-    return _buildCoverKosong();
-  }
-
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
+    final coverPath = BookCoverHelper.getCover(
+      fotoBuku: buku.fotoBuku,
+      judul: buku.judul,
+    );
+    return BookCoverHelper.buildCoverImage(
+      coverPath,
+      width: lebar,
+      height: tinggi,
+      fallbackJudul: buku.judul,
       borderRadius: BorderRadius.circular(radius),
-      child: _buildGambar(),
     );
   }
 }

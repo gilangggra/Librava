@@ -8,6 +8,7 @@ import '../../../books/presentation/screens/search_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../home/presentation/screens/request_list_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
+import '../../../transactions/domain/models/transaction_model.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../../domain/models/chat_item_model.dart';
 import '../providers/chat_provider.dart';
@@ -65,42 +66,126 @@ class _ChatPageState extends State<ChatPage> {
       return [];
     }
     final currentUserId = authProvider?.currentUser?.id ?? '';
-    final currentUserName = authProvider?.currentUser?.nama.trim().toLowerCase() ?? '';
-    final List<ChatItemModel> list = [];
+    final currentUserName =
+        authProvider?.currentUser?.nama.trim().toLowerCase() ?? '';
+
+    // Kelompokkan percakapan per lawan bicara (partner) agar 1 pengguna hanya muncul 1 kali
+    // seperti pada aplikasi chat pada umumnya (WhatsApp, Telegram, dsb).
+    final Map<String, List<TransactionModel>> partnerGroups = {};
+
     for (final trx in trxProvider.semuaTransaksi) {
       final bool isOwner = currentUserId.isNotEmpty && trx.pemilikId.isNotEmpty
           ? (trx.pemilikId == currentUserId)
           : (currentUserName.isNotEmpty &&
               trx.pemilikNama.trim().toLowerCase() == currentUserName);
+      final partnerId = isOwner ? trx.pemohonId : trx.pemilikId;
       final partnerName = isOwner ? trx.pemohonNama : trx.pemilikNama;
       final partnerDisplay =
           partnerName.isNotEmpty ? partnerName : 'Mitra Librava';
-      final isBarter = trx.jenisTransaksi.toLowerCase() == 'barter';
-      
-      final unread = chatProvider?.unreadFor(trx.id) ?? (trx.status == 'pending' ? 1 : 0);
-      final latest = chatProvider?.latestMessageFor(trx.id);
+
+      final groupKey = partnerId.isNotEmpty
+          ? partnerId
+          : partnerDisplay.trim().toLowerCase();
+
+      partnerGroups.putIfAbsent(groupKey, () => []).add(trx);
+    }
+
+    final List<ChatItemModel> list = [];
+
+    for (final entry in partnerGroups.entries) {
+      final txs = entry.value;
+      if (txs.isEmpty) continue;
+
+      // Urutkan transaksi dari yang paling baru
+      txs.sort((a, b) {
+        final idA = int.tryParse(a.id) ?? 0;
+        final idB = int.tryParse(b.id) ?? 0;
+        return idB.compareTo(idA);
+      });
+
+      final primaryTrx = txs.first;
+      final bool isOwner =
+          currentUserId.isNotEmpty && primaryTrx.pemilikId.isNotEmpty
+              ? (primaryTrx.pemilikId == currentUserId)
+              : (currentUserName.isNotEmpty &&
+                  primaryTrx.pemilikNama.trim().toLowerCase() ==
+                      currentUserName);
+      final partnerName =
+          isOwner ? primaryTrx.pemohonNama : primaryTrx.pemilikNama;
+      final partnerDisplay =
+          partnerName.isNotEmpty ? partnerName : 'Mitra Librava';
+
+      int totalUnread = 0;
+      ({String text, String sentAt, String? senderNama})? mostRecentMsg;
+      String latestTxId = primaryTrx.id;
+      DateTime? latestMsgTime;
+
+      for (final t in txs) {
+        final u =
+            chatProvider?.unreadFor(t.id) ?? (t.status == 'pending' ? 1 : 0);
+        totalUnread += u;
+
+        final m = chatProvider?.latestMessageFor(t.id);
+        if (m != null && m.text.isNotEmpty) {
+          DateTime? msgDt;
+          try {
+            msgDt = DateTime.parse(m.sentAt);
+          } catch (_) {}
+
+          if (mostRecentMsg == null) {
+            mostRecentMsg = m;
+            latestTxId = t.id;
+            latestMsgTime = msgDt;
+          } else if (msgDt != null &&
+              (latestMsgTime == null || msgDt.isAfter(latestMsgTime))) {
+            mostRecentMsg = m;
+            latestTxId = t.id;
+            latestMsgTime = msgDt;
+          }
+        }
+      }
 
       final String lastMsg;
-      if (latest != null && latest.text.isNotEmpty) {
-        lastMsg = latest.text;
+      if (mostRecentMsg != null && mostRecentMsg.text.isNotEmpty) {
+        lastMsg = mostRecentMsg.text;
       } else {
+        final isBarter = primaryTrx.jenisTransaksi.toLowerCase() == 'barter';
         lastMsg = isBarter
-            ? 'Barter buku: ${trx.judulBuku}'
-            : 'Peminjaman: ${trx.judulBuku}';
+            ? 'Barter buku: ${primaryTrx.judulBuku}'
+            : 'Peminjaman: ${primaryTrx.judulBuku}';
+      }
+
+      String displayDate =
+          primaryTrx.tanggal.isNotEmpty ? primaryTrx.tanggal : 'Hari ini';
+      if (latestMsgTime != null) {
+        final now = DateTime.now();
+        if (latestMsgTime.year == now.year &&
+            latestMsgTime.month == now.month &&
+            latestMsgTime.day == now.day) {
+          final h = latestMsgTime.hour.toString().padLeft(2, '0');
+          final m = latestMsgTime.minute.toString().padLeft(2, '0');
+          displayDate = '$h.$m';
+        } else {
+          final y = latestMsgTime.year.toString();
+          final m = latestMsgTime.month.toString().padLeft(2, '0');
+          final d = latestMsgTime.day.toString().padLeft(2, '0');
+          displayDate = '$y-$m-$d';
+        }
       }
 
       list.add(
         ChatItemModel(
-          id: trx.id,
+          id: latestTxId,
           name: partnerDisplay,
           lastMessage: lastMsg,
-          date: trx.tanggal.isNotEmpty ? trx.tanggal : 'Hari ini',
+          date: displayDate,
           isOnline: true,
-          hasUnread: unread > 0,
-          unreadCount: unread,
+          hasUnread: totalUnread > 0,
+          unreadCount: totalUnread,
         ),
       );
     }
+
     return list;
   }
 

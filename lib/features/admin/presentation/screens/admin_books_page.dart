@@ -40,14 +40,10 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
     final adminProvider = context.read<AdminProvider>();
     final token = context.read<AuthProvider>().token;
 
-    if (token != null && token.isNotEmpty) {
-      await Future.wait([
-        adminProvider.fetchBuku(token),
-        adminProvider.fetchBukuPending(token),
-      ]);
-    } else if (adminProvider.jumlahBuku == 0) {
-      adminProvider.tandaiSesiBukuTidakValid();
-    }
+    await Future.wait([
+      adminProvider.fetchBuku(token),
+      adminProvider.fetchBukuPending(token),
+    ]);
   }
 
   void _bukaDetail(AdminBookModel buku) {

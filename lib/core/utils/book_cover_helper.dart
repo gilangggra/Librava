@@ -36,6 +36,8 @@ class BookCoverHelper {
     'midnight': 'assets/images/book_midnight_lib.jpg',
     'fruit fly': 'assets/images/book_fruit_fly.jpg',
     'adversary': 'assets/images/book_adversary.jpg',
+    'machine learning': 'assets/images/cover_machine_learning.jpg',
+    'data science': 'assets/images/cover_data_science.jpg',
   };
 
   /// Resolves the cover image path/URL for a given book.
@@ -96,14 +98,16 @@ class BookCoverHelper {
     Widget fallback() {
       if (fallbackJudul != null && fallbackJudul.isNotEmpty) {
         final fallbackAsset = getCoverForJudul(fallbackJudul);
-        return Image.asset(
-          fallbackAsset,
-          width: width,
-          height: height,
-          fit: fit,
-          errorBuilder: (context, error, stackTrace) =>
-              _defaultPlaceholder(width, height),
-        );
+        if (fallbackAsset != pathOrUrl && fallbackAsset != 'assets/images/book_the_unknown.jpg') {
+          return Image.asset(
+            fallbackAsset,
+            width: width,
+            height: height,
+            fit: fit,
+            errorBuilder: (context, error, stackTrace) =>
+                _defaultPlaceholder(width, height),
+          );
+        }
       }
       return _defaultPlaceholder(width, height);
     }
