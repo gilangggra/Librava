@@ -1,11 +1,21 @@
 import 'package:flutter/foundation.dart';
 
 class ApiConstants {
+  static const String productionUrl =
+      'https://librava-production-d1b8.up.railway.app/api';
   static const String defaultLocalUrl = 'http://localhost:5000/api';
   static const String defaultAndroidEmulatorUrl = 'http://10.0.2.2:5000/api';
 
-  static String baseUrl =
-      kIsWeb ? defaultLocalUrl : defaultAndroidEmulatorUrl;
+  /// Saklar mode: jika true, aplikasi Flutter terhubung langsung ke backend Railway Cloud
+  static const bool useProduction = true;
+
+  /// Base URL aktif (mendukung override via --dart-define=API_BASE_URL=...)
+  static String baseUrl = const String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: useProduction
+        ? productionUrl
+        : (kIsWeb ? defaultLocalUrl : defaultAndroidEmulatorUrl),
+  );
 
   static const String authRegister = '/auth/register';
   static const String authLogin = '/auth/login';
