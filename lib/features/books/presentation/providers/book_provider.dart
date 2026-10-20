@@ -46,33 +46,6 @@ class BookProvider extends ChangeNotifier {
           tersedia: true,
           rating: 4.6,
         ),
-        const BookModel(
-          id: '3',
-          judul: 'Design Patterns',
-          penulis: 'Gang of Four',
-          kategori: 'Teknologi',
-          tahunTerbit: 1994,
-          tersedia: false,
-          rating: 4.9,
-        ),
-        const BookModel(
-          id: '4',
-          judul: 'Don\'t Make Me Think',
-          penulis: 'Steve Krug',
-          kategori: 'Desain',
-          tahunTerbit: 2014,
-          tersedia: true,
-          rating: 4.5,
-        ),
-        const BookModel(
-          id: '5',
-          judul: 'The Lean Startup',
-          penulis: 'Eric Ries',
-          kategori: 'Bisnis',
-          tahunTerbit: 2011,
-          tersedia: false,
-          rating: 4.4,
-        ),
       ];
     } else {
       _books = [];

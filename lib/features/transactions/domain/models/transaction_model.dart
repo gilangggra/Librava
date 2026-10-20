@@ -1,3 +1,5 @@
+import '../../../../core/utils/book_cover_helper.dart';
+
 class TransactionModel {
   final String id;
   final String bukuId;
@@ -122,7 +124,7 @@ class TransactionModel {
         normalizedStatus = rawStatus.toLowerCase();
     }
 
-    final rawTipe = (json['tipe_transaksi'] as String? ?? 'BORROW');
+    final rawTipe = (json['tipe_transaksi'] as String? ?? 'BORROW').trim().toUpperCase();
     final String jenis = rawTipe == 'BARTER' ? 'barter' : 'pinjam';
 
     final createdAt = json['created_at'] as String?;
@@ -162,13 +164,19 @@ class TransactionModel {
       durasiHari: (json['durasi_hari'] as num?)?.toInt() ?? 7,
       bukuBarter: json['barter_book_judul'] as String? ?? '',
       barterPenulis: json['barter_book_penulis'] as String? ?? '',
-      barterCover: json['barter_book_foto'] as String? ?? '',
+      barterCover: BookCoverHelper.getCover(
+        fotoBuku: json['barter_book_foto'] as String?,
+        judul: json['barter_book_judul'] as String? ?? '',
+      ),
       depositSimulasi: (json['deposit_dummy'] as num?)?.toDouble() ?? 0.0,
       status: normalizedStatus,
       lokasiPertemuan: json['lokasi_pertemuan'] as String? ?? '',
       tanggal: tanggal,
       tanggalPengembalian: tanggalPengembalian,
-      coverBuku: json['book_foto'] as String? ?? 'assets/images/book_the_unknown.jpg',
+      coverBuku: BookCoverHelper.getCover(
+        fotoBuku: json['book_foto'] as String?,
+        judul: json['book_judul'] as String? ?? '',
+      ),
       dueDate: dueDate,
       requesterConfirmedAt: requesterConfirmedAt,
       ownerConfirmedAt: ownerConfirmedAt,

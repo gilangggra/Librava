@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/book_cover_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
@@ -77,9 +77,10 @@ class _RequestListPageState extends State<RequestListPage> {
           id: 'api_${t.id}',
           bookTitle: t.judulBuku.isNotEmpty ? t.judulBuku : 'Buku Librava',
           bookAuthor: t.penulisBuku.isNotEmpty ? t.penulisBuku : 'Koleksi Saya',
-          bookCover: t.coverBuku.isNotEmpty
-              ? t.coverBuku
-              : 'assets/images/book_the_unknown.jpg',
+          bookCover: BookCoverHelper.getCover(
+            fotoBuku: t.coverBuku,
+            judul: t.judulBuku,
+          ),
           requesterName: t.pemohonNama.isNotEmpty ? t.pemohonNama : 'Mahasiswa',
           requesterHandle:
               '@${t.pemohonNama.toLowerCase().replaceAll(' ', '')}',
@@ -92,9 +93,10 @@ class _RequestListPageState extends State<RequestListPage> {
               ? t.barterPenulis
               : (isBarter ? 'Penulis' : null),
           exchangeBookCover: isBarter
-              ? (t.barterCover.isNotEmpty
-                  ? t.barterCover
-                  : 'assets/images/book_the_unknown.jpg')
+              ? BookCoverHelper.getCover(
+                  fotoBuku: t.barterCover,
+                  judul: t.bukuBarter,
+                )
               : null,
           requestedPeriod: '${t.durasiHari} hari',
           dateRange: t.tanggal,
@@ -383,48 +385,16 @@ class _RequestListPageState extends State<RequestListPage> {
     }
   }
 
-  Widget _buildCoverImage(String path, {double width = 64, double height = 88}) {
-    String? fullNetworkUrl;
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      fullNetworkUrl = path;
-    } else if (path.startsWith('/uploads/') || path.startsWith('uploads/')) {
-      final clean = path.startsWith('/') ? path : '/$path';
-      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
-    }
-
-    if (fullNetworkUrl != null) {
-      return Image.network(
-        fullNetworkUrl,
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            _fallbackCover(width, height),
-      );
-    }
-    return Image.asset(
-      path,
-      width: width,
-      height: height,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) =>
-          _fallbackCover(width, height),
+  Widget _buildCoverImage(String path, {double width = 64, double height = 88, String? fallbackJudul}) {
+    final resolved = BookCoverHelper.getCover(
+      fotoBuku: path,
+      judul: fallbackJudul ?? '',
     );
-  }
-
-  Widget _fallbackCover(double width, double height) {
-    return Container(
+    return BookCoverHelper.buildCoverImage(
+      resolved,
       width: width,
       height: height,
-      decoration: BoxDecoration(
-        color: const Color(0xFF6356FF).withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Icon(
-        Icons.menu_book_rounded,
-        color: Color(0xFF6356FF),
-        size: 24,
-      ),
+      fallbackJudul: fallbackJudul,
     );
   }
 
@@ -631,10 +601,13 @@ class _RequestListPageState extends State<RequestListPage> {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(6),
                           child: _buildCoverImage(
-                            item.exchangeBookCover ??
-                                'assets/images/book_fruit_fly.jpg',
+                            BookCoverHelper.getCover(
+                              fotoBuku: item.exchangeBookCover,
+                              judul: item.exchangeBookTitle ?? '',
+                            ),
                             width: 36,
                             height: 48,
+                            fallbackJudul: item.exchangeBookTitle,
                           ),
                         ),
                         const SizedBox(width: 12),

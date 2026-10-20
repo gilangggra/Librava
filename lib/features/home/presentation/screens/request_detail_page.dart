@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/book_cover_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
@@ -348,48 +348,16 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
     );
   }
 
-  Widget _buildCoverImage(String path, {double width = 95, double height = 135}) {
-    String? fullNetworkUrl;
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      fullNetworkUrl = path;
-    } else if (path.startsWith('/uploads/') || path.startsWith('uploads/')) {
-      final clean = path.startsWith('/') ? path : '/$path';
-      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
-    }
-
-    if (fullNetworkUrl != null) {
-      return Image.network(
-        fullNetworkUrl,
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            _fallbackCover(width, height),
-      );
-    }
-    return Image.asset(
-      path,
-      width: width,
-      height: height,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) =>
-          _fallbackCover(width, height),
+  Widget _buildCoverImage(String path, {double width = 95, double height = 135, String? fallbackJudul}) {
+    final resolved = BookCoverHelper.getCover(
+      fotoBuku: path,
+      judul: fallbackJudul ?? '',
     );
-  }
-
-  Widget _fallbackCover(double width, double height) {
-    return Container(
+    return BookCoverHelper.buildCoverImage(
+      resolved,
       width: width,
       height: height,
-      decoration: BoxDecoration(
-        color: const Color(0xFF6356FF).withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Icon(
-        Icons.menu_book_rounded,
-        color: Color(0xFF6356FF),
-        size: 32,
-      ),
+      fallbackJudul: fallbackJudul,
     );
   }
 
@@ -442,6 +410,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                               _item.bookCover,
                               width: 96,
                               height: 136,
+                              fallbackJudul: _item.bookTitle,
                             ),
                           ),
                         ),
@@ -665,39 +634,51 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                                 ),
                               ),
                               if (_item.isBarter && _item.exchangeBookTitle != null)
-                                Row(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: _buildCoverImage(
-                                        _item.exchangeBookCover ??
-                                            'assets/images/book_fruit_fly.jpg',
-                                        width: 36,
-                                        height: 48,
+                                Expanded(
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: _buildCoverImage(
+                                          BookCoverHelper.getCover(
+                                            fotoBuku: _item.exchangeBookCover,
+                                            judul: _item.exchangeBookTitle ?? '',
+                                          ),
+                                          width: 36,
+                                          height: 48,
+                                          fallbackJudul: _item.exchangeBookTitle,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _item.exchangeBookTitle!,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF130F26),
-                                          ),
+                                      const SizedBox(width: 10),
+                                      Flexible(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              _item.exchangeBookTitle!,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: Color(0xFF130F26),
+                                              ),
+                                            ),
+                                            Text(
+                                              _item.exchangeBookAuthor ?? '',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF8F8E9D),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        Text(
-                                          _item.exchangeBookAuthor ?? '',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Color(0xFF8F8E9D),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                      ),
+                                    ],
+                                  ),
                                 )
                               else
                                 Text(

@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/book_cover_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
@@ -136,16 +136,14 @@ class _BookDetailPageState extends State<BookDetailPage> {
   }
 
   String get _coverPath {
-    if (_currentBook?.fotoBuku != null && _currentBook!.fotoBuku!.isNotEmpty) {
-      return _currentBook!.fotoBuku!;
-    }
-    if (widget.book?.fotoBuku != null && widget.book!.fotoBuku!.isNotEmpty) {
-      return widget.book!.fotoBuku!;
-    }
-    if (widget.coverPath != null && widget.coverPath!.isNotEmpty) {
-      return widget.coverPath!;
-    }
-    return 'assets/images/book_the_unknown.jpg';
+    final raw = (_currentBook?.fotoBuku != null && _currentBook!.fotoBuku!.isNotEmpty)
+        ? _currentBook!.fotoBuku!
+        : (widget.book?.fotoBuku != null && widget.book!.fotoBuku!.isNotEmpty)
+            ? widget.book!.fotoBuku!
+            : (widget.coverPath != null && widget.coverPath!.isNotEmpty
+                ? widget.coverPath!
+                : null);
+    return BookCoverHelper.getCover(fotoBuku: raw, judul: _title);
   }
 
   TransactionModel? _getMyActiveTransaction(
@@ -1213,70 +1211,12 @@ class _BookDetailPageState extends State<BookDetailPage> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
-                          child: () {
-                            final path = _coverPath;
-                            String? fullNetworkUrl;
-                            if (path.startsWith('http://') ||
-                                path.startsWith('https://')) {
-                              fullNetworkUrl = path;
-                            } else if (path.startsWith('/uploads/') ||
-                                path.startsWith('uploads/')) {
-                              final clean =
-                                  path.startsWith('/') ? path : '/$path';
-                              fullNetworkUrl =
-                                  '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
-                            }
-
-                            if (fullNetworkUrl != null) {
-                              return Image.network(
-                                fullNetworkUrl,
-                                width: 140,
-                                height: 205,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: 140,
-                                    height: 205,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE7E3FF),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.book_rounded,
-                                        color: AppColors.primary,
-                                        size: 48,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
-                            }
-
-                            return Image.asset(
-                              path,
-                              width: 140,
-                              height: 205,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  width: 140,
-                                  height: 205,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE7E3FF),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.book_rounded,
-                                      color: AppColors.primary,
-                                      size: 48,
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
-                          }(),
+                          child: BookCoverHelper.buildCoverImage(
+                            _coverPath,
+                            width: 140,
+                            height: 205,
+                            fallbackJudul: _title,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),

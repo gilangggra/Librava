@@ -1,3 +1,5 @@
+import '../../../../core/utils/book_cover_helper.dart';
+
 class AdminActivityItem {
   final String id;
   final String title;
@@ -121,22 +123,10 @@ class AdminDashboardModel {
           txStatus = 'Completed';
         }
 
-        String cover = (item['book_foto']?.toString() ?? '').trim();
-        if (cover.isEmpty) {
-          final lowTitle = bookTitle.toLowerCase();
-          if (lowTitle.contains('fruit')) {
-            cover = 'assets/images/book_fruit_fly.jpg';
-          } else if (lowTitle.contains('adversary') ||
-              lowTitle.contains('filosofi')) {
-            cover = 'assets/images/book_adversary.jpg';
-          } else if (lowTitle.contains('atomic')) {
-            cover = 'assets/images/book_atomic_habits.jpg';
-          } else if (lowTitle.contains('midnight')) {
-            cover = 'assets/images/book_midnight_lib.jpg';
-          } else {
-            cover = 'assets/images/bookshelf.jpg';
-          }
-        }
+        final String cover = BookCoverHelper.getCover(
+          fotoBuku: item['book_foto']?.toString(),
+          judul: bookTitle,
+        );
 
         final rawAuthor = (item['book_penulis']?.toString() ?? '').trim();
         final author = rawAuthor.isNotEmpty ? rawAuthor : 'Penulis Kampus';

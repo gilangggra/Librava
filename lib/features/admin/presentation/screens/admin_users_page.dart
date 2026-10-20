@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/avatar_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/models/admin_user_model.dart';
 import '../providers/admin_provider.dart';
@@ -37,12 +38,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
   Future<void> _muatData() async {
     final adminProvider = context.read<AdminProvider>();
     final token = context.read<AuthProvider>().token;
-
-    if (token != null && token.isNotEmpty) {
-      await adminProvider.fetchMahasiswa(token);
-    } else if (adminProvider.jumlahMahasiswa == 0) {
-      adminProvider.tandaiSesiTidakValid();
-    }
+    await adminProvider.fetchMahasiswa(token);
   }
 
   void _bukaDetail(AdminUserModel user) {
@@ -55,38 +51,11 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
   }
 
   Widget _buildAvatar(AdminUserModel user, {double ukuran = 78}) {
-    final avatarKosong = Container(
-      width: ukuran,
-      height: ukuran,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F2F2),
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFE2E2E2), width: 2),
-      ),
-      child: ClipOval(
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: Icon(
-            CupertinoIcons.person_fill,
-            size: ukuran * 0.85,
-            color: Colors.black,
-          ),
-        ),
-      ),
-    );
-
-    if (!user.punyaFotoOnline) {
-      return avatarKosong;
-    }
-
-    return ClipOval(
-      child: Image.network(
-        user.fotoProfil!,
-        width: ukuran,
-        height: ukuran,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => avatarKosong,
-      ),
+    return AvatarHelper.buildAvatarWidget(
+      fotoProfil: user.fotoProfil,
+      nama: user.nama,
+      radius: ukuran / 2,
+      border: Border.all(color: const Color(0xFFE2E2E2), width: 2),
     );
   }
 
@@ -128,15 +97,39 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      user.nama,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF130F26),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            user.nama,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF130F26),
+                            ),
+                          ),
+                        ),
+                        if (user.role.toLowerCase() == 'admin') ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEDEAFE),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Admin',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     Text(
                       user.username,

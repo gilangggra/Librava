@@ -48,7 +48,13 @@ class AdminProvider extends ChangeNotifier {
               totalTransactions: 0,
               recentActivity: [],
               recentTransactions: [],
-            );
+            ) {
+    // Otomatis fetch data admin dari database
+    fetchDashboard();
+    fetchBuku();
+    fetchTransaksi();
+    fetchMahasiswa();
+  }
 
   AdminDashboardModel get dashboard => _dashboard;
   bool get isLoading => _isLoading;
@@ -123,11 +129,12 @@ class AdminProvider extends ChangeNotifier {
       return user.nama.toLowerCase().contains(kata) ||
           user.email.toLowerCase().contains(kata) ||
           user.username.toLowerCase().contains(kata) ||
+          user.role.toLowerCase().contains(kata) ||
           (user.nim ?? '').toLowerCase().contains(kata);
     }).toList();
   }
 
-  Future<void> fetchDashboard(String token) async {
+  Future<void> fetchDashboard([String? token]) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -143,15 +150,14 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchMahasiswa(String token) async {
+  Future<void> fetchMahasiswa([String? token]) async {
     _isLoadingMahasiswa = true;
     _errorMahasiswa = null;
     notifyListeners();
 
     try {
       final semuaUser = await _apiService.getUsers(token: token);
-      _daftarMahasiswa =
-          semuaUser.where((user) => user.role == 'mahasiswa').toList();
+      _daftarMahasiswa = semuaUser;
     } catch (e) {
       final teks = e.toString();
       _errorMahasiswa = teks.startsWith('Exception: ')
@@ -173,7 +179,7 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchBuku(String token) async {
+  Future<void> fetchBuku([String? token]) async {
     _isLoadingBuku = true;
     _errorBuku = null;
     notifyListeners();
@@ -201,7 +207,7 @@ class AdminProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchTransaksi(String token) async {
+  Future<void> fetchTransaksi([String? token]) async {
     _isLoadingTransaksi = true;
     _errorTransaksi = null;
     notifyListeners();
@@ -243,7 +249,7 @@ class AdminProvider extends ChangeNotifier {
   String? get errorBukuPending => _errorBukuPending;
   int get jumlahBukuPending => _daftarBukuPending.length;
 
-  Future<void> fetchBukuPending(String token) async {
+  Future<void> fetchBukuPending([String? token]) async {
     _isLoadingBukuPending = true;
     _errorBukuPending = null;
     notifyListeners();
@@ -262,7 +268,7 @@ class AdminProvider extends ChangeNotifier {
   }
 
   Future<bool> moderateBook({
-    required String token,
+    String? token,
     required String bookId,
     required String action,
     String? catatan,

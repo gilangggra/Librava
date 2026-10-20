@@ -76,6 +76,14 @@ flutter:
     - assets/images/event_reading_meetup.jpg
     - assets/images/event_book_discussion.jpg
     - assets/images/bookshelf.jpg
+    - assets/images/cover_machine_learning.jpg
+    - assets/images/cover_data_science.jpg
+    - assets/images/avatar_budi.jpg
+    - assets/images/avatar_citra.jpg
+    - assets/images/avatar_sari.jpg
+    - assets/images/avatar_andi.jpg
+    - assets/images/avatar_rina.jpg
+    - assets/images/avatar_admin.jpg
     - assets/images/google_logo.png
     - assets/images/github_logo.png
 

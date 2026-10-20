@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/avatar_helper.dart';
 import '../../domain/models/admin_user_model.dart';
 import '../widgets/admin_bottom_nav.dart';
 
@@ -20,45 +21,19 @@ class AdminUserDetailPage extends StatelessWidget {
     return user.role == 'admin' ? 'Admin' : 'User';
   }
 
-  Widget _buildAvatarKosong() {
-    return Container(
-      color: const Color(0xFFF2F2F2),
-      child: const Align(
-        alignment: Alignment.bottomCenter,
-        child: Icon(
-          CupertinoIcons.person_fill,
-          size: 92,
-          color: Colors.black,
-        ),
-      ),
-    );
-  }
-
   Widget _buildAvatar() {
-    return Container(
-      width: 106,
-      height: 106,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.primary, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E1A34).withValues(alpha: 0.18),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: ClipOval(
-        child: user.punyaFotoOnline
-            ? Image.network(
-                user.fotoProfil!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    _buildAvatarKosong(),
-              )
-            : _buildAvatarKosong(),
-      ),
+    return AvatarHelper.buildAvatarWidget(
+      fotoProfil: user.fotoProfil,
+      nama: user.nama,
+      radius: 53,
+      border: Border.all(color: AppColors.primary, width: 2),
+      boxShadow: [
+        BoxShadow(
+          color: const Color(0xFF1E1A34).withValues(alpha: 0.18),
+          blurRadius: 12,
+          offset: const Offset(0, 6),
+        ),
+      ],
     );
   }
 

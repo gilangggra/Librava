@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/avatar_helper.dart';
 import '../../../auth/domain/models/user_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
@@ -12,6 +12,7 @@ import '../../../chat/presentation/screens/chat_room_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import 'profile_page.dart';
 
+import '../../../transactions/presentation/screens/transaction_history_page.dart';
 import '../../domain/models/user_review_model.dart';
 import '../../data/services/review_api_service.dart';
 
@@ -580,43 +581,14 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                     ),
                     child: Column(
                       children: [
-                        // Avatar Pengguna dengan border hitam
-                        Container(
-                          width: 84,
-                          height: 84,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFFC7C2FB),
-                            border: Border.all(
-                              color: const Color(0xFF130F26),
-                              width: 2.2,
-                            ),
+                        AvatarHelper.buildAvatarWidget(
+                          fotoProfil: displayFoto,
+                          nama: displayName,
+                          radius: 42,
+                          border: Border.all(
+                            color: const Color(0xFF130F26),
+                            width: 2.2,
                           ),
-                          child: (displayFoto != null && displayFoto.isNotEmpty)
-                              ? ClipOval(
-                                  child: Image.network(
-                                    displayFoto.startsWith('http')
-                                        ? displayFoto
-                                        : '${ApiConstants.baseUrl.replaceAll('/api', '')}/${displayFoto.replaceFirst(RegExp(r'^/+'), '')}',
-                                    width: 84,
-                                    height: 84,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => const Center(
-                                      child: Icon(
-                                        Icons.person,
-                                        size: 52,
-                                        color: Color(0xFF130F26),
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : const Center(
-                                  child: Icon(
-                                    Icons.person,
-                                    size: 52,
-                                    color: Color(0xFF130F26),
-                                  ),
-                                ),
                         ),
                         const SizedBox(height: 12),
                         Text(
@@ -740,10 +712,26 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: _buildActivityItem(
-                        icon: CupertinoIcons.book,
-                        count: displayBooksRead,
-                        label: 'Books Read',
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const TransactionHistoryPage(
+                                initialFilterIndex: 3,
+                              ),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: _buildActivityItem(
+                            icon: CupertinoIcons.book,
+                            count: displayBooksRead,
+                            label: 'Books Read',
+                          ),
+                        ),
                       ),
                     ),
                     Container(
@@ -752,10 +740,26 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                       color: const Color(0xFFE8E6F2),
                     ),
                     Expanded(
-                      child: _buildActivityItem(
-                        icon: CupertinoIcons.arrow_2_squarepath,
-                        count: displayBooksBorrowed,
-                        label: 'Books Borrowed',
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const TransactionHistoryPage(
+                                initialFilterIndex: 1,
+                              ),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: _buildActivityItem(
+                            icon: CupertinoIcons.arrow_2_squarepath,
+                            count: displayBooksBorrowed,
+                            label: 'Books Borrowed',
+                          ),
+                        ),
                       ),
                     ),
                     Container(
@@ -764,10 +768,26 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                       color: const Color(0xFFE8E6F2),
                     ),
                     Expanded(
-                      child: _buildActivityItem(
-                        icon: CupertinoIcons.bookmark,
-                        count: displayFavorites,
-                        label: 'Favorites',
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const TransactionHistoryPage(
+                                initialFilterIndex: 4,
+                              ),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: _buildActivityItem(
+                            icon: CupertinoIcons.bookmark,
+                            count: displayFavorites,
+                            label: 'Favorites',
+                          ),
+                        ),
                       ),
                     ),
                   ],

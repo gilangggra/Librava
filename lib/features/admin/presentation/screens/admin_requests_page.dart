@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/book_cover_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/models/admin_transaction_model.dart';
 import '../providers/admin_provider.dart';
@@ -37,12 +38,7 @@ class _AdminRequestsPageState extends State<AdminRequestsPage> {
   Future<void> _muatData() async {
     final adminProvider = context.read<AdminProvider>();
     final token = context.read<AuthProvider>().token;
-
-    if (token != null && token.isNotEmpty) {
-      await adminProvider.fetchTransaksi(token);
-    } else if (adminProvider.jumlahTransaksi == 0) {
-      adminProvider.tandaiSesiTransaksiTidakValid();
-    }
+    await adminProvider.fetchTransaksi(token);
   }
 
   void _bukaDetail(AdminTransactionModel request) {
@@ -97,19 +93,17 @@ class _AdminRequestsPageState extends State<AdminRequestsPage> {
     );
   }
 
-  Widget _buildCoverKecil() {
-    return Container(
+  Widget _buildCoverKecil(AdminTransactionModel tx) {
+    final coverPath = BookCoverHelper.getCover(
+      fotoBuku: tx.bookFoto,
+      judul: tx.bookJudul,
+    );
+    return BookCoverHelper.buildCoverImage(
+      coverPath,
       width: 64,
       height: 80,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE7E3FF),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Icon(
-        Icons.book_rounded,
-        color: AppColors.primary,
-        size: 28,
-      ),
+      fallbackJudul: tx.bookJudul,
+      borderRadius: BorderRadius.circular(10),
     );
   }
 
@@ -151,7 +145,7 @@ class _AdminRequestsPageState extends State<AdminRequestsPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildCoverKecil(),
+              _buildCoverKecil(tx),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/book_cover_helper.dart';
 import '../../../chat/presentation/screens/chat_room_page.dart';
 import '../../domain/models/admin_transaction_model.dart';
 import '../widgets/admin_bottom_nav.dart';
@@ -24,55 +24,16 @@ class AdminTransactionDetailPage extends StatelessWidget {
   }
 
   Widget _buildCoverBuku() {
-    final foto = (transaksi.bookFoto ?? '').trim();
-    String? fullNetworkUrl;
-    if (foto.startsWith('http://') || foto.startsWith('https://')) {
-      fullNetworkUrl = foto;
-    } else if (foto.startsWith('/uploads/') || foto.startsWith('uploads/')) {
-      final clean = foto.startsWith('/') ? foto : '/$foto';
-      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
-    }
-
-    if (fullNetworkUrl != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.network(
-          fullNetworkUrl,
-          width: 80,
-          height: 100,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _buildFallbackCover(),
-        ),
-      );
-    }
-    if (foto.isNotEmpty && foto.startsWith('assets/')) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.asset(
-          foto,
-          width: 80,
-          height: 100,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => _buildFallbackCover(),
-        ),
-      );
-    }
-    return _buildFallbackCover();
-  }
-
-  Widget _buildFallbackCover() {
-    return Container(
+    final coverPath = BookCoverHelper.getCover(
+      fotoBuku: transaksi.bookFoto,
+      judul: transaksi.bookJudul,
+    );
+    return BookCoverHelper.buildCoverImage(
+      coverPath,
       width: 80,
       height: 100,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE7E3FF),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Icon(
-        Icons.book_rounded,
-        color: AppColors.primary,
-        size: 36,
-      ),
+      fallbackJudul: transaksi.bookJudul,
+      borderRadius: BorderRadius.circular(10),
     );
   }
 

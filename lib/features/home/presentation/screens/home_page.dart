@@ -18,6 +18,7 @@ import '../../../events/domain/models/event_model.dart';
 import '../../../events/presentation/providers/event_provider.dart';
 import '../../../events/presentation/screens/event_detail_page.dart';
 import '../../../chat/presentation/providers/chat_provider.dart';
+import '../../../../core/utils/book_cover_helper.dart';
 import 'request_list_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -55,26 +56,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _getCoverForJudul(String judul) {
-    final j = judul.toLowerCase();
-    if (j.contains('atomic')) return 'assets/images/book_atomic_habits.jpg';
-    if (j.contains('midnight')) return 'assets/images/book_midnight_lib.jpg';
-    if (j.contains('clean code') || j.contains('pragmatic')) {
-      return 'assets/images/bookshelf.jpg';
-    }
-    if (j.contains('basis data') || j.contains('python') || j.contains('jaringan')) {
-      return 'assets/images/book_fruit_fly.jpg';
-    }
-    if (j.contains('laskar') || j.contains('filosofi')) {
-      return 'assets/images/book_adversary.jpg';
-    }
-    return 'assets/images/book_the_unknown.jpg';
+    return BookCoverHelper.getCoverForJudul(judul);
   }
 
   String _getCoverForBook(BookModel book) {
-    if (book.fotoBuku != null && book.fotoBuku!.isNotEmpty) {
-      return book.fotoBuku!;
-    }
-    return _getCoverForJudul(book.judul);
+    return BookCoverHelper.getCover(fotoBuku: book.fotoBuku, judul: book.judul);
   }
 
   List<Map<String, dynamic>> _getBorrowedBooks(
@@ -142,53 +128,12 @@ class _HomePageState extends State<HomePage> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(18),
-            child: () {
-              String? fullNetworkUrl;
-              if (assetPath.startsWith('http://') ||
-                  assetPath.startsWith('https://')) {
-                fullNetworkUrl = assetPath;
-              } else if (assetPath.startsWith('/uploads/') ||
-                  assetPath.startsWith('uploads/')) {
-                final clean =
-                    assetPath.startsWith('/') ? assetPath : '/$assetPath';
-                fullNetworkUrl =
-                    '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
-              }
-
-              Widget fallback() => Container(
-                    width: 108,
-                    height: 165,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE7E3FF),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.book_rounded,
-                        color: AppColors.primary,
-                        size: 36,
-                      ),
-                    ),
-                  );
-
-              if (fullNetworkUrl != null) {
-                return Image.network(
-                  fullNetworkUrl,
-                  width: 108,
-                  height: 165,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => fallback(),
-                );
-              }
-
-              return Image.asset(
-                assetPath,
-                width: 108,
-                height: 165,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => fallback(),
-              );
-            }(),
+            child: BookCoverHelper.buildCoverImage(
+              assetPath,
+              width: 108,
+              height: 165,
+              fallbackJudul: book?.judul,
+            ),
           ),
           if (book != null && book.rating > 0)
             Positioned(
@@ -261,54 +206,12 @@ class _HomePageState extends State<HomePage> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                child: () {
-                  final imgPath = item['image'] as String;
-                  String? fullNetworkUrl;
-                  if (imgPath.startsWith('http://') ||
-                      imgPath.startsWith('https://')) {
-                    fullNetworkUrl = imgPath;
-                  } else if (imgPath.startsWith('/uploads/') ||
-                      imgPath.startsWith('uploads/')) {
-                    final clean =
-                        imgPath.startsWith('/') ? imgPath : '/$imgPath';
-                    fullNetworkUrl =
-                        '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
-                  }
-
-                  Widget fallback() => Container(
-                        width: 104,
-                        height: 132,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE7E3FF),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.book_rounded,
-                            color: AppColors.primary,
-                            size: 36,
-                          ),
-                        ),
-                      );
-
-                  if (fullNetworkUrl != null) {
-                    return Image.network(
-                      fullNetworkUrl,
-                      width: 104,
-                      height: 132,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => fallback(),
-                    );
-                  }
-
-                  return Image.asset(
-                    imgPath,
-                    width: 104,
-                    height: 132,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => fallback(),
-                  );
-                }(),
+                child: BookCoverHelper.buildCoverImage(
+                  item['image'] as String,
+                  width: 104,
+                  height: 132,
+                  fallbackJudul: item['title'] as String?,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(

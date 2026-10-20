@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/book_cover_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/screens/login_page.dart';
 import '../../domain/models/admin_dashboard_model.dart';
@@ -35,11 +36,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
         final auth = context.read<AuthProvider>();
-        if (auth.token != null && auth.token!.isNotEmpty) {
-          final admin = context.read<AdminProvider>();
-          admin.fetchDashboard(auth.token!);
-          admin.fetchTransaksi(auth.token!);
-        }
+        final admin = context.read<AdminProvider>();
+        final token = auth.token;
+        admin.fetchDashboard(token);
+        admin.fetchTransaksi(token);
+        admin.fetchBuku(token);
+        admin.fetchMahasiswa(token);
         context.read<EventProvider>().fetchEvents();
       } catch (_) {}
     });
@@ -193,8 +195,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-        _buildBookCoverWidget(coverPath),
-        const SizedBox(width: 12),
+            _buildBookCoverWidget(coverPath, title: title),
+            const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,7 +324,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildBookCoverWidget(coverPath),
+            _buildBookCoverWidget(coverPath, title: title),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -431,49 +433,17 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  Widget _buildBookCoverWidget(String coverPath) {
-    String? fullNetworkUrl;
-    if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
-      fullNetworkUrl = coverPath;
-    } else if (coverPath.startsWith('/uploads/') ||
-        coverPath.startsWith('uploads/')) {
-      final clean = coverPath.startsWith('/') ? coverPath : '/$coverPath';
-      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
-    }
-
-    Widget fallback() => Container(
-          width: 54,
-          height: 76,
-          color: const Color(0xFFE7E3FF),
-          child: const Icon(
-            Icons.book_rounded,
-            color: AppColors.primary,
-            size: 24,
-          ),
-        );
-
-    Widget img;
-    if (fullNetworkUrl != null) {
-      img = Image.network(
-        fullNetworkUrl,
-        width: 54,
-        height: 76,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => fallback(),
-      );
-    } else {
-      img = Image.asset(
-        coverPath,
-        width: 54,
-        height: 76,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => fallback(),
-      );
-    }
-
-    return ClipRRect(
+  Widget _buildBookCoverWidget(String coverPath, {String title = ''}) {
+    final resolved = BookCoverHelper.getCover(
+      fotoBuku: coverPath,
+      judul: title,
+    );
+    return BookCoverHelper.buildCoverImage(
+      resolved,
+      width: 54,
+      height: 76,
+      fallbackJudul: title,
       borderRadius: BorderRadius.circular(12),
-      child: img,
     );
   }
 
@@ -696,6 +666,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         ownerNama: '-',
         ownerEmail: '-',
         bookJudul: item.title,
+        bookFoto: item.coverPath,
+        bookPenulis: item.author,
       );
     }
 
@@ -729,6 +701,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         ownerNama: '-',
         ownerEmail: '-',
         bookJudul: item.title,
+        bookFoto: item.coverPath,
+        bookPenulis: item.author,
       );
     }
 

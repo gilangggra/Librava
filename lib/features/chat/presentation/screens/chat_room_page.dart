@@ -9,8 +9,6 @@ import '../../../books/presentation/screens/search_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
 import '../../../profile/presentation/screens/profile_view_page.dart';
-import '../../../transactions/presentation/providers/transaction_provider.dart';
-import '../../../transactions/presentation/screens/transaction_detail_page.dart';
 import '../../../../core/utils/image_upload_helper.dart';
 import '../../../books/data/services/book_api_service.dart';
 import '../../data/services/chat_api_service.dart';
@@ -990,37 +988,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                         ),
                       ),
                     ),
-                    if (widget.transactionId != null)
-                      IconButton(
-                        tooltip: 'Detail Transaksi',
-                        icon: const Icon(
-                          Icons.receipt_long_rounded,
-                          color: AppColors.primary,
-                          size: 24,
-                        ),
-                        onPressed: () {
-                          TransactionProvider? trxProvider;
-                          try {
-                            trxProvider = context.read<TransactionProvider>();
-                          } catch (_) {}
-                          final tx = trxProvider?.semuaTransaksi
-                              .where((t) => t.id == widget.transactionId)
-                              .firstOrNull;
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => TransactionDetailPage(
-                                transactionId: widget.transactionId,
-                                bookTitle: tx?.judulBuku ?? 'Buku Librava',
-                                bookAuthor: tx?.penulisBuku ?? 'Penulis',
-                                coverPath: tx?.coverBuku ??
-                                    'assets/images/book_the_unknown.jpg',
-                                status: tx?.status ?? 'Menunggu Konfirmasi',
-                              ),
-                            ),
-                          );
-                        },
-                      ),
                   ],
                 ),
               ),

@@ -45,6 +45,7 @@ class BookModel {
       tersedia: json['tersedia'] ?? true,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       deskripsi: json['deskripsi'] ?? '',
+      fotoBuku: json['fotoBuku'] ?? json['foto_buku'],
       pemilikId: json['pemilikId'] ?? json['owner_id']?.toString(),
       pemilikNama: json['pemilikNama'] ?? json['owner_nama'],
       statusModerasi: json['statusModerasi'] ?? 'DISETUJUI',

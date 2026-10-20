@@ -2,12 +2,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/avatar_helper.dart';
+import '../../../../core/utils/book_cover_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/screens/login_page.dart';
-import '../../../books/domain/models/book_model.dart';
 import '../../../books/presentation/providers/book_provider.dart';
-import '../../../books/presentation/screens/book_detail_page.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../../../chat/presentation/providers/chat_provider.dart';
@@ -205,222 +204,8 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  String _getCoverForBook(BookModel book) {
-    if (book.fotoBuku != null &&
-        book.fotoBuku!.isNotEmpty &&
-        book.fotoBuku != 'assets/images/book_the_unknown.jpg') {
-      return book.fotoBuku!;
-    }
-    final j = book.judul.toLowerCase();
-    if (j.contains('atomic')) return 'assets/images/book_atomic_habits.jpg';
-    if (j.contains('midnight')) return 'assets/images/book_midnight_lib.jpg';
-    if (j.contains('clean code') || j.contains('pragmatic')) {
-      return 'assets/images/bookshelf.jpg';
-    }
-    if (j.contains('basis data') ||
-        j.contains('python') ||
-        j.contains('jaringan')) {
-      return 'assets/images/book_fruit_fly.jpg';
-    }
-    if (j.contains('laskar') || j.contains('filosofi')) {
-      return 'assets/images/book_adversary.jpg';
-    }
-    return 'assets/images/book_the_unknown.jpg';
-  }
 
-  void _bukaModalBukuTersimpan(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return Consumer<BookProvider>(
-          builder: (context, bookProvider, _) {
-            final bookmarks = bookProvider.bookmarkedBooks;
-            return SafeArea(
-              child: Container(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.75,
-                ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 42,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE2E4E9),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Buku Tersimpan',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF130F26),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEDEAFE),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${bookmarks.length} Buku',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (bookmarks.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 36.0),
-                        child: Center(
-                          child: Column(
-                            children: [
-                              const Icon(CupertinoIcons.bookmark,
-                                  size: 48, color: Color(0xFFB4B0C7)),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'Belum Ada Buku Tersimpan',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 15,
-                                  color: Color(0xFF4A4468),
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 24.0),
-                                child: Text(
-                                  'Tekan ikon bookmark pada halaman detail buku untuk menyimpannya ke daftar favorit Anda.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF8A88A5),
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 10),
-                                ),
-                                icon: const Icon(CupertinoIcons.search, size: 16),
-                                label: const Text(
-                                  'Jelajahi Katalog Buku',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const SearchPage(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    else
-                      Flexible(
-                        child: ListView.separated(
-                          shrinkWrap: true,
-                          itemCount: bookmarks.length,
-                          separatorBuilder: (context, index) => const Divider(
-                              height: 1, color: Color(0xFFEBE8F4)),
-                          itemBuilder: (_, index) {
-                            final b = bookmarks[index];
-                            final cover = _getCoverForBook(b);
-                            return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 6),
-                              leading: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: _buildCoverWidget(cover),
-                              ),
-                              title: Text(
-                                b.judul,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14.5,
-                                ),
-                              ),
-                              subtitle: Text(
-                                '${b.penulis} • ${b.kategori}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF7E7A92),
-                                ),
-                              ),
-                              trailing: IconButton(
-                                icon: const Icon(
-                                  CupertinoIcons.bookmark_fill,
-                                  color: AppColors.primary,
-                                  size: 20,
-                                ),
-                                onPressed: () {
-                                  bookProvider.toggleBookmark(b);
-                                },
-                              ),
-                              onTap: () {
-                                Navigator.pop(ctx);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => BookDetailPage(book: b),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+
 
   void _bukaModalEventSaya(BuildContext context) {
     showModalBottomSheet(
@@ -585,72 +370,28 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildCoverWidget(String coverPath) {
-    String? fullNetworkUrl;
-    if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
-      fullNetworkUrl = coverPath;
-    } else if (coverPath.startsWith('/uploads/') ||
-        coverPath.startsWith('uploads/')) {
-      final clean = coverPath.startsWith('/') ? coverPath : '/$coverPath';
-      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
-    }
-
-    Widget fallback() {
-      return Container(
-        width: 56,
-        height: 68,
-        decoration: BoxDecoration(
-          color: const Color(0xFFE7E3FF),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: const Center(
-          child: Icon(
-            Icons.book_rounded,
-            color: AppColors.primary,
-            size: 24,
-          ),
-        ),
-      );
-    }
-
-    if (fullNetworkUrl != null) {
-      return Image.network(
-        fullNetworkUrl,
-        width: 56,
-        height: 68,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => fallback(),
-      );
-    }
-    return Image.asset(
-      coverPath,
+  Widget _buildCoverWidget(String coverPath, {String? fallbackJudul}) {
+    final resolved = BookCoverHelper.getCover(
+      fotoBuku: coverPath,
+      judul: fallbackJudul ?? '',
+    );
+    return BookCoverHelper.buildCoverImage(
+      resolved,
       width: 56,
       height: 68,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => fallback(),
+      fallbackJudul: fallbackJudul,
+      borderRadius: BorderRadius.circular(14),
     );
   }
 
   String _getCoverForTransaction(TransactionModel trx) {
-    if (trx.coverBuku.isNotEmpty &&
-        trx.coverBuku != 'assets/images/book_the_unknown.jpg') {
-      return trx.coverBuku;
-    }
-    final j = trx.judulBuku.toLowerCase();
-    if (j.contains('atomic')) return 'assets/images/book_atomic_habits.jpg';
-    if (j.contains('midnight')) return 'assets/images/book_midnight_lib.jpg';
-    if (j.contains('clean code') || j.contains('pragmatic')) {
-      return 'assets/images/bookshelf.jpg';
-    }
-    if (j.contains('basis data') ||
-        j.contains('python') ||
-        j.contains('jaringan')) {
-      return 'assets/images/book_fruit_fly.jpg';
-    }
-    if (j.contains('laskar') || j.contains('filosofi')) {
-      return 'assets/images/book_adversary.jpg';
-    }
-    return 'assets/images/book_the_unknown.jpg';
+    return BookCoverHelper.getCover(
+      fotoBuku: trx.coverBuku.isNotEmpty &&
+              trx.coverBuku != 'assets/images/book_the_unknown.jpg'
+          ? trx.coverBuku
+          : null,
+      judul: trx.judulBuku,
+    );
   }
 
   Color _getStatusColor(String status) {
@@ -1095,50 +836,21 @@ class _ProfilePageState extends State<ProfilePage> {
                         padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
                         child: Column(
                           children: [
-                            Container(
-                              width: 84,
-                              height: 84,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                                border: Border.all(
-                                  color: AppColors.primary,
-                                  width: 2.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.15),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
+                            AvatarHelper.buildAvatarWidget(
+                              fotoProfil: authProvider.currentUser?.fotoProfil,
+                              nama: authProvider.currentUser?.nama,
+                              radius: 42,
+                              border: Border.all(
+                                color: AppColors.primary,
+                                width: 2.5,
                               ),
-                              child: (authProvider.currentUser?.fotoProfil != null &&
-                                      authProvider.currentUser!.fotoProfil!.isNotEmpty)
-                                  ? ClipOval(
-                                      child: Image.network(
-                                        authProvider.currentUser!.fotoProfil!.startsWith('http')
-                                            ? authProvider.currentUser!.fotoProfil!
-                                            : '${ApiConstants.baseUrl.replaceAll('/api', '')}/${authProvider.currentUser!.fotoProfil!.replaceFirst(RegExp(r'^/+'), '')}',
-                                        width: 84,
-                                        height: 84,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) => const Center(
-                                          child: Icon(
-                                            Icons.person,
-                                            size: 52,
-                                            color: Color(0xFF130F26),
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  : const Center(
-                                      child: Icon(
-                                        Icons.person,
-                                        size: 52,
-                                        color: Color(0xFF130F26),
-                                      ),
-                                    ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 12),
                             Text(
@@ -1294,7 +1006,16 @@ class _ProfilePageState extends State<ProfilePage> {
                           icon: CupertinoIcons.bookmark,
                           value: favoritesStat,
                           label: 'Favorites',
-                          onTap: () => _bukaModalBukuTersimpan(context),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const TransactionHistoryPage(
+                                  initialFilterIndex: 4, // Otomatis filter ke tab "Favorit"
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),

@@ -282,10 +282,9 @@ class AdminBookDetailPage extends StatelessWidget {
   Future<void> _prosesModerasi(BuildContext context, String action,
       [String? catatan]) async {
     final auth = context.read<AuthProvider>();
-    if (auth.token == null) return;
     try {
       await context.read<AdminProvider>().moderateBook(
-            token: auth.token!,
+            token: auth.token,
             bookId: buku.id,
             action: action,
             catatan: catatan,

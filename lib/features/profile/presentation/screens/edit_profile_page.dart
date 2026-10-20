@@ -3,7 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/avatar_helper.dart';
 import '../../../../core/utils/image_upload_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/data/services/book_api_service.dart';
@@ -247,23 +247,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
 
     if (_uploadedPhotoUrl != null && _uploadedPhotoUrl!.isNotEmpty) {
-      final url = _uploadedPhotoUrl!.startsWith('http')
-          ? _uploadedPhotoUrl!
-          : '${ApiConstants.baseUrl.replaceAll('/api', '')}/${_uploadedPhotoUrl!.replaceFirst(RegExp(r'^/+'), '')}';
-      return ClipOval(
-        child: Image.network(
-          url,
-          width: 86,
-          height: 86,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => const Center(
-            child: Icon(
-              Icons.person,
-              size: 54,
-              color: Color(0xFF130F26),
-            ),
-          ),
-        ),
+      return AvatarHelper.buildAvatarWidget(
+        fotoProfil: _uploadedPhotoUrl,
+        radius: 43,
       );
     }
 
