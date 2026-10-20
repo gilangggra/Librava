@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/book_cover_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../chat/presentation/screens/chat_room_page.dart';
@@ -454,32 +454,16 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
   String _getDisplayCover(BuildContext context) {
     final raw = widget.coverPath;
-    if (raw.isNotEmpty &&
-        raw != 'assets/images/book_the_unknown.jpg' &&
-        raw != 'assets/images/bookshelf.jpg') {
-      return raw;
-    }
     final tx = _getTrx(context);
-    if (tx != null &&
-        tx.coverBuku.isNotEmpty &&
-        tx.coverBuku != 'assets/images/book_the_unknown.jpg') {
-      return tx.coverBuku;
-    }
-    final title = (tx?.judulBuku ?? widget.bookTitle).toLowerCase();
-    if (title.contains('atomic')) return 'assets/images/book_atomic_habits.jpg';
-    if (title.contains('midnight')) return 'assets/images/book_midnight_lib.jpg';
-    if (title.contains('clean code') || title.contains('pragmatic')) {
-      return 'assets/images/bookshelf.jpg';
-    }
-    if (title.contains('basis data') ||
-        title.contains('python') ||
-        title.contains('jaringan')) {
-      return 'assets/images/book_fruit_fly.jpg';
-    }
-    if (title.contains('laskar') || title.contains('filosofi')) {
-      return 'assets/images/book_adversary.jpg';
-    }
-    return raw;
+    final foto = (tx != null &&
+            tx.coverBuku.isNotEmpty &&
+            tx.coverBuku != 'assets/images/book_the_unknown.jpg')
+        ? tx.coverBuku
+        : (raw.isNotEmpty && raw != 'assets/images/book_the_unknown.jpg'
+            ? raw
+            : null);
+    final title = tx?.judulBuku ?? widget.bookTitle;
+    return BookCoverHelper.getCover(fotoBuku: foto, judul: title);
   }
 
   void _bukaHalamanProfilPemilik() {
@@ -1129,48 +1113,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final cover = _getDisplayCover(context);
     final author = _getDisplayAuthor(context);
 
-    String? fullNetworkUrl;
-    if (cover.startsWith('http://') || cover.startsWith('https://')) {
-      fullNetworkUrl = cover;
-    } else if (cover.startsWith('/uploads/') || cover.startsWith('uploads/')) {
-      final clean = cover.startsWith('/') ? cover : '/$cover';
-      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
-    }
-
-    Widget fallbackImage() => Container(
-          width: 92,
-          height: 136,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE7E3FF),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.book_rounded,
-              color: AppColors.primary,
-              size: 36,
-            ),
-          ),
-        );
-
-    Widget imageWidget;
-    if (fullNetworkUrl != null) {
-      imageWidget = Image.network(
-        fullNetworkUrl,
-        width: 92,
-        height: 136,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => fallbackImage(),
-      );
-    } else {
-      imageWidget = Image.asset(
-        cover,
-        width: 92,
-        height: 136,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => fallbackImage(),
-      );
-    }
+    final imageWidget = BookCoverHelper.buildCoverImage(
+      cover,
+      width: 92,
+      height: 136,
+      fallbackJudul: widget.bookTitle,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),

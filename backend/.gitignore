@@ -4,6 +4,7 @@ node_modules/
 .pnp.js
 uploads/*
 !uploads/.gitkeep
+!uploads/cover_*.jpg
 
 # Production build output
 dist/

@@ -163,6 +163,7 @@ async function main() {
       deskripsi: 'Panduan menulis kode yang bersih, mudah dibaca, dan mudah di-maintain. Wajib baca buat software engineer.',
       kategori: 'Teknologi',
       status: 'Tersedia',
+      fotoBuku: '/uploads/cover_clean_code.jpg',
     },
     {
       ownerId: budi.id,
@@ -173,6 +174,7 @@ async function main() {
       deskripsi: 'Tips dan teknik praktis untuk menjadi programmer yang lebih baik. Dari debugging sampai project management.',
       kategori: 'Teknologi',
       status: 'Tersedia',
+      fotoBuku: '/uploads/cover_pragmatic_programmer.jpg',
     },
     // Sari's books
     {
@@ -184,6 +186,7 @@ async function main() {
       deskripsi: 'Buku teks algoritma dan pemrograman dasar berbahasa Indonesia, cocok untuk mahasiswa semester awal.',
       kategori: 'Teknologi',
       status: 'Tersedia',
+      fotoBuku: '/uploads/cover_algoritma_python.jpg',
     },
     {
       ownerId: sari.id,
@@ -194,6 +197,7 @@ async function main() {
       deskripsi: 'Filsafat Stoa untuk kehidupan modern. Buku self-improvement paling laris di Indonesia.',
       kategori: 'Self-Improvement',
       status: 'Tersedia',
+      fotoBuku: '/uploads/cover_filosofi_teras.jpg',
     },
     // Andi's books
     {
@@ -205,6 +209,7 @@ async function main() {
       deskripsi: 'Buku referensi database relasional, normalisasi, SQL, dan perancangan basis data.',
       kategori: 'Teknologi',
       status: 'Tersedia',
+      fotoBuku: '/uploads/cover_sistem_basis_data.jpg',
     },
     {
       ownerId: andi.id,
@@ -215,6 +220,7 @@ async function main() {
       deskripsi: 'Cara membangun kebiasaan baik dan menghilangkan kebiasaan buruk. Perubahan kecil, hasil luar biasa.',
       kategori: 'Self-Improvement',
       status: 'Tersedia',
+      fotoBuku: '/uploads/cover_atomic_habits.jpg',
     },
     // Rina's books
     {
@@ -226,6 +232,7 @@ async function main() {
       deskripsi: 'Novel inspiratif tentang perjuangan anak-anak di Belitung untuk meraih pendidikan.',
       kategori: 'Novel',
       status: 'Tersedia',
+      fotoBuku: '/uploads/cover_laskar_pelangi.jpg',
     },
     {
       ownerId: rina.id,
@@ -236,12 +243,26 @@ async function main() {
       deskripsi: 'Panduan lengkap jaringan komputer, TCP/IP, routing, dan keamanan jaringan.',
       kategori: 'Teknologi',
       status: 'Tersedia',
+      fotoBuku: '/uploads/cover_jaringan_komputer.jpg',
     },
   ];
 
   const books = [];
   for (const bookData of booksData) {
-    const book = await prisma.book.create({ data: { ...bookData, statusModerasi: 'DISETUJUI' } });
+    const existing = await prisma.book.findFirst({
+      where: {
+        judul: bookData.judul,
+        ownerId: bookData.ownerId,
+      },
+    });
+    const book = existing
+      ? await prisma.book.update({
+          where: { id: existing.id },
+          data: { ...bookData, statusModerasi: 'DISETUJUI' },
+        })
+      : await prisma.book.create({
+          data: { ...bookData, statusModerasi: 'DISETUJUI' },
+        });
     books.push(book);
     console.log(`  ✔ "${book.judul}" (${book.status}) — owner: ${bookData.ownerId}`);
   }

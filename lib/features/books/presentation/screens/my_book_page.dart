@@ -10,7 +10,7 @@ import '../../../profile/presentation/screens/profile_page.dart';
 import '../../../transactions/domain/models/transaction_model.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../../../transactions/presentation/screens/transaction_detail_page.dart';
-import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/book_cover_helper.dart';
 import '../../domain/models/book_model.dart';
 import '../providers/book_provider.dart';
 import 'book_detail_page.dart';
@@ -399,46 +399,17 @@ class _MyBookPageState extends State<MyBookPage> {
   }
 
   String _getCoverForBook(BookModel book) {
-    if (book.fotoBuku != null && book.fotoBuku!.isNotEmpty) {
-      return book.fotoBuku!;
-    }
-    final j = book.judul.toLowerCase();
-    if (j.contains('atomic')) return 'assets/images/book_atomic_habits.jpg';
-    if (j.contains('midnight')) return 'assets/images/book_midnight_lib.jpg';
-    if (j.contains('clean code') || j.contains('pragmatic')) {
-      return 'assets/images/bookshelf.jpg';
-    }
-    if (j.contains('basis data') ||
-        j.contains('python') ||
-        j.contains('jaringan')) {
-      return 'assets/images/book_fruit_fly.jpg';
-    }
-    if (j.contains('laskar') || j.contains('filosofi')) {
-      return 'assets/images/book_adversary.jpg';
-    }
-    return 'assets/images/book_the_unknown.jpg';
+    return BookCoverHelper.getCover(fotoBuku: book.fotoBuku, judul: book.judul);
   }
 
   String _getCoverForTransaction(TransactionModel trx) {
-    if (trx.coverBuku.isNotEmpty &&
-        trx.coverBuku != 'assets/images/book_the_unknown.jpg') {
-      return trx.coverBuku;
-    }
-    final j = trx.judulBuku.toLowerCase();
-    if (j.contains('atomic')) return 'assets/images/book_atomic_habits.jpg';
-    if (j.contains('midnight')) return 'assets/images/book_midnight_lib.jpg';
-    if (j.contains('clean code') || j.contains('pragmatic')) {
-      return 'assets/images/bookshelf.jpg';
-    }
-    if (j.contains('basis data') ||
-        j.contains('python') ||
-        j.contains('jaringan')) {
-      return 'assets/images/book_fruit_fly.jpg';
-    }
-    if (j.contains('laskar') || j.contains('filosofi')) {
-      return 'assets/images/book_adversary.jpg';
-    }
-    return 'assets/images/book_the_unknown.jpg';
+    return BookCoverHelper.getCover(
+      fotoBuku: trx.coverBuku.isNotEmpty &&
+              trx.coverBuku != 'assets/images/book_the_unknown.jpg'
+          ? trx.coverBuku
+          : null,
+      judul: trx.judulBuku,
+    );
   }
 
   Widget _buildCoverWidget(
@@ -447,51 +418,19 @@ class _MyBookPageState extends State<MyBookPage> {
     double? height,
     BoxFit fit = BoxFit.cover,
     double borderRadius = 18,
+    String? fallbackJudul,
   }) {
-    String? fullNetworkUrl;
-    if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
-      fullNetworkUrl = coverPath;
-    } else if (coverPath.startsWith('/uploads/') ||
-        coverPath.startsWith('uploads/')) {
-      final clean = coverPath.startsWith('/') ? coverPath : '/$coverPath';
-      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
-    }
-
-    Widget fallback() => Container(
-          width: width,
-          height: height,
-          color: const Color(0xFFE7E3FF),
-          child: const Center(
-            child: Icon(
-              Icons.book_rounded,
-              color: AppColors.primary,
-              size: 32,
-            ),
-          ),
-        );
-
-    Widget imageWidget;
-    if (fullNetworkUrl != null) {
-      imageWidget = Image.network(
-        fullNetworkUrl,
-        width: width,
-        height: height,
-        fit: fit,
-        errorBuilder: (context, error, stackTrace) => fallback(),
-      );
-    } else {
-      imageWidget = Image.asset(
-        coverPath,
-        width: width,
-        height: height,
-        fit: fit,
-        errorBuilder: (context, error, stackTrace) => fallback(),
-      );
-    }
-
-    return ClipRRect(
+    final resolved = BookCoverHelper.getCover(
+      fotoBuku: coverPath,
+      judul: fallbackJudul ?? '',
+    );
+    return BookCoverHelper.buildCoverImage(
+      resolved,
+      width: width ?? 72,
+      height: height ?? 100,
+      fit: fit,
+      fallbackJudul: fallbackJudul,
       borderRadius: BorderRadius.circular(borderRadius),
-      child: imageWidget,
     );
   }
 

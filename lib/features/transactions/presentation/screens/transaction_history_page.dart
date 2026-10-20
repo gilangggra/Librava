@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/network/api_constants.dart';
+import '../../../../core/utils/book_cover_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
@@ -41,25 +41,13 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   }
 
   String _getCoverForTransaction(TransactionModel trx) {
-    if (trx.coverBuku.isNotEmpty &&
-        trx.coverBuku != 'assets/images/book_the_unknown.jpg') {
-      return trx.coverBuku;
-    }
-    final j = trx.judulBuku.toLowerCase();
-    if (j.contains('atomic')) return 'assets/images/book_atomic_habits.jpg';
-    if (j.contains('midnight')) return 'assets/images/book_midnight_lib.jpg';
-    if (j.contains('clean code') || j.contains('pragmatic')) {
-      return 'assets/images/bookshelf.jpg';
-    }
-    if (j.contains('basis data') ||
-        j.contains('python') ||
-        j.contains('jaringan')) {
-      return 'assets/images/book_fruit_fly.jpg';
-    }
-    if (j.contains('laskar') || j.contains('filosofi')) {
-      return 'assets/images/book_adversary.jpg';
-    }
-    return 'assets/images/book_the_unknown.jpg';
+    return BookCoverHelper.getCover(
+      fotoBuku: trx.coverBuku.isNotEmpty &&
+              trx.coverBuku != 'assets/images/book_the_unknown.jpg'
+          ? trx.coverBuku
+          : null,
+      judul: trx.judulBuku,
+    );
   }
 
   Color _getStatusColor(String status) {
@@ -120,49 +108,17 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     }
   }
 
-  Widget _buildCoverWidget(String coverPath) {
-    String? fullNetworkUrl;
-    if (coverPath.startsWith('http://') || coverPath.startsWith('https://')) {
-      fullNetworkUrl = coverPath;
-    } else if (coverPath.startsWith('/uploads/') ||
-        coverPath.startsWith('uploads/')) {
-      final clean = coverPath.startsWith('/') ? coverPath : '/$coverPath';
-      fullNetworkUrl = '${ApiConstants.baseUrl.replaceAll('/api', '')}$clean';
-    }
-
-    Widget fallback() {
-      return Container(
-        width: 64,
-        height: 84,
-        decoration: BoxDecoration(
-          color: const Color(0xFFE7E3FF),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Center(
-          child: Icon(
-            Icons.book_rounded,
-            color: AppColors.primary,
-            size: 28,
-          ),
-        ),
-      );
-    }
-
-    if (fullNetworkUrl != null) {
-      return Image.network(
-        fullNetworkUrl,
-        width: 64,
-        height: 84,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => fallback(),
-      );
-    }
-    return Image.asset(
-      coverPath,
+  Widget _buildCoverWidget(String coverPath, {String? fallbackJudul}) {
+    final resolved = BookCoverHelper.getCover(
+      fotoBuku: coverPath,
+      judul: fallbackJudul ?? '',
+    );
+    return BookCoverHelper.buildCoverImage(
+      resolved,
       width: 64,
       height: 84,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => fallback(),
+      fallbackJudul: fallbackJudul,
+      borderRadius: BorderRadius.circular(12),
     );
   }
 
