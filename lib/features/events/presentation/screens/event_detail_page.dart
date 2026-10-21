@@ -14,6 +14,7 @@ import '../../../profile/presentation/screens/profile_page.dart';
 import '../../data/services/event_api_service.dart';
 import '../../domain/models/event_model.dart';
 import '../providers/event_provider.dart';
+import 'add_event_page.dart';
 
 /// Halaman Detail / View Event Kampus Librava.
 /// Didesain teliti, rapi, dan 100% konsisten dengan rancangan visual mockup "Event view".
@@ -753,50 +754,103 @@ class _EventDetailPageState extends State<EventDetailPage> {
               children: [
                 const SizedBox(height: 12),
 
-                // Top App Bar: Back Button (Chevron Left)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: InkWell(
-                    onTap: () {
-                      if (Navigator.canPop(context)) {
-                        Navigator.pop(context);
-                      } else {
-                        if (isAdmin) {
-                          Navigator.pushReplacement(
-                            context,
-                            PageRouteBuilder(
-                              pageBuilder: (_, _, _) => const AdminDashboardPage(),
-                              transitionDuration: Duration.zero,
-                            ),
-                          );
+                // Top App Bar: Back Button (Left) & Add Event Button (Right)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        if (Navigator.canPop(context)) {
+                          Navigator.pop(context);
                         } else {
-                          Navigator.pushReplacement(
-                            context,
-                            PageRouteBuilder(
-                              pageBuilder: (_, _, _) => const HomePage(),
-                              transitionDuration: Duration.zero,
-                            ),
-                          );
+                          if (isAdmin) {
+                            Navigator.pushReplacement(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder: (_, _, _) => const AdminDashboardPage(),
+                                transitionDuration: Duration.zero,
+                              ),
+                            );
+                          } else {
+                            Navigator.pushReplacement(
+                              context,
+                              PageRouteBuilder(
+                                pageBuilder: (_, _, _) => const HomePage(),
+                                transitionDuration: Duration.zero,
+                              ),
+                            );
+                          }
                         }
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
-                      child: Icon(
-                        CupertinoIcons.chevron_left,
-                        size: 24,
-                        color: Color(0xFF130F26),
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
+                        child: Icon(
+                          CupertinoIcons.chevron_left,
+                          size: 24,
+                          color: Color(0xFF130F26),
+                        ),
                       ),
                     ),
-                  ),
+                    InkWell(
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AddEventPage(),
+                          ),
+                        );
+                        if (context.mounted) {
+                          context.read<EventProvider>().fetchEvents();
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF6B667F),
+                                  width: 2.0,
+                                ),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.add_rounded,
+                                  size: 20,
+                                  color: Color(0xFF6B667F),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            const Text(
+                              'Add event',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF7E7A92),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 14),
 
-                // Header Title: "Event view" sesuai mockup
+                // Header Title: "Event detail" sesuai mockup gambar
                 const Text(
-                  'Event view',
+                  'Event detail',
                   style: TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.w800,
