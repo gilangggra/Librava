@@ -295,13 +295,26 @@ npm run test:security
 
 ## 🔑 Akun Pengujian Siap Pakai
 
-Tabel kredensial akun bawaan database (*seeder*) untuk keperluan pengujian dan demonstrasi:
+Tabel kredensial akun bawaan database (*seeder* & Supabase PostgreSQL) untuk keperluan pengujian dan demonstrasi aplikasi Librava:
 
-| Peran (*Role*) | Alamat Email | Kata Sandi | Deskripsi Akses |
-| :--- | :--- | :--- | :--- |
-| **👑 Admin Kampus** | `qa_admin_2026@telkomuniversity.ac.id` | `strongpassword123` | Akses penuh dashboard admin, moderasi buku, & statistik platform |
-| **🎓 Mahasiswa 1** | `budi.santoso@telkomuniversity.ac.id` | `password123` | Pengguna pemilik buku & peminjam aktif |
-| **🎓 Mahasiswa 2** | `andi.pratama@telkomuniversity.ac.id` | `password123` | Pengguna pemohon barter & pinjam |
+> [!NOTE]
+> Seluruh akun pengujian menggunakan kata sandi (*password*) standar: **`password123456`**
+
+| Peran (*Role*) | Nama Lengkap | Alamat Email (Login) | Kata Sandi | NIM | Saldo Dummy | Deskripsi Akses & Fitur |
+| :--- | :--- | :--- | :--- | :---: | :---: | :--- |
+| **👑 Admin** | **Librava Admin** | `admin@librava.com` | `password123456` | `1301219000` | Rp 500.000 | Akses penuh **Admin Dashboard**, moderasi kelayakan buku, monitoring transaksi, & statistik |
+| **🎓 Mahasiswa** | **Budi Santoso** | `budi@student.telkomuniversity.ac.id` | `password123456` | `1301210001` | Rp 250.000 | Akun utama mahasiswa, pemilik buku terdaftar, transaksi aktif pinjam & barter |
+| **🎓 Mahasiswa** | **Sari Dewi** | `sari@student.telkomuniversity.ac.id` | `password123456` | `1301210002` | Rp 200.000 | Pemilik koleksi buku sastra/non-fiksi & peserta agenda acara literasi kampus |
+| **🎓 Mahasiswa** | **Citra Lestari** | `citra@student.telkomuniversity.ac.id` | `password123456` | `1301210005` | Rp 200.000 | Pemilik buku akademik, partner aktif transaksi barter dan peminjaman |
+| **🎓 Mahasiswa** | **Andi Pratama** | `andi@student.telkomuniversity.ac.id` | `password123456` | `1301210003` | Rp 220.000 | Pengguna pemohon peminjaman & barter buku, peserta acara kampus |
+| **🎓 Mahasiswa** | **Rina Kartika** | `rina@student.telkomuniversity.ac.id` | `password123456` | `1301210004` | Rp 180.000 | Pengguna pemohon peminjaman & barter buku, peserta acara kampus |
+
+### 💡 Skenario Pengujian yang Disarankan:
+1. **Pengujian Admin Dashboard**: Login dengan `admin@librava.com` untuk memantau metrik platform, mengelola buku pending, dan meninjau ulasan.
+2. **Pengujian Siklus Pinjam / Barter P2P**:
+   - Login dengan **Budi Santoso** (`budi@student.telkomuniversity.ac.id`), ajukan peminjaman atau barter ke buku milik **Citra Lestari** atau **Sari Dewi**.
+   - Beralih akun (*switch account*) ke penerima untuk menyetujui permintaan, mengobrol di ruang chat, dan melakukan simulasi serah terima (*Handover QR*).
+3. **Pengujian Komunitas & Event**: Kunjungi menu Acara (*Events*), daftar ke acara literasi, atau gunakan tombol **(+) Tambah Event** di pojok kanan atas untuk membuat agenda baru.
 
 ---
 
