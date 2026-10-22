@@ -48,24 +48,20 @@ class AdminApiService {
 
   Future<AdminDashboardModel> getDashboard({String? token}) async {
     final activeToken = await getValidAdminToken(token);
-    try {
-      final response = await _client
-          .get(
-            Uri.parse('${ApiConstants.baseUrl}${ApiConstants.adminDashboard}'),
-            headers: ApiConstants.headers(activeToken),
-          )
-          .timeout(const Duration(seconds: 8));
+    final response = await _client
+        .get(
+          Uri.parse('${ApiConstants.baseUrl}${ApiConstants.adminDashboard}'),
+          headers: ApiConstants.headers(activeToken),
+        )
+        .timeout(const Duration(seconds: 8));
 
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        if (body['success'] == true && body['data'] != null) {
-          return AdminDashboardModel.fromApiJson(body['data']);
-        }
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body['success'] == true && body['data'] != null) {
+        return AdminDashboardModel.fromApiJson(body['data']);
       }
-      return _getDefaultDashboard();
-    } catch (_) {
-      return _getDefaultDashboard();
     }
+    throw Exception('Gagal mengambil data dashboard (${response.statusCode})');
   }
 
   Future<List<AdminUserModel>> getUsers({String? token}) async {

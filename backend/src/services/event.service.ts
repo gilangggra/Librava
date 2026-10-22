@@ -43,7 +43,7 @@ export class EventService {
 
     const where: any = {
       OR: [
-        { tanggalSelesai: { gte: now } },
+        { tanggalSelesai: { gte: startOfToday } },
         {
           AND: [
             { tanggalSelesai: null },

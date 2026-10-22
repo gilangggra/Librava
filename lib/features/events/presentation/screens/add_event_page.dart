@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/image_upload_helper.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../admin/presentation/screens/admin_dashboard_page.dart';
+import '../../../admin/presentation/widgets/admin_bottom_nav.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
@@ -15,7 +17,8 @@ import '../providers/event_provider.dart';
 /// Halaman untuk menambahkan event kampus baru.
 /// Didesain rapi, bersih, beginner-friendly, dan 100% konsisten dengan mockup UI.
 class AddEventPage extends StatefulWidget {
-  const AddEventPage({super.key});
+  final bool? isAdmin;
+  const AddEventPage({super.key, this.isAdmin});
 
   @override
   State<AddEventPage> createState() => _AddEventPageState();
@@ -29,8 +32,8 @@ class _AddEventPageState extends State<AddEventPage> {
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  // State nilai tanggal dan waktu default sesuai mockup (Oct 12, 2026 | 10:00 AM - 4:00 PM)
-  DateTime _selectedDate = DateTime(2026, 10, 12);
+  // State nilai tanggal dan waktu (default tanggal hari ini/besok)
+  late DateTime _selectedDate;
   TimeOfDay _startTime = const TimeOfDay(hour: 10, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 16, minute: 0);
 
@@ -41,6 +44,19 @@ class _AddEventPageState extends State<AddEventPage> {
   String? _selectedAssetBanner; // Template asset jika pengguna ingin memilih template
   bool _isUploadingBanner = false; // Status loading saat mengunggah banner
   bool _isPublishing = false; // Status loading saat mempublikasikan event
+
+  bool get _isAdmin {
+    if (widget.isAdmin != null) return widget.isAdmin!;
+    final auth = context.read<AuthProvider>();
+    return auth.currentUser?.role.toLowerCase() == 'admin';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedDate = DateTime(now.year, now.month, now.day + 1);
+  }
 
   @override
   void dispose() {
@@ -84,11 +100,13 @@ class _AddEventPageState extends State<AddEventPage> {
 
   /// Membuka dialog pemilih tanggal (DatePicker)
   Future<void> _pilihTanggal() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2025),
-      lastDate: DateTime(2030),
+      initialDate: _selectedDate.isBefore(today) ? today : _selectedDate,
+      firstDate: today,
+      lastDate: DateTime(now.year + 5),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -119,12 +137,35 @@ class _AddEventPageState extends State<AddEventPage> {
     );
     if (start == null || !mounted) return;
 
+    final defaultEndHour = (start.hour + 2) % 24;
+    final suggestedEnd = TimeOfDay(
+      hour: defaultEndHour == 0 ? 23 : defaultEndHour,
+      minute: start.minute,
+    );
+
     final end = await showTimePicker(
       context: context,
-      initialTime: _endTime,
+      initialTime: (_endTime.hour * 60 + _endTime.minute > start.hour * 60 + start.minute)
+          ? _endTime
+          : suggestedEnd,
       helpText: 'Pilih Jam Selesai Event',
     );
     if (end == null || !mounted) return;
+
+    final startMinutes = start.hour * 60 + start.minute;
+    final endMinutes = end.hour * 60 + end.minute;
+
+    if (endMinutes <= startMinutes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Jam selesai harus setelah jam mulai event.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _startTime = start;
@@ -208,8 +249,12 @@ class _AddEventPageState extends State<AddEventPage> {
     }
   }
 
-  /// Menampilkan menu aksi saat banner sudah terisi (Ganti, Template, atau Hapus)
+  /// Menampilkan menu aksi saat banner ditekan (Unggah dari perangkat, Template, atau Hapus)
   void _tampilkanPilihanBannerAksi() {
+    final hasImage = _bannerBytes != null ||
+        _selectedAssetBanner != null ||
+        _uploadedBannerUrl != null;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -236,7 +281,7 @@ class _AddEventPageState extends State<AddEventPage> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Pengaturan Banner Event',
+                  'Pilihan Banner Event',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
@@ -251,7 +296,7 @@ class _AddEventPageState extends State<AddEventPage> {
                     child: Icon(Icons.file_upload_outlined, color: AppColors.primary),
                   ),
                   title: const Text(
-                    'Upload Gambar Baru',
+                    'Upload Gambar dari Perangkat',
                     style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
                   ),
                   subtitle: const Text(
@@ -270,39 +315,43 @@ class _AddEventPageState extends State<AddEventPage> {
                     child: Icon(Icons.collections_outlined, color: Color(0xFF555268)),
                   ),
                   title: const Text(
-                    'Pilih Template Kampus',
+                    'Pilih Template Banner Kampus',
                     style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: const Text(
+                    'Gunakan template banner kampus Telkom University',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF75728A)),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
                     _pilihDariTemplateKampus();
                   },
                 ),
-
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFFEE2E2),
-                    child: Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
-                  ),
-                  title: const Text(
-                    'Hapus Banner Saat Ini',
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFDC2626),
+                if (hasImage)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(
+                      backgroundColor: Color(0xFFFEE2E2),
+                      child: Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
                     ),
+                    title: const Text(
+                      'Hapus Banner Saat Ini',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFDC2626),
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      setState(() {
+                        _bannerBytes = null;
+                        _bannerFileName = null;
+                        _uploadedBannerUrl = null;
+                        _selectedAssetBanner = null;
+                      });
+                    },
                   ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    setState(() {
-                      _bannerBytes = null;
-                      _bannerFileName = null;
-                      _uploadedBannerUrl = null;
-                      _selectedAssetBanner = null;
-                    });
-                  },
-                ),
               ],
             ),
           ),
@@ -388,7 +437,7 @@ class _AddEventPageState extends State<AddEventPage> {
     final hasImage = _bannerBytes != null || _selectedAssetBanner != null;
 
     return GestureDetector(
-      onTap: hasImage ? _tampilkanPilihanBannerAksi : () => _pilihDanUploadBanner(),
+      onTap: _tampilkanPilihanBannerAksi,
       child: CustomPaint(
         painter: DashedBorderPainter(
           color: const Color(0xFF9086F4),
@@ -500,11 +549,19 @@ class _AddEventPageState extends State<AddEventPage> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Tap to upload banner',
+                      'Pilih atau Upload Banner Event',
                       style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF584CF4),
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Tap untuk unggah gambar atau pilih template kampus',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF75728A),
                       ),
                     ),
                   ],
@@ -516,16 +573,89 @@ class _AddEventPageState extends State<AddEventPage> {
 
   /// Mempublikasikan event ke backend server
   Future<void> _publishEvent() async {
-    final titleText = _titleController.text.trim().isNotEmpty
-        ? _titleController.text.trim()
-        : 'Book Exchange Day';
-    final locationText = _locationController.text.trim().isNotEmpty
-        ? _locationController.text.trim()
-        : 'Open Library Tel-U';
-    final descText = _descriptionController.text.trim().isNotEmpty
-        ? _descriptionController.text.trim()
-        : 'Book Exchange Day is a campus event where you can meet other book lovers, exchange your favorite books, and discover new reads. Everyone is welcome, whether you want to give, find, or simply talk about books!';
+    // 1. Validasi Judul
+    final titleText = _titleController.text.trim();
+    if (titleText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Judul event tidak boleh kosong.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
+    // 2. Validasi Banner (Wajib dipilih atau diunggah, tidak ada fallback diam-diam)
+    final bool hasBanner = _bannerBytes != null ||
+        _selectedAssetBanner != null ||
+        _uploadedBannerUrl != null;
+    if (!hasBanner) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Banner event tidak boleh kosong. Silakan pilih atau unggah banner event.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // 3. Validasi Tanggal (Tidak boleh masa lampau)
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    if (_selectedDate.isBefore(today)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tanggal event tidak boleh di masa lampau.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // 4. Validasi Jam Selesai harus setelah Jam Mulai
+    final startMinutes = _startTime.hour * 60 + _startTime.minute;
+    final endMinutes = _endTime.hour * 60 + _endTime.minute;
+    if (endMinutes <= startMinutes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Jam selesai harus setelah jam mulai event.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // 5. Validasi Lokasi (Wajib diisi, tidak boleh fallback kosong)
+    final locationText = _locationController.text.trim();
+    if (locationText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lokasi event tidak boleh kosong.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // 6. Validasi Deskripsi (Wajib diisi, tidak boleh fallback kosong)
+    final descText = _descriptionController.text.trim();
+    if (descText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Deskripsi event tidak boleh kosong.'),
+          backgroundColor: Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // 7. Validasi Autentikasi Login
     final auth = context.read<AuthProvider>();
     if (auth.token == null || auth.token!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -558,13 +688,10 @@ class _AddEventPageState extends State<AddEventPage> {
           );
           finalFotoEvent = uploaded;
         } catch (_) {
-          // Fallback ke template bawaan jika server upload gagal
-          finalFotoEvent = 'assets/images/event_library.jpg';
+          // Jika server upload banner gagal, gunakan nama file atau template lokal
+          finalFotoEvent = _selectedAssetBanner ?? 'assets/images/event_library.jpg';
         }
       }
-
-      // Default fallback jika tidak ada gambar yang dipilih
-      finalFotoEvent ??= 'assets/images/event_library.jpg';
 
       final tglMulai = DateTime(
         _selectedDate.year,
@@ -592,14 +719,15 @@ class _AddEventPageState extends State<AddEventPage> {
         tanggalSelesai: tglSelesai,
         kuota: 100,
         fotoEvent: finalFotoEvent,
+        status: 'APPROVED',
       );
 
       if (!mounted) return;
 
       messenger.showSnackBar(
-        SnackBar(
-          content: Text('Event "$titleText" berhasil dipublikasikan!'),
-          backgroundColor: const Color(0xFF16A34A),
+        const SnackBar(
+          content: Text('Event berhasil dibuat!'),
+          backgroundColor: Color(0xFF16A34A),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -707,7 +835,29 @@ class _AddEventPageState extends State<AddEventPage> {
 
                 // Tombol Kembali "<" di pojok kiri atas sesuai mockup
                 InkWell(
-                  onTap: () => Navigator.pop(context),
+                  onTap: () {
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    } else {
+                      if (_isAdmin) {
+                        Navigator.pushReplacement(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder: (_, _, _) => const AdminDashboardPage(),
+                            transitionDuration: Duration.zero,
+                          ),
+                        );
+                      } else {
+                        Navigator.pushReplacement(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder: (_, _, _) => const HomePage(),
+                            transitionDuration: Duration.zero,
+                          ),
+                        );
+                      }
+                    }
+                  },
                   borderRadius: BorderRadius.circular(20),
                   child: const Padding(
                     padding: EdgeInsets.all(4.0),
@@ -1034,48 +1184,50 @@ class _AddEventPageState extends State<AddEventPage> {
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        height: 72,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            top: BorderSide(
-              color: Color(0xFFEBE8F6),
-              width: 1,
+      bottomNavigationBar: _isAdmin
+          ? const AdminBottomNav(selectedIndex: 0)
+          : Container(
+              height: 72,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(
+                    color: Color(0xFFEBE8F6),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNavItem(
+                    index: 0,
+                    activeIcon: CupertinoIcons.house_fill,
+                    inactiveIcon: CupertinoIcons.house,
+                  ),
+                  _buildNavItem(
+                    index: 1,
+                    activeIcon: CupertinoIcons.book_fill,
+                    inactiveIcon: CupertinoIcons.book,
+                  ),
+                  _buildNavItem(
+                    index: 2,
+                    activeIcon: CupertinoIcons.search,
+                    inactiveIcon: CupertinoIcons.search,
+                  ),
+                  _buildNavItem(
+                    index: 3,
+                    activeIcon: CupertinoIcons.ellipses_bubble_fill,
+                    inactiveIcon: CupertinoIcons.ellipses_bubble,
+                  ),
+                  _buildNavItem(
+                    index: 4,
+                    activeIcon: CupertinoIcons.person_fill,
+                    inactiveIcon: CupertinoIcons.person,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(
-              index: 0,
-              activeIcon: CupertinoIcons.house_fill,
-              inactiveIcon: CupertinoIcons.house,
-            ),
-            _buildNavItem(
-              index: 1,
-              activeIcon: CupertinoIcons.book_fill,
-              inactiveIcon: CupertinoIcons.book,
-            ),
-            _buildNavItem(
-              index: 2,
-              activeIcon: CupertinoIcons.search,
-              inactiveIcon: CupertinoIcons.search,
-            ),
-            _buildNavItem(
-              index: 3,
-              activeIcon: CupertinoIcons.ellipses_bubble_fill,
-              inactiveIcon: CupertinoIcons.ellipses_bubble,
-            ),
-            _buildNavItem(
-              index: 4,
-              activeIcon: CupertinoIcons.person_fill,
-              inactiveIcon: CupertinoIcons.person,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

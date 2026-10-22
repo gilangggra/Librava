@@ -37,11 +37,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser;
 
-    _usernameController = TextEditingController(text: user?.username ?? 'User');
-    _bioController = TextEditingController(text: user?.bio ?? 'A casual reader');
-    _fullNameController = TextEditingController(text: user?.nama ?? 'Ujang Knalpot');
-    _emailController = TextEditingController(text: user?.email ?? 'ujang@example.com');
-    _phoneController = TextEditingController(text: user?.phone ?? '+62 8959982898');
+    _usernameController = TextEditingController(text: user?.username ?? '');
+    _bioController = TextEditingController(text: user?.bio ?? '');
+    _fullNameController = TextEditingController(text: user?.nama ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
+    _phoneController = TextEditingController(text: user?.phone ?? '');
     _uploadedPhotoUrl = user?.fotoProfil;
   }
 

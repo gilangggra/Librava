@@ -152,6 +152,163 @@ class AdminBookDetailPage extends StatelessWidget {
   }
 
   Widget _buildModerasiActions(BuildContext context) {
+    // 1. Jika Buku SUDAH DISETUJUI -> Tampilkan banner disetujui (tanpa tombol setujui)
+    if (buku.isDisetujui) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD1FADF),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF6CE9A6), width: 1.2),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: Color(0xFF027A48),
+                    size: 24,
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Buku Telah Disetujui (Approved)',
+                          style: TextStyle(
+                            color: Color(0xFF027A48),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Buku ini telah lolos kurasi dan aktif di katalog publik.',
+                          style: TextStyle(
+                            color: Color(0xFF027A48),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 44,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFDC2626),
+                  side: const BorderSide(color: Color(0xFFFCA5A5), width: 1.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.cancel_outlined, size: 18),
+                label: const Text(
+                  'Tolak / Batalkan Persetujuan',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                onPressed: () => _dialogTolak(context),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 2. Jika Buku DITOLAK -> Tampilkan banner ditolak & opsi setujui kembali
+    if (buku.isDitolak) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFCA5A5), width: 1.2),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.cancel_rounded,
+                    color: Color(0xFFDC2626),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Buku Ditolak (Rejected)',
+                          style: TextStyle(
+                            color: Color(0xFFDC2626),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          buku.catatanModerasi != null &&
+                                  buku.catatanModerasi!.trim().isNotEmpty
+                              ? 'Alasan: ${buku.catatanModerasi}'
+                              : 'Buku ini ditolak dan tidak ditampilkan pada katalog umum.',
+                          style: const TextStyle(
+                            color: Color(0xFF991B1B),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 48,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF16A34A),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.check_circle_outline, size: 18),
+                label: const Text(
+                  'Setujui Buku untuk Katalog',
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                onPressed: () => _prosesModerasi(context, 'APPROVE'),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 3. Jika Buku MASIH PENDING -> Tampilkan tombol Setujui dan Tolak side-by-side
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Column(

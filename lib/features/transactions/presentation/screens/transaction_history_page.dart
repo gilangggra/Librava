@@ -623,7 +623,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
             : <TransactionModel>[]);
     final filteredList = _filterTransactions(allList);
     final isFavoriteTab = _filters[_selectedFilterIndex] == 'Favorit';
-    final favoriteBooks = context.watch<BookProvider>().bookmarkedBooks;
+    final favoriteBooks = Provider.of<BookProvider?>(context, listen: true)?.bookmarkedBooks ?? const <BookModel>[];
 
     return Scaffold(
       backgroundColor: AppColors.background,

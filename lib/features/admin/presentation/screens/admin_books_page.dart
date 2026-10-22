@@ -46,13 +46,16 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
     ]);
   }
 
-  void _bukaDetail(AdminBookModel buku) {
-    Navigator.push(
+  Future<void> _bukaDetail(AdminBookModel buku) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AdminBookDetailPage(buku: buku),
       ),
     );
+    if (mounted) {
+      _muatData();
+    }
   }
 
   Color _warnaStatus(String status) {

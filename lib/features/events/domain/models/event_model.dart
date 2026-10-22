@@ -58,23 +58,23 @@ class EventModel {
       deskripsi: json['deskripsi'] as String? ?? '',
       kategori: json['kategori'] as String? ?? 'Umum',
       lokasi: json['lokasi'] as String? ?? 'Telkom University',
-      tanggalMulai: json['tanggal_mulai'] != null
-          ? DateTime.tryParse(json['tanggal_mulai'].toString()) ??
+      tanggalMulai: (json['tanggal_mulai'] ?? json['tanggalMulai']) != null
+          ? DateTime.tryParse((json['tanggal_mulai'] ?? json['tanggalMulai']).toString()) ??
               DateTime.now()
           : DateTime.now(),
-      tanggalSelesai: json['tanggal_selesai'] != null
-          ? DateTime.tryParse(json['tanggal_selesai'].toString())
+      tanggalSelesai: (json['tanggal_selesai'] ?? json['tanggalSelesai']) != null
+          ? DateTime.tryParse((json['tanggal_selesai'] ?? json['tanggalSelesai']).toString())
           : null,
       kuota: json['kuota'] is int
           ? json['kuota']
           : int.tryParse(json['kuota']?.toString() ?? '100') ?? 100,
-      fotoEvent: json['foto_event'] as String?,
-      createdById: json['created_by_id'] is int
-          ? json['created_by_id']
-          : int.tryParse(json['created_by_id']?.toString() ?? '1') ?? 1,
-      jumlahPendaftar: json['jumlah_pendaftar'] is int
-          ? json['jumlah_pendaftar']
-          : int.tryParse(json['jumlah_pendaftar']?.toString() ?? '0') ?? 0,
+      fotoEvent: (json['foto_event'] ?? json['fotoEvent']) as String?,
+      createdById: (json['created_by_id'] ?? json['createdById']) is int
+          ? (json['created_by_id'] ?? json['createdById'])
+          : int.tryParse((json['created_by_id'] ?? json['createdById'])?.toString() ?? '1') ?? 1,
+      jumlahPendaftar: (json['jumlah_pendaftar'] ?? json['jumlahPendaftar']) is int
+          ? (json['jumlah_pendaftar'] ?? json['jumlahPendaftar'])
+          : int.tryParse((json['jumlah_pendaftar'] ?? json['jumlahPendaftar'])?.toString() ?? '0') ?? 0,
       status: json['status'] as String?,
     );
   }

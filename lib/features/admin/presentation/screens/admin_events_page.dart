@@ -5,6 +5,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/network/api_constants.dart';
 import '../../../events/domain/models/event_model.dart';
 import '../../../events/presentation/providers/event_provider.dart';
+import '../../../events/presentation/screens/add_event_page.dart';
 import '../../../events/presentation/screens/event_detail_page.dart';
 import '../widgets/admin_bottom_nav.dart';
 
@@ -327,15 +328,56 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                 children: [
                   const SizedBox(height: 20),
 
-                  // Header Title: "Event data" sesuai mockup
-                  const Text(
-                    'Event data',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF130F26),
-                      letterSpacing: -0.5,
-                    ),
+                  // Header Title: "Event data" & Tombol Tambah Event
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Event data',
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF130F26),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AddEventPage(isAdmin: true),
+                            ),
+                          );
+                          if (context.mounted) {
+                            context.read<EventProvider>().fetchEvents(forceRefresh: true);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEDEAFE),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add_rounded, size: 15, color: AppColors.primary),
+                              SizedBox(width: 3),
+                              Text(
+                                'Tambah',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 18),
@@ -378,14 +420,37 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 32.0),
                             child: Center(
-                              child: Text(
-                                _kataKunci.isNotEmpty
-                                    ? 'Tidak ada event yang sesuai dengan pencarian.'
-                                    : 'Belum ada data event kampus.',
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  color: Color(0xFF7E7A92),
-                                ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _kataKunci.isNotEmpty
+                                        ? 'Tidak ada event yang sesuai dengan pencarian.'
+                                        : 'Belum ada data event kampus.',
+                                    style: const TextStyle(
+                                      fontSize: 13.5,
+                                      color: Color(0xFF7E7A92),
+                                    ),
+                                  ),
+                                  if (_kataKunci.isEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    TextButton.icon(
+                                      onPressed: () async {
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const AddEventPage(isAdmin: true),
+                                          ),
+                                        );
+                                        if (context.mounted) {
+                                          context.read<EventProvider>().fetchEvents(forceRefresh: true);
+                                        }
+                                      },
+                                      icon: const Icon(Icons.add, size: 16),
+                                      label: const Text('Buat Event Baru'),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           );

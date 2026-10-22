@@ -130,6 +130,7 @@ class EventApiService {
     DateTime? tanggalSelesai,
     int kuota = 100,
     String? fotoEvent,
+    String? status,
   }) async {
     final uri = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.events}');
 
@@ -148,6 +149,8 @@ class EventApiService {
             'kuota': kuota,
             if (fotoEvent != null && fotoEvent.isNotEmpty)
               'foto_event': fotoEvent,
+            if (status != null && status.isNotEmpty)
+              'status': status,
           }),
         )
         .timeout(const Duration(seconds: 10));

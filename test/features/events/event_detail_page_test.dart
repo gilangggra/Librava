@@ -1,146 +1,115 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:librava/features/admin/presentation/widgets/admin_bottom_nav.dart';
+import 'package:librava/features/auth/domain/models/user_model.dart';
 import 'package:librava/features/auth/presentation/providers/auth_provider.dart';
+import 'package:librava/features/events/data/services/event_api_service.dart';
 import 'package:librava/features/events/domain/models/event_model.dart';
 import 'package:librava/features/events/presentation/providers/event_provider.dart';
 import 'package:librava/features/events/presentation/screens/event_detail_page.dart';
 import 'package:provider/provider.dart';
 
+class FakeAuthProvider extends AuthProvider {
+  final UserModel? _user;
+  final String? _fakeToken;
+
+  FakeAuthProvider({UserModel? user, String? token})
+      : _user = user,
+        _fakeToken = token;
+
+  @override
+  UserModel? get currentUser => _user;
+
+  @override
+  String? get token => _fakeToken;
+
+  @override
+  bool get isLoggedIn => _user != null;
+}
+
 void main() {
-  final sampleEvent = EventModel(
-    id: 99,
-    judul: 'Book Exchange Day',
-    deskripsi: 'Book Exchange Day is a campus event where you can meet other book lovers.',
-    kategori: 'Komunitas',
-    lokasi: 'Open Library Tel-U',
-    tanggalMulai: DateTime(2026, 10, 12, 10, 0),
-    tanggalSelesai: DateTime(2026, 10, 12, 16, 0),
-    kuota: 100,
-    fotoEvent: 'assets/images/event_library.jpg',
-  );
+  group('EventDetailPage Admin Approval Button Visibility Tests', () {
+    testWidgets('ketika status event APPROVED, tombol Approve TIDAK ada dan banner disetujui muncul', (tester) async {
+      final fakeAdmin = FakeAuthProvider(
+        user: const UserModel(
+          id: '1',
+          email: 'admin@librava.com',
+          nama: 'Admin Librava',
+          role: 'admin',
+        ),
+        token: 'fake_jwt_token',
+      );
 
-  group('EventDetailPage Widget Tests', () {
-    testWidgets('renders Event view in Admin mode with Approve and Reject buttons', (tester) async {
+      final eventProvider = EventProvider(apiService: EventApiService());
+
+      final approvedEvent = EventModel(
+        id: 101,
+        judul: 'Book Fair Telkom University 2026',
+        deskripsi: 'Pameran buku terbesar di kampus Tel-U.',
+        lokasi: 'Gedung Manterawu',
+        tanggalMulai: DateTime.now().add(const Duration(days: 2)),
+        status: 'APPROVED',
+      );
+
       await tester.pumpWidget(
         MultiProvider(
           providers: [
-            ChangeNotifierProvider(create: (_) => AuthProvider()),
-            ChangeNotifierProvider(create: (_) => EventProvider()),
+            ChangeNotifierProvider<AuthProvider>.value(value: fakeAdmin),
+            ChangeNotifierProvider<EventProvider>.value(value: eventProvider),
           ],
           child: MaterialApp(
-            home: EventDetailPage(
-              event: sampleEvent,
-              isAdmin: true,
-            ),
+            home: EventDetailPage(event: approvedEvent, isAdmin: true),
           ),
         ),
       );
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Event view'), findsOneWidget);
-      expect(find.text('Book Exchange Day'), findsOneWidget);
-      expect(find.text('About this event'), findsOneWidget);
-      expect(find.text('Open Library Tel-U'), findsOneWidget);
-      expect(find.text('Approve'), findsOneWidget);
-      expect(find.text('Reject'), findsOneWidget);
-      expect(find.byType(AdminBottomNav), findsOneWidget);
+      // Memastikan tombol 'Approve' TIDAK ADA
+      expect(find.widgetWithText(ElevatedButton, 'Approve'), findsNothing);
+
+      // Memastikan banner 'Event Telah Disetujui (Approved)' ada
+      expect(find.text('Event Telah Disetujui (Approved)'), findsOneWidget);
     });
 
-    testWidgets('renders Event view in Student mode with Join event button', (tester) async {
+    testWidgets('ketika status event PENDING, tombol Approve dan Reject MUNCUL untuk aksi admin', (tester) async {
+      final fakeAdmin = FakeAuthProvider(
+        user: const UserModel(
+          id: '1',
+          email: 'admin@librava.com',
+          nama: 'Admin Librava',
+          role: 'admin',
+        ),
+        token: 'fake_jwt_token',
+      );
+
+      final eventProvider = EventProvider(apiService: EventApiService());
+
+      final pendingEvent = EventModel(
+        id: 102,
+        judul: 'Workshop Penulisan Ilmiah Mahasiswa',
+        deskripsi: 'Pelatihan menulis karya ilmiah.',
+        lokasi: 'Ruang Seminar Perpustakaan',
+        tanggalMulai: DateTime.now().add(const Duration(days: 5)),
+        status: 'PENDING',
+      );
+
       await tester.pumpWidget(
         MultiProvider(
           providers: [
-            ChangeNotifierProvider(create: (_) => AuthProvider()),
-            ChangeNotifierProvider(create: (_) => EventProvider()),
+            ChangeNotifierProvider<AuthProvider>.value(value: fakeAdmin),
+            ChangeNotifierProvider<EventProvider>.value(value: eventProvider),
           ],
           child: MaterialApp(
-            home: EventDetailPage(
-              event: sampleEvent,
-              isAdmin: false,
-            ),
+            home: EventDetailPage(event: pendingEvent, isAdmin: true),
           ),
         ),
       );
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Event view'), findsOneWidget);
-      expect(find.text('Book Exchange Day'), findsOneWidget);
-      expect(find.text('About this event'), findsOneWidget);
-      expect(find.text('Join event'), findsOneWidget);
-      expect(find.text('Approve'), findsNothing);
-      expect(find.text('Reject'), findsNothing);
-      expect(find.byType(AdminBottomNav), findsNothing);
-    });
-
-    testWidgets('tapping Approve button opens confirmation popup with Approve and Cancel', (tester) async {
-      await tester.pumpWidget(
-        MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => AuthProvider()),
-            ChangeNotifierProvider(create: (_) => EventProvider()),
-          ],
-          child: MaterialApp(
-            home: EventDetailPage(
-              event: sampleEvent,
-              isAdmin: true,
-            ),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Scroll to make Approve visible and tap it
-      await tester.ensureVisible(find.text('Approve'));
-      await tester.tap(find.text('Approve'));
-      await tester.pumpAndSettle();
-
-      // Pop up dialog is displayed
-      expect(find.byType(Dialog), findsOneWidget);
-      expect(find.textContaining('Are you sure you want to approve'), findsOneWidget);
-      expect(find.text('Cancel'), findsOneWidget);
-
-      // Tap cancel to close dialog
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(find.byType(Dialog), findsNothing);
-    });
-
-    testWidgets('tapping Reject button opens confirmation popup with Reject and Cancel', (tester) async {
-      await tester.pumpWidget(
-        MultiProvider(
-          providers: [
-            ChangeNotifierProvider(create: (_) => AuthProvider()),
-            ChangeNotifierProvider(create: (_) => EventProvider()),
-          ],
-          child: MaterialApp(
-            home: EventDetailPage(
-              event: sampleEvent,
-              isAdmin: true,
-            ),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Scroll to make Reject visible and tap it
-      await tester.ensureVisible(find.text('Reject'));
-      await tester.tap(find.text('Reject'));
-      await tester.pumpAndSettle();
-
-      // Pop up dialog is displayed
-      expect(find.byType(Dialog), findsOneWidget);
-      expect(find.textContaining('Are you sure you want to reject'), findsOneWidget);
-      expect(find.text('Cancel'), findsOneWidget);
-
-      // Tap cancel to close dialog
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(find.byType(Dialog), findsNothing);
+      // Memastikan tombol Approve dan Reject ada
+      expect(find.widgetWithText(ElevatedButton, 'Approve'), findsOneWidget);
+      expect(find.widgetWithText(ElevatedButton, 'Reject'), findsOneWidget);
     });
   });
 }

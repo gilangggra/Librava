@@ -14,6 +14,7 @@ class EventProvider extends ChangeNotifier {
 
   EventProvider({EventApiService? apiService})
       : _apiService = apiService ?? EventApiService() {
+    _initFallbackEvents();
     fetchEvents();
   }
 
@@ -23,6 +24,51 @@ class EventProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isRegistering => _isRegistering;
   int get totalEvents => _events.length;
+
+  void _initFallbackEvents() {
+    final now = DateTime.now();
+    _events = [
+      EventModel(
+        id: 1,
+        judul: 'Book Exchange Day',
+        deskripsi:
+            'Bring your books and trade with fellow students on campus!',
+        kategori: 'Pameran',
+        lokasi: 'Open Library Lt. 3',
+        tanggalMulai: now.add(const Duration(days: 2)),
+        tanggalSelesai: now.add(const Duration(days: 4)),
+        kuota: 80,
+        fotoEvent: 'assets/images/event_library.jpg',
+        jumlahPendaftar: 32,
+      ),
+      EventModel(
+        id: 2,
+        judul: 'Reading Meetup',
+        deskripsi:
+            'Temu komunitas pembaca buku dan diskusi seru tentang karya sastra modern favorit.',
+        kategori: 'Diskusi',
+        lokasi: 'Ruang Kolaborasi B',
+        tanggalMulai: now.add(const Duration(days: 5)),
+        tanggalSelesai: now.add(const Duration(days: 5, hours: 3)),
+        kuota: 40,
+        fotoEvent: 'assets/images/event_reading_meetup.jpg',
+        jumlahPendaftar: 18,
+      ),
+      EventModel(
+        id: 3,
+        judul: 'Book Discussion Panel',
+        deskripsi:
+            'Sesi bedah buku bersama penulis terkemuka membahas kebiasaan membaca produktif.',
+        kategori: 'Seminar',
+        lokasi: 'Auditorium Gd. Damar',
+        tanggalMulai: now.add(const Duration(days: 8)),
+        tanggalSelesai: now.add(const Duration(days: 8, hours: 4)),
+        kuota: 150,
+        fotoEvent: 'assets/images/event_book_discussion.jpg',
+        jumlahPendaftar: 95,
+      ),
+    ];
+  }
 
   /// Memeriksa apakah user sudah terdaftar di event tertentu
   bool isUserRegistered(int eventId) =>
@@ -37,12 +83,17 @@ class EventProvider extends ChangeNotifier {
 
     try {
       final hasilApi = await _apiService.getEvents();
-      _events = hasilApi;
+      if (hasilApi.isNotEmpty) {
+        _events = hasilApi;
+      }
     } catch (e) {
       final teks = e.toString();
       _errorMessage = teks.startsWith('Exception: ')
           ? teks.replaceFirst('Exception: ', '')
           : 'Gagal mengambil data event dari server.';
+      if (_events.isEmpty) {
+        _initFallbackEvents();
+      }
     }
 
     _isLoading = false;
@@ -107,6 +158,7 @@ class EventProvider extends ChangeNotifier {
     DateTime? tanggalSelesai,
     int kuota = 100,
     String? fotoEvent,
+    String? status,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -123,6 +175,7 @@ class EventProvider extends ChangeNotifier {
         tanggalSelesai: tanggalSelesai,
         kuota: kuota,
         fotoEvent: fotoEvent,
+        status: status,
       );
 
       _events.insert(0, newEvent);
