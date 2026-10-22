@@ -25,12 +25,12 @@ class TransactionHistoryPage extends StatefulWidget {
 class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   late int _selectedFilterIndex;
   final List<String> _filters = const [
-    'Semua',
-    'Pinjam',
+    'All',
+    'Borrow',
     'Barter',
-    'Selesai',
-    'Favorit',
-    'Dibatalkan',
+    'Completed',
+    'Favorites',
+    'Cancelled',
   ];
 
   @override
@@ -77,22 +77,22 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   String _getStatusText(TransactionModel trx) {
     switch (trx.status.toLowerCase()) {
       case 'selesai':
-        return 'Selesai';
+        return 'Completed';
       case 'sedang_dipinjam':
-        return 'Sedang Dipinjam';
+        return 'Active Loan';
       case 'disetujui':
-        return 'Disetujui';
+        return 'Approved';
       case 'deposit_dibayar':
-        return 'Deposit Dibayar';
+        return 'Deposit Paid';
       case 'lokasi_ditentukan':
-        return 'Lokasi Ditentukan';
+        return 'Location Set';
       case 'ditolak':
-        return 'Ditolak';
+        return 'Rejected';
       case 'dibatalkan':
-        return 'Dibatalkan';
+        return 'Cancelled';
       case 'pending':
       default:
-        return 'Menunggu Konfirmasi';
+        return 'Pending Confirmation';
     }
   }
 
@@ -198,9 +198,9 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     if (favoriteBooks.isEmpty) {
       return _buildEmptyState(
         icon: CupertinoIcons.bookmark,
-        title: 'Belum Ada Buku Favorit',
+        title: 'No Favorite Books Yet',
         subtitle:
-            'Tekan ikon bookmark pada halaman detail buku untuk menyimpannya ke daftar favorit Anda.',
+            'Tap the bookmark icon on any book detail page to save it to your favorites.',
         actionButton: ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
@@ -213,7 +213,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
           ),
           icon: const Icon(CupertinoIcons.search, size: 16),
           label: const Text(
-            'Jelajahi Katalog Buku',
+            'Explore Book Catalog',
             style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w700,
@@ -309,7 +309,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                           Text(
                             book.tahunTerbit > 0
                                 ? '${book.tahunTerbit}'
-                                : 'Buku Favorit',
+                                : 'Favorite Book',
                             style: const TextStyle(
                               fontSize: 11.5,
                               color: Color(0xFF8A88A5),
@@ -330,7 +330,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Oleh ${book.penulis}',
+                        'By ${book.penulis}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -355,7 +355,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              book.tersedia ? 'Tersedia' : 'Sedang Dipinjam',
+                              book.tersedia ? 'Available' : 'Borrowed',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -380,7 +380,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                   onPressed: () {
                     context.read<BookProvider>().toggleBookmark(book);
                   },
-                  tooltip: 'Hapus dari favorit',
+                  tooltip: 'Remove from favorites',
                 ),
                 const Icon(
                   CupertinoIcons.chevron_right,
@@ -400,9 +400,9 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     if (filteredList.isEmpty) {
       return _buildEmptyState(
         icon: Icons.receipt_long_rounded,
-        title: 'Tidak Ada Transaksi',
+        title: 'No Transactions',
         subtitle:
-            'Belum ada transaksi pada kategori ${_filters[_selectedFilterIndex].toLowerCase()}.',
+            'No transactions found in ${_filters[_selectedFilterIndex].toLowerCase()} category.',
       );
     }
 
@@ -413,10 +413,10 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
       itemBuilder: (context, index) {
         final trx = filteredList[index];
         final subtitleText = trx.jenisTransaksi == 'barter'
-            ? 'Barter dengan ${trx.pemilikNama}'
+            ? 'Barter with ${trx.pemilikNama}'
             : (trx.pemilikNama == namaUser
-                ? 'Dipinjamkan ke ${trx.pemohonNama}'
-                : 'Meminjam dari ${trx.pemilikNama}');
+                ? 'Lent to ${trx.pemohonNama}'
+                : 'Borrowed from ${trx.pemilikNama}');
 
         return InkWell(
           onTap: () {
@@ -563,7 +563,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                           Expanded(
                             child: Text(
                               trx.isOverdue
-                                  ? '${_getStatusText(trx)} (Terlambat)'
+                                  ? '${_getStatusText(trx)} (Overdue)'
                                   : _getStatusText(trx),
                               style: TextStyle(
                                 fontSize: 12,
@@ -622,7 +622,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
             ? trxProvider.semuaTransaksi
             : <TransactionModel>[]);
     final filteredList = _filterTransactions(allList);
-    final isFavoriteTab = _filters[_selectedFilterIndex] == 'Favorit';
+    final isFavoriteTab = _filters[_selectedFilterIndex] == 'Favorites';
     final favoriteBooks = Provider.of<BookProvider?>(context, listen: true)?.bookmarkedBooks ?? const <BookModel>[];
 
     return Scaffold(
@@ -639,7 +639,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          isFavoriteTab ? 'Buku Favorit' : 'Riwayat Transaksi',
+          isFavoriteTab ? 'Favorite Books' : 'Transaction History',
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w800,

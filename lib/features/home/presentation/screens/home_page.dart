@@ -688,7 +688,7 @@ class _HomePageState extends State<HomePage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: const [
                                   Text(
-                                    'Belum Ada Buku Dipinjam',
+                                    'No Borrowed Books Yet',
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w700,
@@ -697,7 +697,7 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                   SizedBox(height: 4),
                                   Text(
-                                    'Jelajahi koleksi buku kampus untuk meminjam atau barter buku pilihan Anda.',
+                                    'Explore the campus book collection to borrow or barter your favorite books.',
                                     style: TextStyle(
                                       fontSize: 12.5,
                                       color: Color(0xFF7E7A92),
@@ -1138,7 +1138,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                             child: const Center(
                               child: Text(
-                                'Belum ada rekomendasi buku tersedia saat ini.',
+                                'No book recommendations available at this time.',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: Color(0xFF7E7A92),
@@ -1188,7 +1188,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         child: const Center(
                           child: Text(
-                            'Belum ada buku unggulan tersedia.',
+                            'No featured books available.',
                             style: TextStyle(
                               fontSize: 13,
                               color: Color(0xFF7E7A92),

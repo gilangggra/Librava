@@ -172,8 +172,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Data buku gagal dimuat'), findsOneWidget);
-      expect(find.text('Coba lagi'), findsOneWidget);
+      expect(find.text('Failed to load book data'), findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
     });
   });
 
@@ -192,7 +192,7 @@ void main() {
 
       expect(find.text('Buku Tanpa Info'), findsOneWidget);
       expect(find.text('-'), findsWidgets);
-      expect(find.text('Belum ada deskripsi untuk buku ini.'), findsOneWidget);
+      expect(find.text('No description available for this book.'), findsOneWidget);
     });
   });
 }

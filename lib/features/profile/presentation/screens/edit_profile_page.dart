@@ -79,7 +79,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (berhasil) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Profil berhasil diperbarui'),
+          content: const Text('Profile updated successfully'),
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -92,7 +92,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(auth.errorMessage ?? 'Gagal memperbarui profil'),
+          content: Text(auth.errorMessage ?? 'Failed to update profile'),
           backgroundColor: const Color(0xFFFF4D4F),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -129,7 +129,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Foto profil berhasil diunggah! Klik Simpan untuk memperbarui.'),
+              content: const Text('Profile photo uploaded! Click Save to apply changes.'),
               backgroundColor: AppColors.primary,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -153,7 +153,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal mengunggah foto profil: $e'),
+            content: Text('Failed to upload profile photo: $e'),
             backgroundColor: const Color(0xFFFF4D4F),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -189,7 +189,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 const SizedBox(height: 18),
                 const Text(
-                  'Ubah Foto Profil',
+                  'Change Profile Photo',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -199,7 +199,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 const SizedBox(height: 16),
                 ListTile(
                   leading: const Icon(CupertinoIcons.camera, color: AppColors.primary),
-                  title: const Text('Ambil Foto dari Kamera'),
+                  title: const Text('Take Photo with Camera'),
                   onTap: () {
                     Navigator.pop(ctx);
                     _handlePilihFoto();
@@ -207,7 +207,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 ListTile(
                   leading: const Icon(CupertinoIcons.photo, color: AppColors.primary),
-                  title: const Text('Pilih dari Galeri'),
+                  title: const Text('Choose from Gallery'),
                   onTap: () {
                     Navigator.pop(ctx);
                     _handlePilihFoto();
@@ -465,7 +465,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           child: const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
                             child: Text(
-                              'Edit Foto',
+                              'Edit Photo',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -488,12 +488,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         _buildField(
                           label: 'Full Name',
                           controller: _fullNameController,
-                          hint: 'Ujang Knalpot',
+                          hint: 'Alex Johnson',
                         ),
                         _buildField(
                           label: 'Email',
                           controller: _emailController,
-                          hint: 'ujang@example.com',
+                          hint: 'alex@example.com',
                           keyboardType: TextInputType.emailAddress,
                         ),
                         _buildField(

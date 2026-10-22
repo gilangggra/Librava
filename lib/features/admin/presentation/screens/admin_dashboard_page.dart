@@ -56,7 +56,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text(
-            'Keluar dari Admin',
+            'Log Out from Admin',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -64,7 +64,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             ),
           ),
           content: const Text(
-            'Apakah Anda yakin ingin keluar dari sesi Admin Librava?',
+            'Are you sure you want to log out from the Admin session?',
             style: TextStyle(
               fontSize: 14,
               color: Color(0xFF7E7A92),
@@ -74,7 +74,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: const Text(
-                'Batal',
+                'Cancel',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF8A88A5),
@@ -914,7 +914,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                           padding: EdgeInsets.symmetric(vertical: 20.0),
                           child: Center(
                             child: Text(
-                              'Belum ada aktivitas request terbaru.',
+                              'No recent request activity.',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Color(0xFF7E7A92),
@@ -1062,7 +1062,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                             child: Column(
                               children: [
                                 const Text(
-                                  'Belum ada event kampus.',
+                                  'No campus events yet.',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: Color(0xFF7E7A92),
@@ -1172,7 +1172,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                           padding: EdgeInsets.symmetric(vertical: 20.0),
                           child: Center(
                             child: Text(
-                              'Belum ada transaksi terbaru.',
+                              'No recent transactions.',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Color(0xFF7E7A92),

@@ -145,7 +145,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     const SizedBox(height: 4),
                     _buildBarisInfo(
                       CupertinoIcons.number,
-                      user.punyaNim ? 'NIM ${user.nim}' : 'NIM belum diisi',
+                      user.punyaNim ? 'Student ID: ${user.nim}' : 'Student ID not set',
                     ),
                   ],
                 ),
@@ -245,7 +245,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
         adminProvider.jumlahMahasiswa == 0) {
       return _buildPesanTengah(
         icon: CupertinoIcons.wifi_exclamationmark,
-        judul: 'Data mahasiswa gagal dimuat',
+        judul: 'Failed to load student data',
         subjudul: adminProvider.errorMahasiswa,
         tombol: ElevatedButton(
           onPressed: _muatData,
@@ -257,7 +257,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
             ),
           ),
           child: const Text(
-            'Coba lagi',
+            'Try again',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
         ),
@@ -271,10 +271,10 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       return _buildPesanTengah(
         icon: CupertinoIcons.person_2,
         judul: sedangMencari
-            ? 'Mahasiswa tidak ditemukan'
-            : 'Belum ada mahasiswa terdaftar',
+            ? 'Student not found'
+            : 'No registered students yet',
         subjudul: sedangMencari
-            ? 'Coba kata kunci lain seperti nama, email, atau NIM.'
+            ? 'Try searching with another keyword such as name, email, or student ID.'
             : null,
       );
     }

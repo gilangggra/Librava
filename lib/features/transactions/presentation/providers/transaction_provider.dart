@@ -115,21 +115,21 @@ class TransactionProvider extends ChangeNotifier {
   String getStatusLabel(String status) {
     switch (status) {
       case 'pending':
-        return 'Menunggu Konfirmasi';
+        return 'Waiting for Confirmation';
       case 'disetujui':
-        return 'Disetujui (Perlu Deposit)';
+        return 'Approved (Deposit Required)';
       case 'ditolak':
-        return 'Ditolak';
+        return 'Rejected';
       case 'dibatalkan':
-        return 'Dibatalkan';
+        return 'Cancelled';
       case 'deposit_dibayar':
-        return 'Deposit Dibayar (Pilih Lokasi)';
+        return 'Deposit Paid (Select Location)';
       case 'lokasi_ditentukan':
-        return 'Lokasi Ditentukan (Menunggu Serah Terima)';
+        return 'Location Set (Waiting for Handover)';
       case 'sedang_dipinjam':
-        return 'Sedang Dipinjam';
+        return 'Borrowed';
       case 'selesai':
-        return 'Selesai';
+        return 'Completed';
       default:
         return status;
     }

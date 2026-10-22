@@ -94,7 +94,7 @@ class AdminUserDetailPage extends StatelessWidget {
           const SizedBox(height: 18),
           _buildBarisInfo('Name', _isiAtauStrip(user.nama)),
           _buildBarisInfo('Email', _isiAtauStrip(user.email)),
-          _buildBarisInfo('NIM', _isiAtauStrip(user.nim)),
+          _buildBarisInfo('Student ID', _isiAtauStrip(user.nim)),
           _buildBarisInfo('University', _isiAtauStrip(user.universitas)),
           _buildBarisInfo('Joined', _isiAtauStrip(user.tanggalDaftar)),
         ],

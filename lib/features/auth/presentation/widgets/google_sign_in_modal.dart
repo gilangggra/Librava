@@ -38,7 +38,7 @@ Future<void> handleRealGoogleSignIn(BuildContext context) async {
       if (!context.mounted) return;
 
       if (berhasil) {
-        final nama = authProvider.currentUser?.nama ?? 'Pengguna Google';
+        final nama = authProvider.currentUser?.nama ?? 'Google User';
         messenger.showSnackBar(
           SnackBar(
             content: Row(
@@ -46,7 +46,7 @@ Future<void> handleRealGoogleSignIn(BuildContext context) async {
                 const Icon(Icons.check_circle_rounded, color: Colors.white),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text('Selamat datang, $nama! Berhasil masuk dengan Akun Google.'),
+                  child: Text('Welcome, $nama! Successfully signed in with Google.'),
                 ),
               ],
             ),
@@ -61,7 +61,7 @@ Future<void> handleRealGoogleSignIn(BuildContext context) async {
         return;
       } else {
         final pesan = authProvider.errorMessage ??
-            'Verifikasi token Akun Google ke server Librava gagal.';
+            'Failed to verify Google token with Librava server.';
         messenger.showSnackBar(
           SnackBar(
             content: Text(pesan),
@@ -87,7 +87,7 @@ Future<void> handleRealGoogleSignIn(BuildContext context) async {
 
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Gagal menghubungkan ke Google: $googleError'),
+          content: Text('Failed to connect to Google: $googleError'),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),

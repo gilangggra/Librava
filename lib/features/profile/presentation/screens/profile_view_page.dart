@@ -260,7 +260,7 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                 ),
                 SizedBox(height: 10),
                 Text(
-                  'Belum ada ulasan',
+                  'No reviews yet',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -269,7 +269,7 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Pengguna ini belum memiliki ulasan dari transaksi buku.',
+                  'This user does not have any book transaction reviews yet.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,

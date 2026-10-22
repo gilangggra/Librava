@@ -485,7 +485,7 @@ class _DepositModalContentState extends State<DepositModalContent> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'Nomor VA ${_selectedBank.code} disalin!',
+                                    '${_selectedBank.code} VA number copied!',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -521,7 +521,7 @@ class _DepositModalContentState extends State<DepositModalContent> {
                               ),
                               SizedBox(width: 3),
                               Text(
-                                'Salin',
+                                'Copy',
                                 style: TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w700,

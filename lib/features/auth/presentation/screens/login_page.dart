@@ -75,8 +75,8 @@ class _LoginPageState extends State<LoginPage> {
           SnackBar(
             content: Text(
               isAdmin
-                  ? 'Selamat datang di Panel Admin, $namaUser!'
-                  : 'Selamat datang kembali, $namaUser!',
+                  ? 'Welcome to Admin Panel, $namaUser!'
+                  : 'Welcome back, $namaUser!',
             ),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
@@ -92,7 +92,7 @@ class _LoginPageState extends State<LoginPage> {
         );
       } else if (mounted) {
         final errorText = context.read<AuthProvider>().errorMessage ??
-            'Email atau kata sandi salah. Silakan periksa kembali.';
+            'Incorrect email or password. Please try again.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorText),
@@ -203,10 +203,10 @@ class _LoginPageState extends State<LoginPage> {
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Email tidak boleh kosong';
+                            return 'Email cannot be empty';
                           }
                           if (!value.contains('@') || !value.contains('.')) {
-                            return 'Format email tidak valid';
+                            return 'Invalid email format';
                           }
                           return null;
                         },
@@ -219,10 +219,10 @@ class _LoginPageState extends State<LoginPage> {
                         obscureText: _isPasswordHidden,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Kata sandi tidak boleh kosong';
+                            return 'Password cannot be empty';
                           }
                           if (value.length < 6) {
-                            return 'Kata sandi minimal 6 karakter';
+                            return 'Password must be at least 6 characters';
                           }
                           return null;
                         },

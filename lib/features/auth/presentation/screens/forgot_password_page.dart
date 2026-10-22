@@ -39,7 +39,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       if (berhasil && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Kata sandi berhasil diperbarui! Silakan masuk.'),
+            content: Text('Password successfully updated! Please sign in.'),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
           ),
@@ -52,7 +52,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
         );
       } else if (mounted) {
-        final err = context.read<AuthProvider>().errorMessage ?? 'Gagal memperbarui kata sandi.';
+        final err = context.read<AuthProvider>().errorMessage ?? 'Failed to update password.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(err),
@@ -158,10 +158,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Email tidak boleh kosong';
+                            return 'Email cannot be empty';
                           }
                           if (!value.contains('@') || !value.contains('.')) {
-                            return 'Format email tidak valid';
+                            return 'Invalid email format';
                           }
                           return null;
                         },
@@ -174,10 +174,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         obscureText: _isPasswordHidden,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Kata sandi baru tidak boleh kosong';
+                            return 'New password cannot be empty';
                           }
                           if (value.length < 8) {
-                            return 'Kata sandi baru minimal 8 karakter';
+                            return 'New password must be at least 8 characters';
                           }
                           return null;
                         },

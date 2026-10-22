@@ -291,7 +291,7 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
                   ),
                   child: Center(
                     child: Text(
-                      'Semua Buku (${adminProvider.jumlahBuku})',
+                      'All Books (${adminProvider.jumlahBuku})',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -391,7 +391,7 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
     if (error != null && jumlah == 0) {
       return _buildPesanTengah(
         icon: CupertinoIcons.wifi_exclamationmark,
-        judul: 'Data buku gagal dimuat',
+        judul: 'Failed to load book data',
         subjudul: error,
         tombol: ElevatedButton(
           onPressed: _muatData,
@@ -403,7 +403,7 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
             ),
           ),
           child: const Text(
-            'Coba lagi',
+            'Try again',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
         ),
@@ -429,14 +429,14 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
       return _buildPesanTengah(
         icon: CupertinoIcons.book,
         judul: sedangMencari
-            ? 'Buku tidak ditemukan'
+            ? 'Book not found'
             : (_selectedTab == 0
-                ? 'Belum ada buku di katalog'
-                : 'Tidak ada buku yang menunggu verifikasi'),
+                ? 'No books in the catalog'
+                : 'No books awaiting verification'),
         subjudul: sedangMencari
-            ? 'Coba kata kunci lain seperti judul, penulis, atau genre.'
+            ? 'Try searching with another keyword such as title, author, or genre.'
             : (_selectedTab == 1
-                ? 'Semua pengajuan buku dari mahasiswa telah dikurasi.'
+                ? 'All student book submissions have been curated.'
                 : null),
       );
     }

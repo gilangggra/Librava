@@ -57,7 +57,7 @@ class _MyBookPageState extends State<MyBookPage> {
     if (myBooks.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Anda belum memiliki koleksi buku untuk diedit.'),
+          content: Text('You don\'t have any books in your collection to edit.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -91,7 +91,7 @@ class _MyBookPageState extends State<MyBookPage> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Pilih Buku untuk Diedit',
+                  'Select Book to Edit',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -163,7 +163,7 @@ class _MyBookPageState extends State<MyBookPage> {
     if (myBooks.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Anda belum memiliki koleksi buku untuk dihapus.'),
+          content: Text('You don\'t have any books in your collection to delete.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -197,7 +197,7 @@ class _MyBookPageState extends State<MyBookPage> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Pilih Buku untuk Dihapus',
+                  'Select Book to Delete',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -272,7 +272,7 @@ class _MyBookPageState extends State<MyBookPage> {
         ScaffoldMessenger.of(pageContext).showSnackBar(
           SnackBar(
             content: Text(
-                'Buku "${book.judul}" sedang dipinjam atau dalam proses transaksi aktif sehingga tidak dapat dihapus.'),
+                'Book "${book.judul}" is currently borrowed or in an active transaction and cannot be deleted.'),
             backgroundColor: const Color(0xFFDC2626),
             behavior: SnackBarBehavior.floating,
           ),
@@ -303,7 +303,7 @@ class _MyBookPageState extends State<MyBookPage> {
               ),
               const SizedBox(width: 10),
               const Text(
-                'Hapus Buku?',
+                'Delete Book?',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 18,
@@ -313,7 +313,7 @@ class _MyBookPageState extends State<MyBookPage> {
             ],
           ),
           content: Text(
-            'Apakah Anda yakin ingin menghapus buku "${book.judul}" dari koleksi Anda? Tindakan ini tidak dapat dibatalkan.',
+            'Are you sure you want to delete "${book.judul}" from your collection? This action cannot be undone.',
             style: const TextStyle(
               fontSize: 13.5,
               color: Color(0xFF555268),
@@ -334,7 +334,7 @@ class _MyBookPageState extends State<MyBookPage> {
                       side: const BorderSide(color: Color(0xFFDCD9EB)),
                     ),
                     child: const Text(
-                      'Batal',
+                      'Cancel',
                       style: TextStyle(
                         color: Color(0xFF7E7A92),
                         fontWeight: FontWeight.w600,
@@ -374,7 +374,7 @@ class _MyBookPageState extends State<MyBookPage> {
                         ScaffoldMessenger.of(pageContext).showSnackBar(
                           SnackBar(
                             content:
-                                Text('Buku "${book.judul}" berhasil dihapus.'),
+                                Text('Book "${book.judul}" has been deleted.'),
                             backgroundColor: const Color(0xFFDC2626),
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -382,7 +382,7 @@ class _MyBookPageState extends State<MyBookPage> {
                       }
                     },
                     child: const Text(
-                      'Ya, Hapus',
+                      'Yes, Delete',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -569,7 +569,7 @@ class _MyBookPageState extends State<MyBookPage> {
                         ),
                         icon: const Icon(CupertinoIcons.trash, size: 16),
                         label: const Text(
-                          'Hapus',
+                          'Delete',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             color: Color(0xFFDC2626),
@@ -660,12 +660,12 @@ class _MyBookPageState extends State<MyBookPage> {
     } else if (book.isDitolak) {
       bg = const Color(0xFFFEE2E2);
       fg = const Color(0xFFDC2626);
-      label = 'Ditolak';
+      label = 'Rejected';
       icon = Icons.cancel_outlined;
     } else {
       bg = const Color(0xFFDCFCE7);
       fg = const Color(0xFF16A34A);
-      label = 'Disetujui';
+      label = 'Approved';
       icon = Icons.check_circle_outline;
     }
 
@@ -705,7 +705,7 @@ class _MyBookPageState extends State<MyBookPage> {
           border: Border.all(color: const Color(0xFFEBE8F4)),
         ),
         child: const Text(
-          'Belum ada koleksi buku yang Anda tambahkan.',
+          'No books added to your collection yet.',
           style: TextStyle(
             fontSize: 13,
             color: Color(0xFF8E8B9F),
@@ -769,7 +769,7 @@ class _MyBookPageState extends State<MyBookPage> {
                         ],
                       ),
                       child: Text(
-                        book.isPending ? 'Pending' : 'Ditolak',
+                        book.isPending ? 'Pending' : 'Rejected',
                         style: TextStyle(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w700,
@@ -800,7 +800,7 @@ class _MyBookPageState extends State<MyBookPage> {
           border: Border.all(color: const Color(0xFFEBE8F4)),
         ),
         child: const Text(
-          'Tidak ada transaksi pada kategori ini.',
+          'No transactions in this category.',
           style: TextStyle(
             fontSize: 13,
             color: Color(0xFF8E8B9F),
@@ -889,7 +889,7 @@ class _MyBookPageState extends State<MyBookPage> {
                             ),
                             SizedBox(width: 3),
                             Text(
-                              'Telat',
+                              'Overdue',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,

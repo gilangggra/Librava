@@ -138,7 +138,7 @@ class AdminBookDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            adaDeskripsi ? buku.deskripsi : 'Belum ada deskripsi untuk buku ini.',
+            adaDeskripsi ? buku.deskripsi : 'No description available for this book.',
             textAlign: TextAlign.justify,
             style: const TextStyle(
               fontSize: 14,
@@ -179,7 +179,7 @@ class AdminBookDetailPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Buku Telah Disetujui (Approved)',
+                          'Book Approved',
                           style: TextStyle(
                             color: Color(0xFF027A48),
                             fontSize: 14,
@@ -188,7 +188,7 @@ class AdminBookDetailPage extends StatelessWidget {
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'Buku ini telah lolos kurasi dan aktif di katalog publik.',
+                          'This book has passed curation and is active in the public catalog.',
                           style: TextStyle(
                             color: Color(0xFF027A48),
                             fontSize: 12,
@@ -214,7 +214,7 @@ class AdminBookDetailPage extends StatelessWidget {
                 ),
                 icon: const Icon(Icons.cancel_outlined, size: 18),
                 label: const Text(
-                  'Tolak / Batalkan Persetujuan',
+                  'Reject / Revoke Approval',
                   style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w600,
@@ -255,7 +255,7 @@ class AdminBookDetailPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Buku Ditolak (Rejected)',
+                          'Book Rejected',
                           style: TextStyle(
                             color: Color(0xFFDC2626),
                             fontSize: 14,
@@ -266,8 +266,8 @@ class AdminBookDetailPage extends StatelessWidget {
                         Text(
                           buku.catatanModerasi != null &&
                                   buku.catatanModerasi!.trim().isNotEmpty
-                              ? 'Alasan: ${buku.catatanModerasi}'
-                              : 'Buku ini ditolak dan tidak ditampilkan pada katalog umum.',
+                              ? 'Reason: ${buku.catatanModerasi}'
+                              : 'This book was rejected and is not displayed in the public catalog.',
                           style: const TextStyle(
                             color: Color(0xFF991B1B),
                             fontSize: 12,
@@ -294,7 +294,7 @@ class AdminBookDetailPage extends StatelessWidget {
                 ),
                 icon: const Icon(Icons.check_circle_outline, size: 18),
                 label: const Text(
-                  'Setujui Buku untuk Katalog',
+                  'Approve Book for Catalog',
                   style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w700,
@@ -315,7 +315,7 @@ class AdminBookDetailPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Aksi Kurasi Admin',
+            'Admin Moderation Actions',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -338,7 +338,7 @@ class AdminBookDetailPage extends StatelessWidget {
                   icon: const Icon(Icons.check_circle_outline,
                       color: Colors.white, size: 20),
                   label: const Text(
-                    'Setujui',
+                    'Approve',
                     style: TextStyle(
                         color: Colors.white, fontWeight: FontWeight.w700),
                   ),
@@ -359,7 +359,7 @@ class AdminBookDetailPage extends StatelessWidget {
                   icon: const Icon(Icons.cancel_outlined,
                       color: Colors.white, size: 20),
                   label: const Text(
-                    'Tolak',
+                    'Reject',
                     style: TextStyle(
                         color: Colors.white, fontWeight: FontWeight.w700),
                   ),
@@ -382,7 +382,7 @@ class AdminBookDetailPage extends StatelessWidget {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           title: const Text(
-            'Tolak Buku',
+            'Reject Book',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
           content: Column(
@@ -390,7 +390,7 @@ class AdminBookDetailPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Berikan alasan mengapa buku ini ditolak agar pemilik dapat memperbaikinya:',
+                'Provide a reason why this book is rejected so the owner can revise it:',
                 style: TextStyle(fontSize: 13, color: Color(0xFF555268)),
               ),
               const SizedBox(height: 12),
@@ -398,7 +398,7 @@ class AdminBookDetailPage extends StatelessWidget {
                 controller: catatanController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  hintText: 'Contoh: Foto sampul buram, deskripsi kurang lengkap.',
+                  hintText: 'e.g., Blurry cover photo, incomplete description.',
                   hintStyle: const TextStyle(fontSize: 13, color: Color(0xFFA09DB2)),
                   filled: true,
                   fillColor: const Color(0xFFF3F2F8),
@@ -413,7 +413,7 @@ class AdminBookDetailPage extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Batal', style: TextStyle(color: Color(0xFF7E7A92))),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF7E7A92))),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -427,7 +427,7 @@ class AdminBookDetailPage extends StatelessWidget {
                 Navigator.pop(ctx);
                 _prosesModerasi(context, 'REJECT', catatan);
               },
-              child: const Text('Tolak Buku',
+              child: const Text('Reject Book',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
             ),
           ],
@@ -451,8 +451,8 @@ class AdminBookDetailPage extends StatelessWidget {
           SnackBar(
             content: Text(
               action == 'APPROVE'
-                  ? 'Buku "${buku.judul}" berhasil disetujui untuk katalog!'
-                  : 'Buku "${buku.judul}" berhasil ditolak.',
+                  ? 'Book "${buku.judul}" approved for catalog!'
+                  : 'Book "${buku.judul}" has been rejected.',
             ),
             backgroundColor: action == 'APPROVE'
                 ? const Color(0xFF16A34A)
@@ -466,7 +466,7 @@ class AdminBookDetailPage extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal memperbarui moderasi: $e'),
+            content: Text('Failed to update moderation: $e'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),

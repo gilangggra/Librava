@@ -121,13 +121,13 @@ void main() {
     });
 
     test('FR-REQ-06: Status Request dan Label Ramah Pengguna', () {
-      expect(provider.getStatusLabel('pending'), 'Menunggu Konfirmasi');
-      expect(provider.getStatusLabel('disetujui'), 'Disetujui (Perlu Deposit)');
-      expect(provider.getStatusLabel('ditolak'), 'Ditolak');
-      expect(provider.getStatusLabel('deposit_dibayar'), 'Deposit Dibayar (Pilih Lokasi)');
-      expect(provider.getStatusLabel('lokasi_ditentukan'), 'Lokasi Ditentukan (Menunggu Serah Terima)');
-      expect(provider.getStatusLabel('sedang_dipinjam'), 'Sedang Dipinjam');
-      expect(provider.getStatusLabel('selesai'), 'Selesai');
+      expect(provider.getStatusLabel('pending'), 'Waiting for Confirmation');
+      expect(provider.getStatusLabel('disetujui'), 'Approved (Deposit Required)');
+      expect(provider.getStatusLabel('ditolak'), 'Rejected');
+      expect(provider.getStatusLabel('deposit_dibayar'), 'Deposit Paid (Select Location)');
+      expect(provider.getStatusLabel('lokasi_ditentukan'), 'Location Set (Waiting for Handover)');
+      expect(provider.getStatusLabel('sedang_dipinjam'), 'Borrowed');
+      expect(provider.getStatusLabel('selesai'), 'Completed');
     });
 
     test('FR-DEP-01, FR-LOC-01, FR-TRX-01, FR-TRX-02: Siklus Transaksi End-to-End', () {

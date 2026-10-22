@@ -32,7 +32,7 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Event'), findsOneWidget);
     expect(find.text('Featured books'), findsOneWidget);
-    expect(find.text('Belum Ada Buku Dipinjam'), findsOneWidget);
+    expect(find.text('No Borrowed Books Yet'), findsOneWidget);
     expect(find.text('Book Exchange Day'), findsOneWidget);
   });
 

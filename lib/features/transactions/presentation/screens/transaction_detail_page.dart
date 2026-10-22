@@ -122,7 +122,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text(
-            'Konfirmasi Serah Terima',
+            'Confirm Handover',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -130,7 +130,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             ),
           ),
           content: Text(
-            'Apakah Anda sudah menerima / menyerahkan buku "${widget.bookTitle}" di $_currentHandoverLocation?',
+            'Have you handed over or received "${widget.bookTitle}" at $_currentHandoverLocation?',
             style: const TextStyle(
               fontSize: 14,
               color: Color(0xFF7E7A92),
@@ -141,7 +141,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: const Text(
-                'Batal',
+                'Cancel',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF8A88A5),
@@ -179,7 +179,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 if (!success) {
                   final errMsg =
                       context.read<TransactionProvider>().errorMessage ??
-                          'Gagal melakukan konfirmasi serah terima.';
+                          'Failed to confirm handover.';
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(errMsg),
@@ -216,8 +216,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     content: Text(
                       partnerAlsoConfirmed ||
                               txAfter?.status.toLowerCase() == 'selesai'
-                          ? 'Serah terima selesai! Status transaksi kini Selesai.'
-                          : 'Konfirmasi serah terima Anda berhasil dicatat.',
+                          ? 'Handover completed! Transaction is now completed.'
+                          : 'Your handover confirmation has been recorded.',
                     ),
                     backgroundColor: const Color(0xFF2FD677),
                     behavior: SnackBarBehavior.floating,
@@ -235,7 +235,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 elevation: 0,
               ),
               child: const Text(
-                'Ya, Konfirmasi',
+                'Yes, Confirm',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
@@ -589,8 +589,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                           children: [
                             Text(
                               isOwner
-                                  ? 'Status Transaksi'
-                                  : 'Jumlah Dana Dicairkan',
+                                  ? 'Transaction Status'
+                                  : 'Refunded Amount',
                               style: const TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w500,
@@ -598,7 +598,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                               ),
                             ),
                             Text(
-                              isOwner ? 'Selesai' : '+$depositAmount',
+                              isOwner ? 'Completed' : '+$depositAmount',
                               style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w800,
@@ -618,7 +618,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              isOwner ? 'Peminjam' : 'Saldo Dompet Sekarang',
+                              isOwner ? 'Borrower' : 'Current Wallet Balance',
                               style: const TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w500,
@@ -658,10 +658,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       ),
                       child: Text(
                         _hasReviewed
-                            ? 'Selesai'
+                            ? 'Done'
                             : (isOwner
-                                ? 'Beri Ulasan Pemohon'
-                                : 'Beri Ulasan Pemilik'),
+                                ? 'Review Requester'
+                                : 'Review Owner'),
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -704,8 +704,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           ),
           title: Text(
             isOwner
-                ? 'Konfirmasi Buku Diterima'
-                : 'Konfirmasi Pengembalian Buku',
+                ? 'Confirm Book Received'
+                : 'Confirm Book Return',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -714,8 +714,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           ),
           content: Text(
             isOwner
-                ? 'Apakah Anda sudah menerima kembali fisik buku "${widget.bookTitle}" dari $partnerName dalam kondisi baik?\n\nSetelah dikonfirmasi, transaksi ini akan selesai.'
-                : 'Apakah Anda sudah mengembalikan buku "${widget.bookTitle}" kepada $partnerName?\n\nSetelah dikonfirmasi, transaksi akan selesai dan saldo jaminan deposit akan dicairkan kembali.',
+                ? 'Have you received the physical book "${widget.bookTitle}" back from $partnerName in good condition?\n\nOnce confirmed, this transaction will be completed.'
+                : 'Have you returned the book "${widget.bookTitle}" to $partnerName?\n\nOnce confirmed, the transaction will be completed and your security deposit will be refunded.',
             style: const TextStyle(
               fontSize: 14,
               color: Color(0xFF7E7A92),
@@ -726,7 +726,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: const Text(
-                'Batal',
+                'Cancel',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF8A88A5),
@@ -783,8 +783,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   SnackBar(
                     content: Text(
                       isOwner
-                          ? 'Konfirmasi penerimaan berhasil dicatat. Transaksi peminjaman kini selesai.'
-                          : 'Buku berhasil dikembalikan! Transaksi selesai dan saldo jaminan deposit telah dicairkan kembali.',
+                          ? 'Return receipt confirmed. The borrow transaction is now completed.'
+                          : 'Book returned successfully! Transaction completed and security deposit refunded.',
                     ),
                     backgroundColor: const Color(0xFF2FD677),
                     behavior: SnackBarBehavior.floating,
@@ -801,9 +801,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ),
                 elevation: 0,
               ),
-              child: const Text(
-                'Ya, Sudah Dikembalikan',
-                style: TextStyle(
+              child: Text(
+                isOwner ? 'Yes, Received' : 'Yes, Returned',
+                style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
@@ -852,7 +852,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                   const SizedBox(height: 18),
                   const Text(
-                    'Beri Ulasan & Rating',
+                    'Leave Review & Rating',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
@@ -861,7 +861,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Bagikan pengalaman transaksi bersama ${_getPartnerName(context)}',
+                    'Share your transaction experience with ${_getPartnerName(context)}',
                     style: const TextStyle(
                       fontSize: 13.5,
                       color: Color(0xFF7E7A92),
@@ -899,14 +899,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   Center(
                     child: Text(
                       selectedRating == 5
-                          ? 'Sangat Memuaskan! (5/5)'
+                          ? 'Excellent! (5/5)'
                           : selectedRating == 4
-                              ? 'Bagus (4/5)'
+                              ? 'Good (4/5)'
                               : selectedRating == 3
-                                  ? 'Cukup (3/5)'
+                                  ? 'Fair (3/5)'
                                   : selectedRating == 2
-                                      ? 'Kurang (2/5)'
-                                      : 'Sangat Buruk (1/5)',
+                                      ? 'Poor (2/5)'
+                                      : 'Very Bad (1/5)',
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -919,7 +919,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     controller: commentController,
                     maxLines: 3,
                     decoration: InputDecoration(
-                      hintText: 'Tulis komentar atau kesan Anda (opsional)...',
+                      hintText: 'Write your comments or thoughts (optional)...',
                       hintStyle: const TextStyle(
                         fontSize: 13.5,
                         color: Color(0xFF9E9BAE),
@@ -965,7 +965,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         messenger.showSnackBar(
                           SnackBar(
                             content:
-                                const Text('Ulasan Anda berhasil dikirim!'),
+                                const Text('Your review has been submitted successfully!'),
                             backgroundColor: const Color(0xFF2FD677),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
@@ -982,7 +982,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         elevation: 0,
                       ),
                       child: const Text(
-                        'Kirim Ulasan',
+                        'Submit Review',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -1009,7 +1009,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text(
-            'Batalkan Permintaan?',
+            'Cancel Request?',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -1017,7 +1017,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             ),
           ),
           content: const Text(
-            'Apakah Anda yakin ingin membatalkan transaksi peminjaman buku ini?',
+            'Are you sure you want to cancel this book transaction?',
             style: TextStyle(
               fontSize: 14,
               color: Color(0xFF7E7A92),
@@ -1027,7 +1027,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: const Text(
-                'Kembali',
+                'Back',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF8A88A5),
@@ -1056,7 +1056,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     20000.0;
 
                 setState(() {
-                  _currentStatus = 'Dibatalkan';
+                  _currentStatus = 'Cancelled';
                 });
 
                 // Jika deposit sudah dibayar sebelumnya dan transaksi dibatalkan, kembalikan saldo
@@ -1079,7 +1079,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 navigator.pop();
                 messenger.showSnackBar(
                   SnackBar(
-                    content: const Text('Permintaan transaksi berhasil dibatalkan.'),
+                    content: const Text('Transaction request cancelled successfully.'),
                     backgroundColor: const Color(0xFFFF4D4F),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
@@ -1096,7 +1096,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 elevation: 0,
               ),
               child: const Text(
-                'Ya, Batalkan',
+                'Yes, Cancel',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
@@ -1183,25 +1183,25 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final s = _currentStatus.toLowerCase();
     if (s == 'selesai') {
       dotColor = const Color(0xFF2FD677);
-      titleText = 'Selesai';
+      titleText = 'Completed';
       descText =
-          'Transaksi telah selesai! Buku telah berhasil diserahterimakan.';
+          'Transaction completed! The book has been successfully handed over and returned.';
     } else if (s == 'sedang_dipinjam') {
       dotColor = isOverdue ? const Color(0xFFDC2626) : const Color(0xFF388AF6);
-      titleText = isOverdue ? 'Terlambat Pengembalian' : 'Sedang Dipinjam';
+      titleText = isOverdue ? 'Overdue Return' : 'Active Loan';
       descText = isOverdue
-          ? 'Buku telah melewati batas jatuh tempo pengembalian. Mohon segera serahkan kembali kepada pemilik.'
-          : 'Buku sedang dipinjam. Harap jaga kondisi buku dan kembalikan tepat waktu.';
+          ? 'The book is past its return due date. Please return it to the owner immediately.'
+          : 'The book is currently on loan. Please keep it safe and return on time.';
     } else if (s == 'dibatalkan' || s == 'ditolak') {
       dotColor = const Color(0xFFFF4D4F);
-      titleText = _currentStatus == 'ditolak' ? 'Ditolak' : 'Dibatalkan';
-      descText = 'Transaksi ini telah ditutup.';
+      titleText = _currentStatus == 'ditolak' ? 'Rejected' : 'Cancelled';
+      descText = 'This transaction has been closed.';
     } else if (s == 'disetujui' || s == 'lokasi_ditentukan' || s == 'dalam_proses') {
       dotColor = isOverdue ? const Color(0xFFDC2626) : const Color(0xFF388AF6);
-      titleText = isOverdue ? 'Jatuh Tempo / Terlambat' : 'Disetujui / Dalam Proses';
+      titleText = isOverdue ? 'Overdue' : 'Approved / In Progress';
       descText = isOverdue
-          ? 'Peminjaman telah melewati masa jatuh tempo. Harap segera koordinasikan pengembalian buku.'
-          : 'Permintaan disetujui. Selesaikan pembayaran deposit dan penentuan lokasi serah terima.';
+          ? 'Loan is past its due date. Please coordinate book return promptly.'
+          : 'Request approved. Complete the deposit payment and set the handover location.';
     }
 
     return Padding(
@@ -1578,7 +1578,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     color: Colors.white,
                   ),
                   label: const Text(
-                    'Konfirmasi Serah Terima',
+                    'Confirm Handover',
                     style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
@@ -1605,7 +1605,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Anda telah konfirmasi. Menunggu $partnerRole mengonfirmasi serah terima.',
+                        'You have confirmed. Waiting for $partnerRole to confirm handover.',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -1634,7 +1634,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Serah terima buku telah dikonfirmasi oleh kedua pihak.',
+                        'Book handover has been confirmed by both parties.',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -1811,8 +1811,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 Expanded(
                   child: Text(
                     isOwner
-                        ? 'Konfirmasi Pengembalian Buku'
-                        : 'Pengembalian Buku Pinjaman',
+                        ? 'Confirm Book Return'
+                        : 'Borrowed Book Return',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -1825,8 +1825,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             const SizedBox(height: 10),
             Text(
               isOwner
-                  ? 'Buku sedang dipinjam oleh mahasiswa. Jika buku fisik telah dikembalikan dan Anda terima dengan kondisi baik, konfirmasi penerimaan untuk menyelesaikan transaksi.'
-                  : 'Buku saat ini sedang dalam masa peminjaman. Jika sudah selesai dibaca, lakukan konfirmasi pengembalian buku kepada pemilik untuk menyelesaikan transaksi dan mencairkan kembali saldo deposit jaminan Anda.',
+                  ? 'Book is currently borrowed by the student. Once the physical book is returned and received in good condition, confirm receipt to complete the transaction.'
+                  : 'Book is currently on loan. When finished reading, confirm return with the owner to complete the transaction and release your security deposit.',
               style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFF7E7A92),
@@ -1862,8 +1862,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       ),
                 label: Text(
                   _isLoadingAction
-                      ? 'Memproses...'
-                      : (isOwner ? 'Konfirmasi Buku Diterima' : 'Konfirmasi Pengembalian Buku'),
+                      ? 'Processing...'
+                      : (isOwner ? 'Confirm Book Received' : 'Confirm Book Return'),
                   style: const TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
@@ -1918,7 +1918,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
-                    'Ulasan & Penilaian Transaksi',
+                    'Transaction Review & Rating',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -1931,7 +1931,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             const SizedBox(height: 10),
             if (!_hasReviewed) ...[
               Text(
-                'Transaksi telah selesai! Bagikan ulasan dan berikan penilaian bintang untuk ${_getPartnerName(context)} guna membantu membangun reputasi komunitas mahasiswa.',
+                'Transaction completed! Share a review and star rating for ${_getPartnerName(context)} to help build community trust.',
                 style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF7E7A92),
@@ -1957,7 +1957,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     color: Colors.white,
                   ),
                   label: const Text(
-                    'Beri Ulasan Sekarang',
+                    'Leave Review Now',
                     style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
@@ -2022,7 +2022,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                   SizedBox(width: 6),
                   Text(
-                    'Ulasan Anda telah tersimpan di sistem.',
+                    'Your review has been saved.',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -2109,7 +2109,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            isOwner ? 'Konfirmasi Kembali' : 'Kembalikan Buku',
+                            isOwner ? 'Confirm Return' : 'Return Book',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -2134,7 +2134,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                _hasReviewed ? 'Ubah Ulasan' : 'Beri Ulasan',
+                                _hasReviewed ? 'Edit Review' : 'Leave Review',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -2158,7 +2158,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                isOwner ? 'Batalkan' : 'Cancel Request',
+                                isOwner ? 'Cancel' : 'Cancel Request',
                                 style: const TextStyle(
                                   fontSize: 14.5,
                                   fontWeight: FontWeight.w700,

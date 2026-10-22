@@ -31,7 +31,7 @@ void main() {
 
     expect(find.text('Chats'), findsOneWidget);
     expect(find.text('Search message'), findsOneWidget);
-    expect(find.text('Belum Ada Obrolan'), findsOneWidget);
+    expect(find.text('No Chats Yet'), findsOneWidget);
   });
 
   testWidgets('ChatPage menampilkan daftar transaksi percakapan dan memfilter pencarian',
@@ -91,7 +91,7 @@ void main() {
 
     expect(find.text('Budi Santoso'), findsWidgets);
     expect(find.text('Online'), findsOneWidget);
-    expect(find.text('Tulis pesan...'), findsOneWidget);
-    expect(find.text('Mulai Obrolan'), findsOneWidget);
+    expect(find.text('Type a message...'), findsOneWidget);
+    expect(find.text('Start Conversation'), findsOneWidget);
   });
 }
