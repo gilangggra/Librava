@@ -39,18 +39,18 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Riwayat Transaksi'), findsOneWidget);
-    expect(find.text('Semua'), findsOneWidget);
-    expect(find.text('Pinjam'), findsWidgets);
+    expect(find.text('Transaction History'), findsOneWidget);
+    expect(find.text('All'), findsOneWidget);
+    expect(find.text('Borrow'), findsWidgets);
     expect(find.text('Barter'), findsWidgets);
-    expect(find.text('Selesai'), findsWidgets);
+    expect(find.text('Completed'), findsWidgets);
 
-    // Keduanya tampil pada filter 'Semua'
+    // Keduanya tampil pada filter 'All'
     expect(find.text('Atomic Habits'), findsOneWidget);
     expect(find.text('Clean Code'), findsOneWidget);
 
-    // Ganti filter ke 'Pinjam'
-    await tester.tap(find.text('Pinjam').first);
+    // Ganti filter ke 'Borrow'
+    await tester.tap(find.text('Borrow').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Atomic Habits'), findsOneWidget);
@@ -63,8 +63,8 @@ void main() {
     expect(find.text('Clean Code'), findsOneWidget);
     expect(find.text('Atomic Habits'), findsNothing);
 
-    // Ganti filter ke 'Selesai'
-    await tester.tap(find.text('Selesai').first);
+    // Ganti filter ke 'Completed'
+    await tester.tap(find.text('Completed').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Atomic Habits'), findsOneWidget);

@@ -165,7 +165,7 @@ class AdminProvider extends ChangeNotifier {
       final teks = e.toString();
       _errorMahasiswa = teks.startsWith('Exception: ')
           ? teks.replaceFirst('Exception: ', '')
-          : 'Tidak dapat terhubung ke server. Coba lagi nanti.';
+          : 'Unable to connect to server. Please try again later.';
     }
 
     _isLoadingMahasiswa = false;
@@ -173,7 +173,7 @@ class AdminProvider extends ChangeNotifier {
   }
 
   void tandaiSesiTidakValid() {
-    _errorMahasiswa = 'Sesi admin tidak ditemukan. Silakan login ulang.';
+    _errorMahasiswa = 'Admin session not found. Please log in again.';
     notifyListeners();
   }
 
@@ -193,7 +193,7 @@ class AdminProvider extends ChangeNotifier {
       final teks = e.toString();
       _errorBuku = teks.startsWith('Exception: ')
           ? teks.replaceFirst('Exception: ', '')
-          : 'Tidak dapat terhubung ke server. Coba lagi nanti.';
+          : 'Unable to connect to server. Please try again later.';
     }
 
     _isLoadingBuku = false;
@@ -201,7 +201,7 @@ class AdminProvider extends ChangeNotifier {
   }
 
   void tandaiSesiBukuTidakValid() {
-    _errorBuku = 'Sesi admin tidak ditemukan. Silakan login ulang.';
+    _errorBuku = 'Admin session not found. Please log in again.';
     notifyListeners();
   }
 
@@ -221,7 +221,7 @@ class AdminProvider extends ChangeNotifier {
       final teks = e.toString();
       _errorTransaksi = teks.startsWith('Exception: ')
           ? teks.replaceFirst('Exception: ', '')
-          : 'Tidak dapat terhubung ke server. Coba lagi nanti.';
+          : 'Unable to connect to server. Please try again later.';
     }
 
     _isLoadingTransaksi = false;
@@ -229,7 +229,7 @@ class AdminProvider extends ChangeNotifier {
   }
 
   void tandaiSesiTransaksiTidakValid() {
-    _errorTransaksi = 'Sesi admin tidak ditemukan. Silakan login ulang.';
+    _errorTransaksi = 'Admin session not found. Please log in again.';
     notifyListeners();
   }
 
@@ -263,7 +263,7 @@ class AdminProvider extends ChangeNotifier {
       final teks = e.toString();
       _errorBukuPending = teks.startsWith('Exception: ')
           ? teks.replaceFirst('Exception: ', '')
-          : 'Gagal memuat antrean moderasi buku.';
+          : 'Failed to load book moderation queue.';
     }
 
     _isLoadingBukuPending = false;

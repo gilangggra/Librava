@@ -44,7 +44,7 @@ class _RegisterPageState extends State<RegisterPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Akun untuk $namaUser berhasil dibuat! Silakan masuk.',
+              'Account for $namaUser successfully created! Please sign in.',
             ),
             backgroundColor: AppColors.primary,
             behavior: SnackBarBehavior.floating,
@@ -58,7 +58,7 @@ class _RegisterPageState extends State<RegisterPage> {
         );
       } else if (mounted) {
         final pesanError = context.read<AuthProvider>().errorMessage ??
-            'Registrasi gagal. Silakan coba lagi.';
+            'Registration failed. Please try again.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(pesanError),
@@ -164,7 +164,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         keyboardType: TextInputType.name,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Nama lengkap tidak boleh kosong';
+                            return 'Full name cannot be empty';
                           }
                           return null;
                         },
@@ -177,10 +177,10 @@ class _RegisterPageState extends State<RegisterPage> {
                         keyboardType: TextInputType.emailAddress,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Email tidak boleh kosong';
+                            return 'Email cannot be empty';
                           }
                           if (!value.contains('@') || !value.contains('.')) {
-                            return 'Format email tidak valid';
+                            return 'Invalid email format';
                           }
                           return null;
                         },
@@ -193,10 +193,10 @@ class _RegisterPageState extends State<RegisterPage> {
                         obscureText: _isPasswordHidden,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Kata sandi tidak boleh kosong';
+                            return 'Password cannot be empty';
                           }
                           if (value.length < 8) {
-                            return 'Kata sandi minimal 8 karakter';
+                            return 'Password must be at least 8 characters';
                           }
                           return null;
                         },

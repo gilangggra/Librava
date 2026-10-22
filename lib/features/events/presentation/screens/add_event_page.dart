@@ -137,7 +137,7 @@ class _AddEventPageState extends State<AddEventPage> {
     final start = await showTimePicker(
       context: context,
       initialTime: _startTime,
-      helpText: 'Pilih Jam Mulai Event',
+      helpText: 'Select Event Start Time',
     );
     if (start == null || !mounted) return;
 
@@ -152,7 +152,7 @@ class _AddEventPageState extends State<AddEventPage> {
       initialTime: (_endTime.hour * 60 + _endTime.minute > start.hour * 60 + start.minute)
           ? _endTime
           : suggestedEnd,
-      helpText: 'Pilih Jam Selesai Event',
+      helpText: 'Select Event End Time',
     );
     if (end == null || !mounted) return;
 
@@ -244,7 +244,7 @@ class _AddEventPageState extends State<AddEventPage> {
         });
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Gagal memilih gambar: $e'),
+            content: Text('Failed to select image: $e'),
             backgroundColor: const Color(0xFFDC2626),
             behavior: SnackBarBehavior.floating,
           ),
@@ -391,7 +391,7 @@ class _AddEventPageState extends State<AddEventPage> {
     if (titleText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Judul event tidak boleh kosong.'),
+          content: Text('Event title cannot be empty.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -406,7 +406,7 @@ class _AddEventPageState extends State<AddEventPage> {
     if (!hasBanner) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Banner event tidak boleh kosong. Silakan pilih atau unggah banner event.'),
+          content: Text('Event banner cannot be empty. Please choose or upload an event banner.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -420,7 +420,7 @@ class _AddEventPageState extends State<AddEventPage> {
     if (_selectedDate.isBefore(today)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Tanggal event tidak boleh di masa lampau.'),
+          content: Text('Event date cannot be in the past.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -434,7 +434,7 @@ class _AddEventPageState extends State<AddEventPage> {
     if (endMinutes <= startMinutes) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Jam selesai harus setelah jam mulai event.'),
+          content: Text('End time must be after event start time.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -447,7 +447,7 @@ class _AddEventPageState extends State<AddEventPage> {
     if (locationText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Lokasi event tidak boleh kosong.'),
+          content: Text('Event location cannot be empty.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -460,7 +460,7 @@ class _AddEventPageState extends State<AddEventPage> {
     if (descText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Deskripsi event tidak boleh kosong.'),
+          content: Text('Event description cannot be empty.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -473,7 +473,7 @@ class _AddEventPageState extends State<AddEventPage> {
     if (auth.token == null || auth.token!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Silakan login terlebih dahulu untuk mempublikasikan event.'),
+          content: Text('Please log in first to publish an event.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -539,7 +539,7 @@ class _AddEventPageState extends State<AddEventPage> {
 
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Event berhasil dibuat!'),
+          content: Text('Event created successfully!'),
           backgroundColor: Color(0xFF16A34A),
           behavior: SnackBarBehavior.floating,
         ),

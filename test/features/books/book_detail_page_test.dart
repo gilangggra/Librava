@@ -65,7 +65,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byIcon(CupertinoIcons.bookmark_fill), findsOneWidget);
-    expect(find.text('Buku disimpan ke bookmark'), findsOneWidget);
+    expect(find.text('Book saved to bookmarks'), findsOneWidget);
   });
 
   testWidgets('Menekan tombol Borrow membuka modal pengajuan pinjam',
@@ -79,13 +79,13 @@ void main() {
     await tester.tap(borrowButtonFinder);
     await tester.pumpAndSettle();
 
-    expect(find.text('Ajukan Peminjaman'), findsOneWidget);
-    expect(find.text('Buku: The Unknown'), findsOneWidget);
-    expect(find.text('Durasi Pinjam'), findsOneWidget);
-    expect(find.text('3 Hari'), findsOneWidget);
-    expect(find.text('7 Hari'), findsOneWidget);
-    expect(find.text('14 Hari'), findsOneWidget);
-    expect(find.text('Konfirmasi Pengajuan Pinjam'), findsOneWidget);
+    expect(find.text('Request Borrow'), findsOneWidget);
+    expect(find.text('Book: The Unknown'), findsOneWidget);
+    expect(find.text('Borrow Duration'), findsOneWidget);
+    expect(find.text('3 Days'), findsOneWidget);
+    expect(find.text('7 Days'), findsOneWidget);
+    expect(find.text('14 Days'), findsOneWidget);
+    expect(find.text('Confirm Borrow Request'), findsOneWidget);
   });
 
   testWidgets('Menekan tombol Barter membuka modal barter dengan pilihan koleksi',
@@ -111,11 +111,11 @@ void main() {
     await tester.tap(barterButtonFinder);
     await tester.pumpAndSettle();
 
-    expect(find.text('Ajukan Barter Buku'), findsOneWidget);
-    expect(find.text('Ingin ditukar dengan: The Unknown'), findsOneWidget);
-    expect(find.text('Pilih Buku dari Koleksimu'), findsOneWidget);
+    expect(find.text('Request Book Barter'), findsOneWidget);
+    expect(find.text('Exchange for: The Unknown'), findsOneWidget);
+    expect(find.text('Select Book from Your Collection'), findsOneWidget);
     expect(find.textContaining('Clean Code'), findsOneWidget);
-    expect(find.text('Konfirmasi Pengajuan Barter'), findsOneWidget);
+    expect(find.text('Confirm Barter Request'), findsOneWidget);
   });
 
   testWidgets('BookDetailPage dapat menampilkan data buku kustom',

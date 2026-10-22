@@ -299,7 +299,7 @@ class _AdminTransactionsPageState extends State<AdminTransactionsPage> {
     if (adminProvider.errorTransaksi != null && adminProvider.jumlahTransaksi == 0) {
       return _buildPesanTengah(
         icon: CupertinoIcons.wifi_exclamationmark,
-        judul: 'Data transaksi gagal dimuat',
+        judul: 'Failed to load transaction data',
         subjudul: adminProvider.errorTransaksi,
         tombol: ElevatedButton(
           onPressed: _muatData,
@@ -311,7 +311,7 @@ class _AdminTransactionsPageState extends State<AdminTransactionsPage> {
             ),
           ),
           child: const Text(
-            'Coba lagi',
+            'Try again',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
         ),
@@ -324,9 +324,9 @@ class _AdminTransactionsPageState extends State<AdminTransactionsPage> {
       final sedangMencari = adminProvider.kataKunciTransaksi.trim().isNotEmpty;
       return _buildPesanTengah(
         icon: CupertinoIcons.arrow_right_arrow_left,
-        judul: sedangMencari ? 'Transaksi tidak ditemukan' : 'Belum ada transaksi',
+        judul: sedangMencari ? 'Transaction not found' : 'No transactions yet',
         subjudul: sedangMencari
-            ? 'Coba kata kunci lain seperti judul buku atau nama pengguna.'
+            ? 'Try searching with another keyword such as book title or username.'
             : null,
       );
     }

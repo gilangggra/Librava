@@ -52,7 +52,7 @@ void main() {
 
     expect(find.byType(EditProfilePage), findsOneWidget);
     expect(find.text('Edit profile'), findsOneWidget);
-    expect(find.text('Edit Foto'), findsOneWidget);
+    expect(find.text('Edit Photo'), findsOneWidget);
     expect(find.text('Username'), findsOneWidget);
     expect(find.text('Bio'), findsOneWidget);
     expect(find.text('Full Name'), findsOneWidget);

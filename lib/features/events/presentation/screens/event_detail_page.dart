@@ -335,7 +335,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
     if (auth.token == null || auth.token!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Silakan login terlebih dahulu untuk bergabung di event.'),
+          content: Text('Please log in first to join this event.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -350,17 +350,17 @@ class _EventDetailPageState extends State<EventDetailPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Join Event Kampus?',
+        title: const Text('Join Campus Event?',
             style: TextStyle(fontWeight: FontWeight.w700)),
         content: Text(
-          'Apakah Anda ingin mendaftar pada agenda "${_event.judul}"?\n\n'
-          'Sisa kuota: ${_event.sisaKuota} peserta.',
+          'Do you want to register for "${_event.judul}"?\n\n'
+          'Remaining spots: ${_event.sisaKuota} seats.',
           style: const TextStyle(fontSize: 13.5, color: Color(0xFF555268), height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal',
+            child: const Text('Cancel',
                 style: TextStyle(color: Color(0xFF7E7A92))),
           ),
           ElevatedButton(
@@ -371,7 +371,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
               ),
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Ya, Join Sekarang',
+            child: const Text('Yes, Join Now',
                 style: TextStyle(
                     color: Colors.white, fontWeight: FontWeight.w600)),
           ),
@@ -398,7 +398,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Selamat! Anda berhasil terdaftar di event "${_event.judul}".',
+            'Congratulations! You have successfully registered for "${_event.judul}".',
           ),
           backgroundColor: const Color(0xFF16A34A),
           behavior: SnackBarBehavior.floating,
@@ -645,7 +645,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Event Telah Disetujui (Approved)',
+                        'Event Approved',
                         style: TextStyle(
                           color: Color(0xFF027A48),
                           fontSize: 14,
@@ -654,7 +654,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Event ini telah aktif dan dapat diikuti oleh seluruh mahasiswa.',
+                        'This event is active and open to all students.',
                         style: TextStyle(
                           color: Color(0xFF027A48),
                           fontSize: 12,
@@ -681,7 +681,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
               ),
               icon: const Icon(Icons.cancel_outlined, size: 18),
               label: const Text(
-                'Tolak / Batalkan Persetujuan',
+                'Reject / Revoke Approval',
                 style: TextStyle(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
@@ -719,7 +719,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Event Ditolak (Rejected)',
+                        'Event Rejected',
                         style: TextStyle(
                           color: Color(0xFFDC2626),
                           fontSize: 14,
@@ -728,7 +728,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Event ini ditolak dan tidak dapat diikuti oleh mahasiswa.',
+                        'This event was rejected and cannot be joined.',
                         style: TextStyle(
                           color: Color(0xFF991B1B),
                           fontSize: 12,
@@ -755,7 +755,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
               ),
               icon: const Icon(Icons.check_circle_outline, size: 18),
               label: const Text(
-                'Setujui Event (Approve)',
+                'Approve Event',
                 style: TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w700,

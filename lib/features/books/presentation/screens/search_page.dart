@@ -838,7 +838,7 @@ class _SearchPageState extends State<SearchPage> {
                       padding: const EdgeInsets.all(16),
                       child: const Center(
                         child: Text(
-                          'Belum ada buku tersedia',
+                          'No books available',
                           style: TextStyle(
                             fontSize: 13,
                             color: Color(0xFF7E7A92),
@@ -1322,7 +1322,7 @@ class _SearchPageState extends State<SearchPage> {
                                 padding: EdgeInsets.symmetric(vertical: 32),
                                 child: Center(
                                   child: Text(
-                                    'Tidak ada buku yang sesuai dengan pencarian.',
+                                    'No books match your search.',
                                     style: TextStyle(
                                       color: Color(0xFF7E7A92),
                                       fontSize: 14,
@@ -1347,7 +1347,7 @@ class _SearchPageState extends State<SearchPage> {
                                   padding: EdgeInsets.symmetric(vertical: 32),
                                   child: Center(
                                     child: Text(
-                                      'Belum ada data penulis terdaftar.',
+                                      'No registered authors found.',
                                       style: TextStyle(
                                         color: Color(0xFF7E7A92),
                                         fontSize: 14,

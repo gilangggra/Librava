@@ -94,7 +94,7 @@ class ChatRoomPage extends StatefulWidget {
 
   const ChatRoomPage({
     super.key,
-    this.userName = 'Mitra Transaksi',
+    this.userName = 'Librava Partner',
     this.isOnline = true,
     this.transactionId,
   });
@@ -375,28 +375,28 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     String selectedAsset = 'assets/images/book_atomic_habits.jpg';
     final samplePhotos = [
       {
-        'title': 'Cover Depan',
-        'subtitle': 'Sampul depan & judul',
+        'title': 'Front Cover',
+        'subtitle': 'Front cover & title',
         'asset': 'assets/images/book_atomic_habits.jpg',
       },
       {
-        'title': 'Halaman Dalam',
-        'subtitle': 'Kondisi kertas & teks',
+        'title': 'Inside Pages',
+        'subtitle': 'Paper & text condition',
         'asset': 'assets/images/book_fruit_fly.jpg',
       },
       {
-        'title': 'Punggung Buku',
-        'subtitle': 'Jilid & tepi lembaran',
+        'title': 'Book Spine',
+        'subtitle': 'Binding & edge condition',
         'asset': 'assets/images/book_the_unknown.jpg',
       },
       {
-        'title': 'Rak & Koleksi',
-        'subtitle': 'Buku di perpustakaan',
+        'title': 'Bookshelf & Collection',
+        'subtitle': 'Book in shelf',
         'asset': 'assets/images/bookshelf.jpg',
       },
       {
-        'title': 'Koleksi Sastra',
-        'subtitle': 'Fisik buku novel',
+        'title': 'Literature Collection',
+        'subtitle': 'Physical novel condition',
         'asset': 'assets/images/book_midnight_lib.jpg',
       },
     ];
@@ -438,7 +438,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Kirim Foto Kondisi Buku',
+                          'Send Book Condition Photo',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -461,8 +461,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                 );
                                 setModalState(() {
                                   samplePhotos.insert(0, {
-                                    'title': 'Foto Saya',
-                                    'subtitle': 'Foto dari perangkat',
+                                    'title': 'My Photo',
+                                    'subtitle': 'Photo from device',
                                     'asset': uploaded,
                                   });
                                   selectedAsset = uploaded;
@@ -617,7 +617,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                       controller: captionController,
                       decoration: InputDecoration(
                         hintText:
-                            'Keterangan foto (contoh: "Cover mulus tanpa coretan")...',
+                            'Photo caption (e.g. "Clean cover without marks")...',
                         hintStyle: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFF9E9BAE),
@@ -647,7 +647,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                         icon: const Icon(Icons.send_rounded,
                             size: 18, color: Colors.white),
                         label: const Text(
-                          'Kirim Foto Kondisi Buku',
+                          'Send Book Condition Photo',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -1023,7 +1023,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                   ),
                                   const SizedBox(height: 14),
                                   const Text(
-                                    'Mulai Obrolan',
+                                    'Start Conversation',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w700,
@@ -1032,7 +1032,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                                   ),
                                   const SizedBox(height: 6),
                                   const Text(
-                                    'Kirim pesan atau foto fisik buku untuk berkoordinasi dengan mitra transaksi Anda.',
+                                    'Send a message or photo of the physical book to coordinate with your partner.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 13,
@@ -1082,7 +1082,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                         color: AppColors.primary,
                         size: 22,
                       ),
-                      tooltip: 'Kirim Foto Kondisi Buku',
+                      tooltip: 'Send Book Condition Photo',
                       onPressed: _bukaModalLampiranFoto,
                     ),
                   ),
@@ -1107,7 +1107,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                         onChanged: (_) => setState(() {}),
                         onSubmitted: (_) => _kirimPesan(),
                         decoration: const InputDecoration(
-                          hintText: 'Tulis pesan...',
+                          hintText: 'Type a message...',
                           hintStyle: TextStyle(
                             color: Color(0xFFA5A2B8),
                             fontSize: 14,

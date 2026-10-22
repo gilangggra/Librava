@@ -47,7 +47,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Request list'), findsOneWidget);
-    expect(find.text('Belum Ada Permintaan Masuk'), findsOneWidget);
+    expect(find.text('No Incoming Requests Yet'), findsOneWidget);
   });
 
   testWidgets('RequestListPage merender judul dan daftar request dengan benar',

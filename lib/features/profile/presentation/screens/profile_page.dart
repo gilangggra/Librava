@@ -82,7 +82,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Pengaturan Akun',
+                  'Account Settings',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -93,7 +93,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: Color(0xFFFF4D4F)),
                   title: const Text(
-                    'Keluar dari Akun',
+                    'Log Out',
                     style: TextStyle(
                       color: Color(0xFFFF4D4F),
                       fontWeight: FontWeight.w600,
@@ -245,7 +245,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Event yang Saya Ikuti',
+                          'My Joined Events',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -260,7 +260,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            '${myEvents.length} Event',
+                            '${myEvents.length} Events',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -281,7 +281,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   size: 48, color: Color(0xFFB4B0C7)),
                               SizedBox(height: 12),
                               Text(
-                                'Belum Ada Event yang Diikuti',
+                                'No Joined Events Yet',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 15,
@@ -290,7 +290,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                               SizedBox(height: 4),
                               Text(
-                                'Jelajahi agenda literasi kampus di Home dan tekan tombol Join Event.',
+                                'Explore campus literacy events on Home and tap Join Event.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 13,
@@ -413,19 +413,19 @@ class _ProfilePageState extends State<ProfilePage> {
   String _getStatusText(TransactionModel trx) {
     switch (trx.status.toLowerCase()) {
       case 'selesai':
-        return 'Selesai';
+        return 'Completed';
       case 'sedang_dipinjam':
-        return 'Sedang Dipinjam';
+        return 'Borrowed';
       case 'disetujui':
-        return 'Disetujui';
+        return 'Approved';
       case 'deposit_dibayar':
-        return 'Deposit Dibayar';
+        return 'Deposit Paid';
       case 'lokasi_ditentukan':
-        return 'Lokasi Ditentukan';
+        return 'Handover Set';
       case 'ditolak':
-        return 'Ditolak';
+        return 'Rejected';
       case 'dibatalkan':
-        return 'Dibatalkan';
+        return 'Cancelled';
       case 'pending':
       default:
         return "Waiting for owner's response";

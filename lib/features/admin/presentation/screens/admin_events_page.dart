@@ -425,8 +425,8 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                                 children: [
                                   Text(
                                     _kataKunci.isNotEmpty
-                                        ? 'Tidak ada event yang sesuai dengan pencarian.'
-                                        : 'Belum ada data event kampus.',
+                                        ? 'No events match your search.'
+                                        : 'No campus events found.',
                                     style: const TextStyle(
                                       fontSize: 13.5,
                                       color: Color(0xFF7E7A92),
@@ -447,7 +447,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                                         }
                                       },
                                       icon: const Icon(Icons.add, size: 16),
-                                      label: const Text('Buat Event Baru'),
+                                      label: const Text('Create New Event'),
                                     ),
                                   ],
                                 ],

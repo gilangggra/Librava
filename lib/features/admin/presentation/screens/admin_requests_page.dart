@@ -296,7 +296,7 @@ class _AdminRequestsPageState extends State<AdminRequestsPage> {
         adminProvider.jumlahTransaksi == 0) {
       return _buildPesanTengah(
         icon: CupertinoIcons.wifi_exclamationmark,
-        judul: 'Data request gagal dimuat',
+        judul: 'Failed to load request data',
         subjudul: adminProvider.errorTransaksi,
         tombol: ElevatedButton(
           onPressed: _muatData,
@@ -308,7 +308,7 @@ class _AdminRequestsPageState extends State<AdminRequestsPage> {
             ),
           ),
           child: const Text(
-            'Coba lagi',
+            'Try again',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
           ),
         ),
@@ -321,9 +321,9 @@ class _AdminRequestsPageState extends State<AdminRequestsPage> {
       final sedangMencari = adminProvider.kataKunciRequest.trim().isNotEmpty;
       return _buildPesanTengah(
         icon: CupertinoIcons.doc_text,
-        judul: sedangMencari ? 'Request tidak ditemukan' : 'Belum ada request',
+        judul: sedangMencari ? 'Request not found' : 'No requests yet',
         subjudul: sedangMencari
-            ? 'Coba kata kunci lain seperti judul buku atau nama pengguna.'
+            ? 'Try searching with another keyword such as book title or username.'
             : null,
       );
     }

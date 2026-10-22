@@ -81,7 +81,7 @@ class _ChatPageState extends State<ChatPage> {
       final partnerId = isOwner ? trx.pemohonId : trx.pemilikId;
       final partnerName = isOwner ? trx.pemohonNama : trx.pemilikNama;
       final partnerDisplay =
-          partnerName.isNotEmpty ? partnerName : 'Mitra Librava';
+          partnerName.isNotEmpty ? partnerName : 'Librava Partner';
 
       final groupKey = partnerId.isNotEmpty
           ? partnerId
@@ -113,7 +113,7 @@ class _ChatPageState extends State<ChatPage> {
       final partnerName =
           isOwner ? primaryTrx.pemohonNama : primaryTrx.pemilikNama;
       final partnerDisplay =
-          partnerName.isNotEmpty ? partnerName : 'Mitra Librava';
+          partnerName.isNotEmpty ? partnerName : 'Librava Partner';
 
       int totalUnread = 0;
       ({String text, String sentAt, String? senderNama})? mostRecentMsg;
@@ -151,12 +151,12 @@ class _ChatPageState extends State<ChatPage> {
       } else {
         final isBarter = primaryTrx.jenisTransaksi.toLowerCase() == 'barter';
         lastMsg = isBarter
-            ? 'Barter buku: ${primaryTrx.judulBuku}'
-            : 'Peminjaman: ${primaryTrx.judulBuku}';
+            ? 'Book barter: ${primaryTrx.judulBuku}'
+            : 'Loan: ${primaryTrx.judulBuku}';
       }
 
       String displayDate =
-          primaryTrx.tanggal.isNotEmpty ? primaryTrx.tanggal : 'Hari ini';
+          primaryTrx.tanggal.isNotEmpty ? primaryTrx.tanggal : 'Today';
       if (latestMsgTime != null) {
         final now = DateTime.now();
         if (latestMsgTime.year == now.year &&
@@ -630,7 +630,7 @@ class _ChatPageState extends State<ChatPage> {
                                 ),
                                 const SizedBox(height: 18),
                                 const Text(
-                                  'Belum Ada Obrolan',
+                                  'No Chats Yet',
                                   style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w700,
@@ -639,7 +639,7 @@ class _ChatPageState extends State<ChatPage> {
                                 ),
                                 const SizedBox(height: 8),
                                 const Text(
-                                  'Obrolan akan otomatis tersedia ketika Anda memiliki transaksi peminjaman atau barter buku yang sedang berlangsung.',
+                                  'Chats will appear here once you have an ongoing book borrow or barter transaction.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 13.5,

@@ -94,7 +94,7 @@ class AdminTransactionDetailPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  transaksi.bookJudul.isEmpty ? 'Judul tidak ada' : transaksi.bookJudul,
+                  transaksi.bookJudul.isEmpty ? 'No title' : transaksi.bookJudul,
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,

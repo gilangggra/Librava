@@ -136,7 +136,7 @@ void main() {
       await tester.tap(publishBtn);
       await tester.pump();
 
-      expect(find.text('Judul event tidak boleh kosong.'), findsOneWidget);
+      expect(find.text('Event title cannot be empty.'), findsOneWidget);
     });
 
     testWidgets('validasi banner kosong menampilkan pesan error', (tester) async {
@@ -186,7 +186,7 @@ void main() {
       await tester.tap(publishBtn);
       await tester.pump();
 
-      expect(find.text('Banner event tidak boleh kosong. Silakan pilih atau unggah banner event.'), findsOneWidget);
+      expect(find.text('Event banner cannot be empty. Please choose or upload an event banner.'), findsOneWidget);
     });
 
     testWidgets('validasi lokasi kosong menampilkan pesan error', (tester) async {
@@ -233,7 +233,7 @@ void main() {
       await tester.tap(publishBtn);
       await tester.pump();
 
-      expect(find.text('Lokasi event tidak boleh kosong.'), findsOneWidget);
+      expect(find.text('Event location cannot be empty.'), findsOneWidget);
     });
 
     testWidgets('validasi deskripsi kosong menampilkan pesan error', (tester) async {
@@ -281,7 +281,7 @@ void main() {
       await tester.tap(publishBtn);
       await tester.pump();
 
-      expect(find.text('Deskripsi event tidak boleh kosong.'), findsOneWidget);
+      expect(find.text('Event description cannot be empty.'), findsOneWidget);
     });
 
     testWidgets('berhasil mempublikasikan event dan menampilkan notif "Event berhasil dibuat!"', (tester) async {
@@ -332,7 +332,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100)); // async eventProvider selesai dan snackbar muncul
 
       // Verifikasi notif dan event berhasil ditambahkan ke EventProvider
-      expect(find.text('Event berhasil dibuat!'), findsOneWidget);
+      expect(find.text('Event created successfully!'), findsOneWidget);
       expect(eventProvider.events.any((e) => e.judul == 'Seminar AI & Literasi 2026'), isTrue);
     });
   });

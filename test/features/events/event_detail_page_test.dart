@@ -67,8 +67,8 @@ void main() {
       // Memastikan tombol 'Approve' TIDAK ADA
       expect(find.widgetWithText(ElevatedButton, 'Approve'), findsNothing);
 
-      // Memastikan banner 'Event Telah Disetujui (Approved)' ada
-      expect(find.text('Event Telah Disetujui (Approved)'), findsOneWidget);
+      // Memastikan banner 'Event Approved' ada
+      expect(find.text('Event Approved'), findsOneWidget);
     });
 
     testWidgets('ketika status event PENDING, tombol Approve dan Reject MUNCUL untuk aksi admin', (tester) async {

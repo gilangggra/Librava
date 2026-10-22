@@ -116,7 +116,7 @@ class _AddBookPageState extends State<AddBookPage> {
             });
             messenger.showSnackBar(
               const SnackBar(
-                content: Text('Cover buku berhasil diunggah ke server!'),
+                content: Text('Book cover successfully uploaded to server!'),
                 backgroundColor: Color(0xFF16A34A),
                 behavior: SnackBarBehavior.floating,
                 duration: Duration(seconds: 2),
@@ -143,7 +143,7 @@ class _AddBookPageState extends State<AddBookPage> {
         });
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Gagal memilih gambar: $e'),
+            content: Text('Failed to select image: $e'),
             backgroundColor: const Color(0xFFDC2626),
             behavior: SnackBarBehavior.floating,
           ),
@@ -380,7 +380,7 @@ class _AddBookPageState extends State<AddBookPage> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'Mengunggah cover...',
+                                'Uploading cover...',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
@@ -460,7 +460,7 @@ class _AddBookPageState extends State<AddBookPage> {
     if (titleText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Silakan masukkan judul buku.'),
+          content: Text('Please enter the book title.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -471,7 +471,7 @@ class _AddBookPageState extends State<AddBookPage> {
     if (authorText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Silakan masukkan nama penulis buku.'),
+          content: Text('Please enter the author name.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -483,7 +483,7 @@ class _AddBookPageState extends State<AddBookPage> {
     if (auth.token == null || auth.token!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Silakan login terlebih dahulu untuk mempublikasikan buku.'),
+          content: Text('Please log in first to publish a book.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -528,7 +528,7 @@ class _AddBookPageState extends State<AddBookPage> {
 
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Buku "$titleText" berhasil dipublikasikan!'),
+          content: Text('Book "$titleText" successfully published!'),
           backgroundColor: const Color(0xFF16A34A),
           behavior: SnackBarBehavior.floating,
         ),

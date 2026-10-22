@@ -66,7 +66,7 @@ void main() {
     await tester.tap(find.byIcon(CupertinoIcons.delete_left));
     await tester.pumpAndSettle();
 
-    expect(find.text('Pilih Buku untuk Dihapus'), findsOneWidget);
+    expect(find.text('Select Book to Delete'), findsOneWidget);
   });
 
   test('BookProvider hapusBuku menghapus buku dari daftar', () {

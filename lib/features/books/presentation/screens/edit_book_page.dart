@@ -140,7 +140,7 @@ class _EditBookPageState extends State<EditBookPage> {
             });
             messenger.showSnackBar(
               const SnackBar(
-                content: Text('Cover buku berhasil diunggah ke server!'),
+                content: Text('Book cover successfully uploaded to server!'),
                 backgroundColor: Color(0xFF16A34A),
                 behavior: SnackBarBehavior.floating,
                 duration: Duration(seconds: 2),
@@ -167,7 +167,7 @@ class _EditBookPageState extends State<EditBookPage> {
         });
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Gagal memilih gambar: $e'),
+            content: Text('Failed to select image: $e'),
             backgroundColor: const Color(0xFFDC2626),
             behavior: SnackBarBehavior.floating,
           ),
@@ -439,7 +439,7 @@ class _EditBookPageState extends State<EditBookPage> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                'Mengunggah cover...',
+                                'Uploading cover...',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 12,
@@ -526,7 +526,7 @@ class _EditBookPageState extends State<EditBookPage> {
     if (auth.token == null || auth.token!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Silakan login terlebih dahulu untuk mengedit buku.'),
+          content: Text('Please log in first to edit the book.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -571,7 +571,7 @@ class _EditBookPageState extends State<EditBookPage> {
 
       messenger.showSnackBar(
         SnackBar(
-          content: Text('Buku "$titleText" berhasil diperbarui!'),
+          content: Text('Book "$titleText" successfully updated!'),
           backgroundColor: const Color(0xFF16A34A),
           behavior: SnackBarBehavior.floating,
         ),
@@ -600,7 +600,7 @@ class _EditBookPageState extends State<EditBookPage> {
     if (auth.token == null || auth.token!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Silakan login terlebih dahulu untuk menghapus buku.'),
+          content: Text('Please log in first to delete the book.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -629,7 +629,7 @@ class _EditBookPageState extends State<EditBookPage> {
             ),
             const SizedBox(width: 10),
             const Text(
-              'Hapus Buku?',
+              'Delete Book?',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 18,
@@ -639,7 +639,7 @@ class _EditBookPageState extends State<EditBookPage> {
           ],
         ),
         content: Text(
-          'Apakah Anda yakin ingin menghapus buku "$judulBuku" dari koleksi Anda? Tindakan ini tidak dapat dibatalkan.',
+          'Are you sure you want to delete "$judulBuku" from your collection? This action cannot be undone.',
           style: const TextStyle(
             fontSize: 13.5,
             color: Color(0xFF555268),
@@ -660,7 +660,7 @@ class _EditBookPageState extends State<EditBookPage> {
                     side: const BorderSide(color: Color(0xFFDCD9EB)),
                   ),
                   child: const Text(
-                    'Batal',
+                    'Cancel',
                     style: TextStyle(
                       color: Color(0xFF7E7A92),
                       fontWeight: FontWeight.w600,
@@ -680,7 +680,7 @@ class _EditBookPageState extends State<EditBookPage> {
                   ),
                   onPressed: () => Navigator.pop(ctx, true),
                   child: const Text(
-                    'Ya, Hapus',
+                    'Yes, Delete',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -712,7 +712,7 @@ class _EditBookPageState extends State<EditBookPage> {
 
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Buku "$judulBuku" berhasil dihapus.'),
+            content: Text('Book "$judulBuku" has been deleted.'),
             backgroundColor: const Color(0xFFDC2626),
             behavior: SnackBarBehavior.floating,
           ),
@@ -726,7 +726,7 @@ class _EditBookPageState extends State<EditBookPage> {
         });
         messenger.showSnackBar(
           SnackBar(
-            content: Text('Gagal menghapus buku: $e'),
+            content: Text('Failed to delete book: $e'),
             backgroundColor: const Color(0xFFDC2626),
             behavior: SnackBarBehavior.floating,
           ),
@@ -1127,7 +1127,7 @@ class _EditBookPageState extends State<EditBookPage> {
                           ),
                           icon: const Icon(CupertinoIcons.trash, size: 18),
                           label: const Text(
-                            'Hapus',
+                            'Delete',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,

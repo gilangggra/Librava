@@ -141,9 +141,9 @@ void main() {
     await tester.tap(find.text('Cancel Request'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Batalkan Permintaan?'), findsOneWidget);
-    expect(find.text('Kembali'), findsOneWidget);
-    expect(find.text('Ya, Batalkan'), findsOneWidget);
+    expect(find.text('Cancel Request?'), findsOneWidget);
+    expect(find.text('Back'), findsOneWidget);
+    expect(find.text('Yes, Cancel'), findsOneWidget);
   });
 
   testWidgets('Menekan tombol View profile membuka halaman Profile view dengan data pemilik',
@@ -185,19 +185,19 @@ void main() {
       ),
     );
 
-    expect(find.text('Konfirmasi Serah Terima'), findsOneWidget);
+    expect(find.text('Confirm Handover'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Konfirmasi Serah Terima'));
-    await tester.tap(find.text('Konfirmasi Serah Terima'));
+    await tester.ensureVisible(find.text('Confirm Handover'));
+    await tester.tap(find.text('Confirm Handover'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Apakah Anda sudah menerima / menyerahkan buku "The Unknown" di Open Library Telkom University?'), findsOneWidget);
-    expect(find.text('Ya, Konfirmasi'), findsOneWidget);
+    expect(find.text('Have you handed over or received "The Unknown" at Open Library Telkom University?'), findsOneWidget);
+    expect(find.text('Yes, Confirm'), findsOneWidget);
 
-    await tester.tap(find.text('Ya, Konfirmasi'));
+    await tester.tap(find.text('Yes, Confirm'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Konfirmasi serah terima Anda berhasil dicatat.'), findsOneWidget);
+    expect(find.text('Your handover confirmation has been recorded.'), findsOneWidget);
   });
 }
 

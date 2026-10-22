@@ -98,9 +98,9 @@ class _RequestListPageState extends State<RequestListPage> {
                   judul: t.bukuBarter,
                 )
               : null,
-          requestedPeriod: '${t.durasiHari} hari',
+          requestedPeriod: '${t.durasiHari} days',
           dateRange: t.tanggal,
-          requestedOn: t.tanggal.isNotEmpty ? t.tanggal : 'Hari ini',
+          requestedOn: t.tanggal.isNotEmpty ? t.tanggal : 'Today',
           requesterUserId: t.pemohonId,
           transactionId: int.tryParse(t.id),
         );
@@ -880,7 +880,7 @@ class _RequestListPageState extends State<RequestListPage> {
                       ),
                       const SizedBox(height: 16),
                       const Text(
-                        'Belum Ada Permintaan Masuk',
+                        'No Incoming Requests Yet',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
@@ -889,7 +889,7 @@ class _RequestListPageState extends State<RequestListPage> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Permintaan pinjam atau barter dari mahasiswa lain untuk buku koleksi Anda akan ditampilkan di sini.',
+                        'Borrow or barter requests from other students for your books will appear here.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13.5,

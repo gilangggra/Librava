@@ -183,7 +183,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
   Widget _buildActiveTransactionBanner(TransactionModel tx) {
     final s = tx.status.toLowerCase();
     final isBarter = tx.jenisTransaksi.toLowerCase() == 'barter';
-    final tipeStr = isBarter ? 'Barter' : 'Peminjaman';
+    final tipeStr = isBarter ? 'barter' : 'borrow';
 
     final Color bgColor;
     final Color borderColor;
@@ -202,10 +202,10 @@ class _BookDetailPageState extends State<BookDetailPage> {
       descColor = const Color(0xFFB45309);
       btnColor = const Color(0xFFD97706);
       iconData = CupertinoIcons.clock_fill;
-      title = 'Permohonan Sedang Diproses';
+      title = 'Request Being Processed';
       desc =
-          'Anda telah mengajukan $tipeStr untuk buku ini. Menunggu persetujuan pemilik.';
-      btnText = 'Lihat Status Pengajuan';
+          'You have submitted a $tipeStr request for this book. Waiting for owner approval.';
+      btnText = 'View Request Status';
     } else if (s == 'disetujui' || s == 'lokasi_ditentukan') {
       bgColor = const Color(0xFFECFDF5);
       borderColor = const Color(0xFFA7F3D0);
@@ -213,10 +213,10 @@ class _BookDetailPageState extends State<BookDetailPage> {
       descColor = const Color(0xFF047857);
       btnColor = const Color(0xFF059669);
       iconData = CupertinoIcons.checkmark_seal_fill;
-      title = 'Pengajuan Telah Disetujui!';
+      title = 'Request Approved!';
       desc =
-          'Pengajuan $tipeStr Anda telah diterima. Silakan atur / konfirmasi serah terima buku.';
-      btnText = 'Buka Detail Serah Terima';
+          'Your $tipeStr request has been accepted. Please arrange or confirm book handover.';
+      btnText = 'Open Handover Details';
     } else {
       bgColor = const Color(0xFFEFF6FF);
       borderColor = const Color(0xFFBFDBFE);
@@ -224,11 +224,11 @@ class _BookDetailPageState extends State<BookDetailPage> {
       descColor = const Color(0xFF1D4ED8);
       btnColor = const Color(0xFF2563EB);
       iconData = Icons.menu_book_rounded;
-      title = 'Buku Sedang Anda Pinjam';
+      title = 'Book Currently Borrowed by You';
       desc = tx.effectiveDueDate != null
-          ? 'Batas pengembalian buku: ${tx.effectiveDueDate!.day}/${tx.effectiveDueDate!.month}/${tx.effectiveDueDate!.year}.'
-          : 'Buku ini sedang aktif dalam masa peminjaman Anda.';
-      btnText = 'Lihat Detail Transaksi';
+          ? 'Return due date: ${tx.effectiveDueDate!.day}/${tx.effectiveDueDate!.month}/${tx.effectiveDueDate!.year}.'
+          : 'This book is currently active in your borrowing period.';
+      btnText = 'View Transaction Details';
     }
 
     return Container(
@@ -430,7 +430,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'Ajukan Peminjaman',
+                        'Request Borrow',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -446,7 +446,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Buku: $_title',
+                    'Book: $_title',
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -455,7 +455,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ),
                   const SizedBox(height: 18),
                   const Text(
-                    'Durasi Pinjam',
+                    'Borrow Duration',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -469,7 +469,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       return Padding(
                         padding: const EdgeInsets.only(right: 10),
                         child: ChoiceChip(
-                          label: Text('$hari Hari'),
+                          label: Text('$hari Days'),
                           selected: isSelected,
                           selectedColor: AppColors.primary,
                           backgroundColor: const Color(0xFFF2F1FA),
@@ -508,7 +508,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Deposit Simulasi: Rp 20.000 (akan diproses setelah disetujui)',
+                            'Simulated Deposit: Rp 20,000 (processed upon approval)',
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w500,
@@ -523,7 +523,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   TextField(
                     controller: catatanController,
                     decoration: InputDecoration(
-                      labelText: 'Catatan untuk pemilik (opsional)',
+                      labelText: 'Note for owner (optional)',
                       labelStyle: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF8A88A5),
@@ -586,7 +586,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Permohonan pinjam "$_title" berhasil diajukan!',
+                                        'Borrow request for "$_title" submitted successfully!',
                                       ),
                                       backgroundColor: AppColors.primary,
                                       behavior: SnackBarBehavior.floating,
@@ -598,7 +598,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                 final errMsg = context
                                         .read<TransactionProvider>()
                                         .errorMessage ??
-                                    'Gagal mengajukan pinjaman.';
+                                    'Failed to submit borrow request.';
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -626,7 +626,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                               ),
                             )
                           : const Text(
-                              'Konfirmasi Pengajuan Pinjam',
+                              'Confirm Borrow Request',
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
@@ -744,7 +744,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'Ajukan Barter Buku',
+                        'Request Book Barter',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -760,7 +760,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Ingin ditukar dengan: $_title',
+                    'Exchange for: $_title',
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -769,7 +769,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ),
                   const SizedBox(height: 18),
                   const Text(
-                    'Pilih Buku dari Koleksimu',
+                    'Select Book from Your Collection',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -854,7 +854,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Permohonan barter $_title dengan ${bukuBarterTerpilih.judul} diajukan!',
+                                        'Barter request for "$_title" with "${bukuBarterTerpilih.judul}" submitted!',
                                       ),
                                       backgroundColor: AppColors.primary,
                                       behavior: SnackBarBehavior.floating,
@@ -866,7 +866,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                 final errMsg = context
                                         .read<TransactionProvider>()
                                         .errorMessage ??
-                                    'Gagal mengajukan barter.';
+                                    'Failed to submit barter request.';
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
@@ -894,7 +894,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                               ),
                             )
                           : const Text(
-                              'Konfirmasi Pengajuan Barter',
+                              'Confirm Barter Request',
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
@@ -1156,8 +1156,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                   SnackBar(
                                     content: Text(
                                       willBookmark
-                                          ? 'Buku disimpan ke bookmark'
-                                          : 'Buku dihapus dari bookmark',
+                                          ? 'Book saved to bookmarks'
+                                          : 'Book removed from bookmarks',
                                     ),
                                     duration: const Duration(seconds: 1),
                                     backgroundColor: AppColors.primary,
@@ -1357,7 +1357,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Buku Sedang Tidak Tersedia',
+                                    'Book Currently Unavailable',
                                     style: TextStyle(
                                       fontSize: 14.5,
                                       fontWeight: FontWeight.w700,
@@ -1366,7 +1366,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                   ),
                                   SizedBox(height: 2),
                                   Text(
-                                    'Buku ini sedang dipinjam atau dalam proses transaksi lain.',
+                                    'This book is currently borrowed or in another active transaction.',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
@@ -1555,7 +1555,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
               ),
               const SizedBox(width: 10),
               const Text(
-                'Hapus Buku?',
+                'Delete Book?',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 18,
@@ -1565,7 +1565,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
             ],
           ),
           content: Text(
-            'Apakah Anda yakin ingin menghapus buku "${book.judul}" dari koleksi Anda? Tindakan ini tidak dapat dibatalkan.',
+            'Are you sure you want to delete "${book.judul}" from your collection? This action cannot be undone.',
             style: const TextStyle(
               fontSize: 13.5,
               color: Color(0xFF555268),
@@ -1586,7 +1586,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       side: const BorderSide(color: Color(0xFFDCD9EB)),
                     ),
                     child: const Text(
-                      'Batal',
+                      'Cancel',
                       style: TextStyle(
                         color: Color(0xFF7E7A92),
                         fontWeight: FontWeight.w600,
@@ -1623,7 +1623,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content:
-                                Text('Buku "${book.judul}" berhasil dihapus.'),
+                                Text('Book "${book.judul}" deleted successfully.'),
                             backgroundColor: const Color(0xFFDC2626),
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -1632,7 +1632,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       }
                     },
                     child: const Text(
-                      'Ya, Hapus',
+                      'Yes, Delete',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -1747,7 +1747,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'Beri Ulasan Buku',
+                        'Write Book Review',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -1763,7 +1763,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Buku: $_title',
+                    'Book: $_title',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -1772,7 +1772,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ),
                   const SizedBox(height: 18),
                   const Text(
-                    'Penilaian Bintang',
+                    'Star Rating',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -1816,7 +1816,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ),
                   const SizedBox(height: 18),
                   const Text(
-                    'Komentar / Catatan Ulasan',
+                    'Comments / Review Notes',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -1829,7 +1829,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                     maxLines: 3,
                     decoration: InputDecoration(
                       hintText:
-                          'Bagikan pendapatmu tentang alur cerita atau isi buku ini...',
+                          'Share your thoughts about the storyline or content of this book...',
                       hintStyle: const TextStyle(
                         fontSize: 13.5,
                         color: Color(0xFF9CA3AF),
@@ -1882,7 +1882,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                 messenger.showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                        'Ulasan berhasil dikirim! Terima kasih.'),
+                                        'Review submitted successfully! Thank you.'),
                                     backgroundColor: Color(0xFF16A34A),
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -1915,7 +1915,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                               ),
                             )
                           : const Text(
-                              'Kirim Ulasan',
+                              'Submit Review',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -1936,15 +1936,15 @@ class _BookDetailPageState extends State<BookDetailPage> {
   String _getRatingDescription(int rating) {
     switch (rating) {
       case 1:
-        return 'Sangat Kurang ⭐';
+        return 'Very Poor ⭐';
       case 2:
-        return 'Kurang ⭐⭐';
+        return 'Poor ⭐⭐';
       case 3:
-        return 'Cukup Baik ⭐⭐⭐';
+        return 'Good ⭐⭐⭐';
       case 4:
-        return 'Bagus ⭐⭐⭐⭐';
+        return 'Very Good ⭐⭐⭐⭐';
       case 5:
-        return 'Luar Biasa / Sangat Bagus ⭐⭐⭐⭐⭐';
+        return 'Excellent ⭐⭐⭐⭐⭐';
       default:
         return '';
     }
@@ -2027,7 +2027,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                 OutlinedButton.icon(
                   onPressed: () => _bukaModalTulisUlasan(context),
                   icon: const Icon(CupertinoIcons.pencil, size: 14),
-                  label: const Text('Beri Ulasan'),
+                  label: const Text('Write Review'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.primary,
                     side: const BorderSide(color: Color(0xFFC7BFF5)),
@@ -2083,8 +2083,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
                 Expanded(
                   child: Text(
                     _totalReviews > 0
-                        ? 'Berdasarkan ulasan $_totalReviews pembaca di Librava.'
-                        : 'Belum ada ulasan resmi. Nilai standar katalog adalah $ratingTampil.',
+                        ? 'Based on $_totalReviews reader reviews on Librava.'
+                        : 'No reviews yet. Default catalog rating is $ratingTampil.',
                     style: const TextStyle(
                       fontSize: 12.5,
                       color: Color(0xFF6B7280),
@@ -2122,7 +2122,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Belum ada ulasan untuk buku ini',
+                    'No reviews for this book yet',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -2131,7 +2131,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Jadilah yang pertama membagikan pendapat Anda!',
+                    'Be the first to share your review!',
                     style: TextStyle(
                       fontSize: 12,
                       color: Color(0xFF8A88A5),

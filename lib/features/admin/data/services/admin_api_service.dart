@@ -189,18 +189,7 @@ class AdminApiService {
 
     throw Exception(
       body['message'] ??
-          'Gagal memperbarui moderasi buku (${response.statusCode})',
-    );
-  }
-
-  AdminDashboardModel _getDefaultDashboard() {
-    return const AdminDashboardModel(
-      totalStudents: 0,
-      totalBooks: 0,
-      totalRequests: 0,
-      totalTransactions: 0,
-      recentActivity: [],
-      recentTransactions: [],
+          'Failed to update book moderation (${response.statusCode})',
     );
   }
 }
