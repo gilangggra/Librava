@@ -173,6 +173,13 @@ void main() {
       await tester.enterText(textFields.at(0), 'Seminar AI & Literasi 2026');
       await tester.pumpAndSettle();
 
+      expect(find.text('Upload event banner'), findsOneWidget);
+
+      // Mengetuk kotak banner langsung memanggil file picker tanpa membuka modal pilihan template
+      await tester.tap(find.text('Upload event banner'));
+      await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsNothing);
+
       final publishBtn = find.text('Publish event');
       await tester.ensureVisible(publishBtn);
       await tester.pumpAndSettle();
@@ -204,7 +211,10 @@ void main() {
             ChangeNotifierProvider<EventProvider>.value(value: eventProvider),
           ],
           child: const MaterialApp(
-            home: AddEventPage(isAdmin: true),
+            home: AddEventPage(
+              isAdmin: true,
+              initialBanner: 'assets/images/event_library.jpg',
+            ),
           ),
         ),
       );
@@ -214,16 +224,6 @@ void main() {
       // Isi judul
       final textFields = find.byType(TextField);
       await tester.enterText(textFields.at(0), 'Seminar AI & Literasi 2026');
-
-      // Pilih banner via template kampus
-      final bannerBox = find.text('Pilih atau Upload Banner Event');
-      await tester.tap(bannerBox);
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Pilih Template Banner Kampus'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Perpustakaan (Library Rotunda)'));
       await tester.pumpAndSettle();
 
       // Tekan tombol publish saat lokasi masih kosong
@@ -258,29 +258,19 @@ void main() {
             ChangeNotifierProvider<EventProvider>.value(value: eventProvider),
           ],
           child: const MaterialApp(
-            home: AddEventPage(isAdmin: true),
+            home: AddEventPage(
+              isAdmin: true,
+              initialBanner: 'assets/images/event_library.jpg',
+            ),
           ),
         ),
       );
 
       await tester.pumpAndSettle();
 
-      // Isi judul
+      // Isi judul & lokasi
       final textFields = find.byType(TextField);
       await tester.enterText(textFields.at(0), 'Seminar AI & Literasi 2026');
-
-      // Pilih banner via template kampus
-      final bannerBox = find.text('Pilih atau Upload Banner Event');
-      await tester.tap(bannerBox);
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Pilih Template Banner Kampus'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Perpustakaan (Library Rotunda)'));
-      await tester.pumpAndSettle();
-
-      // Isi lokasi
       await tester.enterText(textFields.at(1), 'Auditorium Telkom University');
       await tester.pumpAndSettle();
 
@@ -316,7 +306,10 @@ void main() {
             ChangeNotifierProvider<EventProvider>.value(value: eventProvider),
           ],
           child: const MaterialApp(
-            home: AddEventPage(isAdmin: true),
+            home: AddEventPage(
+              isAdmin: true,
+              initialBanner: 'assets/images/event_library.jpg',
+            ),
           ),
         ),
       );
@@ -326,18 +319,6 @@ void main() {
       // Isi form lengkap
       final textFields = find.byType(TextField);
       await tester.enterText(textFields.at(0), 'Seminar AI & Literasi 2026');
-
-      // Pilih banner dari template kampus
-      final bannerBox = find.text('Pilih atau Upload Banner Event');
-      await tester.tap(bannerBox);
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Pilih Template Banner Kampus'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Perpustakaan (Library Rotunda)'));
-      await tester.pumpAndSettle();
-
       await tester.enterText(textFields.at(1), 'Auditorium Gedung Damar');
       await tester.enterText(textFields.at(2), 'Diskusi seru mengenai implementasi AI dalam dunia literasi.');
       await tester.pumpAndSettle();

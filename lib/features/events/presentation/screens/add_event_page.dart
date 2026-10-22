@@ -18,7 +18,8 @@ import '../providers/event_provider.dart';
 /// Didesain rapi, bersih, beginner-friendly, dan 100% konsisten dengan mockup UI.
 class AddEventPage extends StatefulWidget {
   final bool? isAdmin;
-  const AddEventPage({super.key, this.isAdmin});
+  final String? initialBanner;
+  const AddEventPage({super.key, this.isAdmin, this.initialBanner});
 
   @override
   State<AddEventPage> createState() => _AddEventPageState();
@@ -56,6 +57,9 @@ class _AddEventPageState extends State<AddEventPage> {
     super.initState();
     final now = DateTime.now();
     _selectedDate = DateTime(now.year, now.month, now.day + 1);
+    if (widget.initialBanner != null && widget.initialBanner!.isNotEmpty) {
+      _selectedAssetBanner = widget.initialBanner;
+    }
   }
 
   @override
@@ -249,195 +253,12 @@ class _AddEventPageState extends State<AddEventPage> {
     }
   }
 
-  /// Menampilkan menu aksi saat banner ditekan (Unggah dari perangkat, Template, atau Hapus)
-  void _tampilkanPilihanBannerAksi() {
-    final hasImage = _bannerBytes != null ||
-        _selectedAssetBanner != null ||
-        _uploadedBannerUrl != null;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE2E4E9),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Pilihan Banner Event',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF130F26),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFEDEAFE),
-                    child: Icon(Icons.file_upload_outlined, color: AppColors.primary),
-                  ),
-                  title: const Text(
-                    'Upload Gambar dari Perangkat',
-                    style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: const Text(
-                    'Pilih dan unggah gambar banner dari perangkat Anda',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF75728A)),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pilihDanUploadBanner();
-                  },
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFF1F3FB),
-                    child: Icon(Icons.collections_outlined, color: Color(0xFF555268)),
-                  ),
-                  title: const Text(
-                    'Pilih Template Banner Kampus',
-                    style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: const Text(
-                    'Gunakan template banner kampus Telkom University',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF75728A)),
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _pilihDariTemplateKampus();
-                  },
-                ),
-                if (hasImage)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFFEE2E2),
-                      child: Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
-                    ),
-                    title: const Text(
-                      'Hapus Banner Saat Ini',
-                      style: TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFFDC2626),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      setState(() {
-                        _bannerBytes = null;
-                        _bannerFileName = null;
-                        _uploadedBannerUrl = null;
-                        _selectedAssetBanner = null;
-                      });
-                    },
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Pilihan opsi template banner kampus bawaan jika diinginkan
-  void _pilihDariTemplateKampus() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.all(22.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Pilih Template Banner Kampus',
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF130F26),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildTemplateItem(
-                ctx,
-                'Perpustakaan (Library Rotunda)',
-                'assets/images/event_library.jpg',
-              ),
-              _buildTemplateItem(
-                ctx,
-                'Diskusi Buku (Book Discussion)',
-                'assets/images/event_book_discussion.jpg',
-              ),
-              _buildTemplateItem(
-                ctx,
-                'Reading Meetup (Komunitas Baca)',
-                'assets/images/event_reading_meetup.jpg',
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildTemplateItem(BuildContext ctx, String judul, String path) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.asset(path, width: 56, height: 42, fit: BoxFit.cover),
-      ),
-      title: Text(
-        judul,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-      ),
-      trailing: _selectedAssetBanner == path
-          ? const Icon(Icons.check_circle, color: AppColors.primary)
-          : null,
-      onTap: () {
-        setState(() {
-          _selectedAssetBanner = path;
-          _bannerBytes = null;
-          _bannerFileName = null;
-          _uploadedBannerUrl = null;
-        });
-        Navigator.pop(ctx);
-      },
-    );
-  }
-
   /// Kotak upload banner dengan garis putus-putus ungu sesuai mockup
   Widget _buildBannerBox() {
     final hasImage = _bannerBytes != null || _selectedAssetBanner != null;
 
     return GestureDetector(
-      onTap: _tampilkanPilihanBannerAksi,
+      onTap: _pilihDanUploadBanner,
       child: CustomPaint(
         painter: DashedBorderPainter(
           color: const Color(0xFF9086F4),
@@ -549,19 +370,11 @@ class _AddEventPageState extends State<AddEventPage> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Pilih atau Upload Banner Event',
+                      'Upload event banner',
                       style: TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF584CF4),
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Tap untuk unggah gambar atau pilih template kampus',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF75728A),
                       ),
                     ),
                   ],
