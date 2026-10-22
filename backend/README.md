@@ -129,20 +129,24 @@ Seed script (`prisma/seed.ts`) menginisialisasi data demo ke semua tabel. Aman d
 
 | Tabel | Jumlah | Detail |
 |---|---|---|
-| **Users** | 5 | 1 admin + 4 mahasiswa |
+| **Users** | 6 | 1 admin + 5 mahasiswa |
 | **Books** | 8 | Berbagai kategori (Teknologi, Self-Improvement, Novel) |
 | **Transactions** | 4 | Semua status: SELESAI, DALAM_PROSES, DISETUJUI, MENUNGGU |
 | **Chats** | 14 | Percakapan realistis di setiap transaksi |
 | **Reviews** | 2 | Rating 5★ pada transaksi SELESAI |
 
-### Credentials
+### Test Credentials (Seeder / Demo)
 
-Credential admin hanya disimpan di environment lokal atau secret manager. Jangan menulis password asli di dokumentasi, repository, issue, atau chat.
+Password standar untuk seluruh akun demo/pengujian adalah: **`password123456`**
 
-| Role | Email |
-|---|---|
-| 👑 Admin | `<admin-email>` |
-| 🎓 Mahasiswa | `<user-email>` |
+| Role | Nama Lengkap | Email (Login) | NIM | Saldo Dummy |
+|---|---|---|:---:|:---:|
+| 👑 Admin | Librava Admin | `admin@librava.com` | `1301219000` | Rp 500.000 |
+| 🎓 Mahasiswa | Budi Santoso | `budi@student.telkomuniversity.ac.id` | `1301210001` | Rp 250.000 |
+| 🎓 Mahasiswa | Sari Dewi | `sari@student.telkomuniversity.ac.id` | `1301210002` | Rp 200.000 |
+| 🎓 Mahasiswa | Citra Lestari | `citra@student.telkomuniversity.ac.id` | `1301210005` | Rp 200.000 |
+| 🎓 Mahasiswa | Andi Pratama | `andi@student.telkomuniversity.ac.id` | `1301210003` | Rp 220.000 |
+| 🎓 Mahasiswa | Rina Kartika | `rina@student.telkomuniversity.ac.id` | `1301210004` | Rp 180.000 |
 
 ---
 

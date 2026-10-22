@@ -186,6 +186,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }) {
     final bool isBarter = type.toLowerCase() == 'barter';
     final bool isAccepted = status.toLowerCase() == 'accepted';
+    final bool isRejected = status.toLowerCase() == 'rejected';
 
     return InkWell(
       onTap: onTap,
@@ -278,7 +279,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: isAccepted ? const Color(0xFFD1FADF) : const Color(0xFFFEF3C7),
+                color: isAccepted
+                    ? const Color(0xFFD1FADF)
+                    : (isRejected ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7)),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -286,7 +289,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
-                  color: isAccepted ? const Color(0xFF12B76A) : const Color(0xFFD97706),
+                  color: isAccepted
+                      ? const Color(0xFF12B76A)
+                      : (isRejected ? const Color(0xFFDC2626) : const Color(0xFFD97706)),
                 ),
               ),
             ),
@@ -530,9 +535,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     VoidCallback? onTap,
   }) {
     final String formattedDate = _formatEventDate(event.tanggalMulai);
-    final bool isUpcoming = event.tanggalMulai.isAfter(DateTime.now());
-    final String status = isUpcoming ? 'Approved' : 'Pending';
+    final String status = event.displayStatus;
     final bool isApproved = status == 'Approved';
+    final bool isRejected = status == 'Rejected';
 
     return InkWell(
       onTap: onTap,
@@ -616,7 +621,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isApproved ? const Color(0xFFD1FADF) : const Color(0xFFFEF3C7),
+                    color: isApproved
+                        ? const Color(0xFFD1FADF)
+                        : (isRejected ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7)),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -624,7 +631,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
-                      color: isApproved ? const Color(0xFF12B76A) : const Color(0xFFD97706),
+                      color: isApproved
+                          ? const Color(0xFF12B76A)
+                          : (isRejected ? const Color(0xFFDC2626) : const Color(0xFFD97706)),
                     ),
                   ),
                 ),
@@ -959,7 +968,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                           onTap: () async {
                             await Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (_) => const AddEventPage()),
+                              MaterialPageRoute(builder: (_) => const AddEventPage(isAdmin: true)),
                             );
                             if (context.mounted) {
                               context.read<EventProvider>().fetchEvents(forceRefresh: true);
@@ -1064,7 +1073,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                                   onPressed: () async {
                                     await Navigator.push(
                                       context,
-                                      MaterialPageRoute(builder: (_) => const AddEventPage()),
+                                      MaterialPageRoute(builder: (_) => const AddEventPage(isAdmin: true)),
                                     );
                                     if (context.mounted) {
                                       context.read<EventProvider>().fetchEvents(forceRefresh: true);

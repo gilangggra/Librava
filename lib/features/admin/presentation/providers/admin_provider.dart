@@ -49,11 +49,13 @@ class AdminProvider extends ChangeNotifier {
               recentActivity: [],
               recentTransactions: [],
             ) {
-    // Otomatis fetch data admin dari database
-    fetchDashboard();
-    fetchBuku();
-    fetchTransaksi();
-    fetchMahasiswa();
+    if (initialDashboard == null) {
+      // Otomatis fetch data admin dari database jika bukan mock/initial
+      fetchDashboard();
+      fetchBuku();
+      fetchTransaksi();
+      fetchMahasiswa();
+    }
   }
 
   AdminDashboardModel get dashboard => _dashboard;
@@ -157,7 +159,8 @@ class AdminProvider extends ChangeNotifier {
 
     try {
       final semuaUser = await _apiService.getUsers(token: token);
-      _daftarMahasiswa = semuaUser;
+      _daftarMahasiswa =
+          semuaUser.where((u) => u.role.toLowerCase() != 'admin').toList();
     } catch (e) {
       final teks = e.toString();
       _errorMahasiswa = teks.startsWith('Exception: ')
@@ -282,8 +285,10 @@ class AdminProvider extends ChangeNotifier {
       );
 
       _daftarBukuPending.removeWhere((b) => b.id == bookId);
-      if (action == 'APPROVE') {
-        _daftarBuku.removeWhere((b) => b.id == bookId);
+      final idx = _daftarBuku.indexWhere((b) => b.id == bookId);
+      if (idx != -1) {
+        _daftarBuku[idx] = updated;
+      } else if (action == 'APPROVE') {
         _daftarBuku.insert(0, updated);
       }
       notifyListeners();

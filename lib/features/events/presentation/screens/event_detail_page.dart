@@ -248,6 +248,12 @@ class _EventDetailPageState extends State<EventDetailPage> {
             _event = updated;
           });
         }
+      } else {
+        if (mounted) {
+          setState(() {
+            _event = _event.copyWith(status: targetStatus);
+          });
+        }
       }
 
       if (!mounted) return;
@@ -607,8 +613,162 @@ class _EventDetailPageState extends State<EventDetailPage> {
     );
   }
 
-  /// Tombol aksi Admin: Approve dan Reject (side-by-side sesuai mockup)
+  /// Tombol aksi Admin:
+  /// - Jika SUDAH APPROVED: Menampilkan banner status telah disetujui (tanpa tombol approve)
+  /// - Jika REJECTED: Menampilkan banner status ditolak dengan opsi untuk menyetujui kembali
+  /// - Jika PENDING: Menampilkan tombol Approve dan Reject side-by-side sesuai mockup
   Widget _buildAdminActions(BuildContext context) {
+    final statusUpper = _event.displayStatus.toUpperCase();
+
+    // 1. Kondisi: Event sudah disetujui (Approved) -> Hilangkan tombol approve!
+    if (statusUpper == 'APPROVED') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFD1FADF),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF6CE9A6), width: 1.2),
+            ),
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF027A48),
+                  size: 24,
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Event Telah Disetujui (Approved)',
+                        style: TextStyle(
+                          color: Color(0xFF027A48),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Event ini telah aktif dan dapat diikuti oleh seluruh mahasiswa.',
+                        style: TextStyle(
+                          color: Color(0xFF027A48),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Tombol opsional jika admin ingin membatalkan/menolak event yang telah disetujui
+          SizedBox(
+            height: 44,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFDC2626),
+                side: const BorderSide(color: Color(0xFFFCA5A5), width: 1.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.cancel_outlined, size: 18),
+              label: const Text(
+                'Tolak / Batalkan Persetujuan',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onPressed: () => _prosesApprovalEvent(context, approve: false),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // 2. Kondisi: Event ditolak (Rejected) -> Menampilkan banner ditolak & opsi approve
+    if (statusUpper == 'REJECTED') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEE2E2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFFCA5A5), width: 1.2),
+            ),
+            child: const Row(
+              children: [
+                Icon(
+                  Icons.cancel_rounded,
+                  color: Color(0xFFDC2626),
+                  size: 24,
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Event Ditolak (Rejected)',
+                        style: TextStyle(
+                          color: Color(0xFFDC2626),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Event ini ditolak dan tidak dapat diikuti oleh mahasiswa.',
+                        style: TextStyle(
+                          color: Color(0xFF991B1B),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 48,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF5B4DFF),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.check_circle_outline, size: 18),
+              label: const Text(
+                'Setujui Event (Approve)',
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              onPressed: () => _prosesApprovalEvent(context, approve: true),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // 3. Kondisi: Event masih menunggu persetujuan (Pending) -> Tampilkan Approve dan Reject
     return Row(
       children: [
         Expanded(
@@ -798,7 +958,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const AddEventPage(),
+                            builder: (_) => AddEventPage(isAdmin: isAdmin),
                           ),
                         );
                         if (context.mounted) {
