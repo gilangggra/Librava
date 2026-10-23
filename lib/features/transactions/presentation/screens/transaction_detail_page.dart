@@ -3015,7 +3015,154 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
+  Widget _buildTransactionStepper() {
+    if (_isRequestClosed) return const SizedBox.shrink();
+
+    final s = _currentStatus.trim().toLowerCase();
+    final isBarter = _isBarter;
+
+    final List<String> steps = isBarter
+        ? ['Requested', 'Approved', 'Book Swap', 'Completed']
+        : ['Requested', 'Approved', 'Handover', 'On Loan', 'Returned'];
+
+    int currentStep = 0;
+    if (isBarter) {
+      if (s == 'selesai') {
+        currentStep = 4; // All completed
+      } else if (s == 'disetujui' ||
+          s == 'lokasi_ditentukan' ||
+          s == 'dalam_proses') {
+        currentStep = 2; // Book Swap active
+      } else {
+        currentStep = 0; // Requested active
+      }
+    } else {
+      if (s == 'selesai') {
+        currentStep = 5; // All completed
+      } else if (s == 'sedang_dipinjam') {
+        currentStep = 3; // On Loan active
+      } else if (s == 'disetujui' ||
+          s == 'lokasi_ditentukan' ||
+          s == 'dalam_proses') {
+        currentStep = _depositPaid ? 2 : 1; // Handover or Approved active
+      } else {
+        currentStep = 0; // Requested active
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: List.generate(steps.length * 2 - 1, (idx) {
+            if (idx.isOdd) {
+              final stepBefore = idx ~/ 2;
+              final isLineCompleted = stepBefore < currentStep;
+              return Expanded(
+                child: Container(
+                  height: 2.5,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: isLineCompleted
+                        ? const Color(0xFF2FD677)
+                        : const Color(0xFFE5E2F3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              );
+            }
+
+            final stepIdx = idx ~/ 2;
+            final isCompleted = stepIdx < currentStep;
+            final isActive = stepIdx == currentStep;
+
+            final Color circleBg = isCompleted
+                ? const Color(0xFF2FD677)
+                : isActive
+                    ? (isBarter ? const Color(0xFF722ED1) : AppColors.primary)
+                    : const Color(0xFFF0EEF8);
+
+            final Color textColor = isCompleted
+                ? const Color(0xFF0C9A4B)
+                : isActive
+                    ? (isBarter ? const Color(0xFF722ED1) : AppColors.primary)
+                    : const Color(0xFF9E9BAE);
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: circleBg,
+                    shape: BoxShape.circle,
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color: circleBg.withValues(alpha: 0.35),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: isCompleted
+                        ? const Icon(
+                            Icons.check_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          )
+                        : Text(
+                            '${stepIdx + 1}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: isActive
+                                  ? Colors.white
+                                  : const Color(0xFF8A88A5),
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  steps[stepIdx],
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight:
+                        (isCompleted || isActive) ? FontWeight.w700 : FontWeight.w500,
+                    color: textColor,
+                  ),
+                ),
+              ],
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTransactionInfoCard() {
+    final tx = _getTrx(context);
+    final effectiveDue = tx?.dueDate ?? tx?.effectiveDueDate ?? widget.dueDate;
+    final effectivePeriod = (tx != null && tx.durasiHari > 0)
+        ? '${tx.durasiHari} days'
+        : widget.preferredPeriod;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Container(
@@ -3050,13 +3197,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             if (!_isBarter) ...[
               const SizedBox(height: 12),
               _buildInfoRow(
-                  label: 'Preferred period', value: widget.preferredPeriod),
-              if (widget.dueDate != null) ...[
+                  label: 'Preferred period', value: effectivePeriod),
+              if (effectiveDue != null) ...[
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   label: 'Due date',
                   value:
-                      '${widget.dueDate!.day}/${widget.dueDate!.month}/${widget.dueDate!.year}${_isOverdue ? ' (Overdue)' : ''}',
+                      '${effectiveDue.day}/${effectiveDue.month}/${effectiveDue.year}${_isOverdue ? ' (Overdue)' : ''}',
                   valueColor: _isOverdue ? const Color(0xFFDC2626) : null,
                 ),
               ],
@@ -3554,6 +3701,45 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
   Widget _buildReturnCard() {
     final isOwner = _isCurrentUserOwner(context);
+    final tx = _getTrx(context);
+    final due = tx?.dueDate ?? tx?.effectiveDueDate ?? widget.dueDate;
+    final partnerName = _getPartnerName(context);
+
+    int? remainingDays;
+    if (due != null) {
+      final now = DateTime.now();
+      final dueDay = DateTime(due.year, due.month, due.day);
+      final today = DateTime(now.year, now.month, now.day);
+      remainingDays = dueDay.difference(today).inDays;
+    }
+
+    Color countdownBg = const Color(0xFFE8F1FD);
+    Color countdownColor = const Color(0xFF388AF6);
+    IconData countdownIcon = Icons.timer_outlined;
+    String? countdownText;
+
+    if (remainingDays != null && due != null) {
+      final dueStr = '${due.day}/${due.month}/${due.year}';
+      if (remainingDays > 0) {
+        countdownBg = const Color(0xFFE8F1FD);
+        countdownColor = const Color(0xFF388AF6);
+        countdownIcon = Icons.schedule_rounded;
+        countdownText =
+            '$remainingDays day${remainingDays > 1 ? 's' : ''} remaining (Due $dueStr)';
+      } else if (remainingDays == 0) {
+        countdownBg = const Color(0xFFFEF3C7);
+        countdownColor = const Color(0xFFD97706);
+        countdownIcon = Icons.warning_amber_rounded;
+        countdownText = 'Due today ($dueStr)';
+      } else {
+        final overdueDays = remainingDays.abs();
+        countdownBg = const Color(0xFFFEE2E2);
+        countdownColor = const Color(0xFFDC2626);
+        countdownIcon = Icons.error_outline_rounded;
+        countdownText =
+            'Overdue by $overdueDays day${overdueDays > 1 ? 's' : ''} (Due $dueStr)';
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -3563,7 +3749,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: const Color(0xFF388AF6).withValues(alpha: 0.3),
+            color: (remainingDays != null && remainingDays < 0)
+                ? const Color(0xFFDC2626).withValues(alpha: 0.4)
+                : const Color(0xFF388AF6).withValues(alpha: 0.3),
             width: 1.2,
           ),
           boxShadow: [
@@ -3607,35 +3795,70 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ],
             ),
             const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8FAF0),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: const Color(0xFF2FD677).withValues(alpha: 0.35),
-                  width: 1,
-                ),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.bolt_rounded,
-                    color: Color(0xFF0C9A4B),
-                    size: 15,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'Early return supported at any time',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0C9A4B),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                if (countdownText != null)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: countdownBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          countdownIcon,
+                          color: countdownColor,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          countdownText,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: countdownColor,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8FAF0),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFF2FD677).withValues(alpha: 0.35),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.bolt_rounded,
+                        color: Color(0xFF0C9A4B),
+                        size: 15,
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        'Early return supported at any time',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0C9A4B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             Text(
@@ -3683,6 +3906,46 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 40,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatRoomPage(
+                        userName: partnerName,
+                        isOnline: true,
+                        transactionId: widget.transactionId,
+                      ),
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: const Color(0xFF388AF6).withValues(alpha: 0.4),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(
+                  CupertinoIcons.chat_bubble_text_fill,
+                  size: 16,
+                  color: Color(0xFF388AF6),
+                ),
+                label: Text(
+                  'Coordinate Return with $partnerName',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF388AF6),
                   ),
                 ),
               ),
@@ -4160,10 +4423,18 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         _currentHandoverLocation = currentTx.lokasiPertemuan;
       }
       final txStat = currentTx.status.toLowerCase();
-      if (txStat == 'sedang_dipinjam' && _currentStatus.toLowerCase() != 'selesai') {
+      if (txStat == 'sedang_dipinjam') {
         _currentStatus = 'sedang_dipinjam';
-      } else if (txStat == 'selesai' && currentTx.tanggalPengembalian.isNotEmpty) {
+      } else if (txStat == 'selesai') {
         _currentStatus = 'selesai';
+      } else if (txStat == 'disetujui' ||
+          txStat == 'lokasi_ditentukan' ||
+          txStat == 'dalam_proses') {
+        if (_isRequestPending) {
+          _currentStatus = currentTx.status;
+        }
+      } else if (txStat == 'ditolak' || txStat == 'dibatalkan') {
+        _currentStatus = currentTx.status;
       }
     }
 
@@ -4197,6 +4468,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ],
               const SizedBox(height: 18),
               _buildStatusBanner(),
+              if (!_isRequestClosed) ...[
+                const SizedBox(height: 14),
+                _buildTransactionStepper(),
+              ],
               const SizedBox(height: 14),
               _buildTransactionInfoCard(),
               if (showHandoverCard) ...[

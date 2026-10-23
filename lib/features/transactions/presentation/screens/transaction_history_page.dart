@@ -31,6 +31,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     'Completed',
     'Favorites',
     'Cancelled',
+    'Active',
   ];
 
   @override
@@ -64,6 +65,11 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
         return const Color(0xFF52C41A);
       case 'sedang_dipinjam':
         return const Color(0xFF4C7BFE);
+      case 'disetujui':
+      case 'deposit_dibayar':
+      case 'lokasi_ditentukan':
+      case 'dalam_proses':
+        return const Color(0xFF6356FF);
       case 'ditolak':
       case 'dibatalkan':
         return const Color(0xFFFF4D4F);
@@ -75,17 +81,19 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   }
 
   String _getStatusText(TransactionModel trx) {
+    final isBarter = trx.jenisTransaksi.toLowerCase() == 'barter';
     switch (trx.status.toLowerCase()) {
       case 'selesai':
-        return 'Completed';
+        return isBarter ? 'Barter Completed' : 'Completed';
       case 'sedang_dipinjam':
         return 'Active Loan';
       case 'disetujui':
-        return 'Approved';
+        return isBarter ? 'Barter Approved' : 'Approved';
       case 'deposit_dibayar':
         return 'Deposit Paid';
       case 'lokasi_ditentukan':
-        return 'Location Set';
+      case 'dalam_proses':
+        return isBarter ? 'Ready for Book Swap' : 'Handover Scheduled';
       case 'ditolak':
         return 'Rejected';
       case 'dibatalkan':
@@ -112,6 +120,11 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                 t.status.toLowerCase() == 'dibatalkan' ||
                 t.status.toLowerCase() == 'ditolak')
             .toList();
+      case 6: // Active
+        return list.where((t) {
+          final s = t.status.toLowerCase();
+          return s != 'selesai' && s != 'dibatalkan' && s != 'ditolak';
+        }).toList();
       case 0: // Semua
       default:
         return list;
@@ -419,8 +432,11 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
             (currentName.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == currentName) ||
             (namaUser.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == namaUser.trim().toLowerCase());
 
+        final partnerName = isOwner ? trx.pemohonNama : trx.pemilikNama;
         final subtitleText = trx.jenisTransaksi == 'barter'
-            ? (isOwner ? 'Barter with ${trx.pemohonNama}' : 'Barter with ${trx.pemilikNama}')
+            ? (trx.bukuBarter.isNotEmpty
+                ? 'Barter ↔ ${trx.bukuBarter} ($partnerName)'
+                : 'Barter with $partnerName')
             : (isOwner
                 ? 'Lent to ${trx.pemohonNama}'
                 : 'Borrowed from ${trx.pemilikNama}');
@@ -486,6 +502,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                   borderRadius: BorderRadius.circular(12),
                   child: _buildCoverWidget(
                     _getCoverForTransaction(trx),
+                    fallbackJudul: trx.judulBuku,
                   ),
                 ),
                 const SizedBox(width: 14),

@@ -207,6 +207,170 @@ class _ProfilePageState extends State<ProfilePage> {
 
 
 
+  String _formatRupiah(double amount) {
+    final intVal = amount.toInt();
+    final str = intVal.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(str[i]);
+    }
+    return 'Rp ${buffer.toString()}';
+  }
+
+  void _bukaModalTopUpSaldo(BuildContext context) {
+    final authProvider = context.read<AuthProvider>();
+    int selectedNominal = 50000;
+    final options = [20000, 50000, 100000];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E0EC),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Top Up Simulated Deposit Balance',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF130F26),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Simulated wallet balance is used for book borrowing security deposits and is automatically refunded upon book return.',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: Color(0xFF7E7A92),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: options.map((nom) {
+                        final isSelected = selectedNominal == nom;
+                        return Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              right: nom == options.last ? 0 : 10,
+                            ),
+                            child: GestureDetector(
+                              onTap: () {
+                                setModalState(() {
+                                  selectedNominal = nom;
+                                });
+                              },
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? const Color(0xFFEDEAFE)
+                                      : const Color(0xFFF7F6FB),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : const Color(0xFFE5E2F3),
+                                    width: isSelected ? 1.8 : 1,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '+ ${_formatRupiah(nom.toDouble())}',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : const Color(0xFF4A4960),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () {
+                          authProvider
+                              .tambahSaldoDummy(selectedNominal.toDouble());
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Simulated balance topped up by ${_formatRupiah(selectedNominal.toDouble())}!',
+                              ),
+                              backgroundColor: const Color(0xFF2FD677),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.add_circle_outline_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        label: Text(
+                          'Confirm Top Up (${_formatRupiah(selectedNominal.toDouble())})',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _bukaModalEventSaya(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -709,10 +873,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 trx.pemilikNama.trim().toLowerCase() ==
                     namaUser.trim().toLowerCase());
 
+        final partnerName = isOwnerItem ? trx.pemohonNama : trx.pemilikNama;
         final subtitleText = trx.jenisTransaksi.toLowerCase() == 'barter'
-            ? (isOwnerItem
-                ? 'Barter with ${trx.pemohonNama}'
-                : 'Barter with ${trx.pemilikNama}')
+            ? (trx.bukuBarter.isNotEmpty
+                ? 'Barter ↔ ${trx.bukuBarter} ($partnerName)'
+                : 'Barter with $partnerName')
             : (isOwnerItem
                 ? 'Lent to ${trx.pemohonNama}'
                 : 'Borrowing from ${trx.pemilikNama}');
@@ -781,7 +946,7 @@ class _ProfilePageState extends State<ProfilePage> {
           padding: EdgeInsets.symmetric(vertical: 16.0),
           child: Center(
             child: Text(
-              'Belum ada aktivitas transaksi terbaru.',
+              'No recent transaction activity yet.',
               style: TextStyle(
                 fontSize: 13,
                 color: Color(0xFF8E8B9F),
@@ -1052,6 +1217,107 @@ class _ProfilePageState extends State<ProfilePage> {
               const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: const Color(0xFFE8E5F4),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF1E1A34).withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8FAF0),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.account_balance_wallet_rounded,
+                          color: Color(0xFF0C9A4B),
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Simulated Deposit Balance',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF7E7A92),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _formatRupiah(
+                                authProvider.currentUser?.saldoDummy ?? 50000.0,
+                              ),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF130F26),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => _bukaModalTopUpSaldo(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEDEAFE),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.add_rounded,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Top Up',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: InkWell(
                   onTap: () => _bukaModalEventSaya(context),
                   borderRadius: BorderRadius.circular(18),
@@ -1096,7 +1362,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Event Kampus yang Diikuti',
+                                'Joined Campus Events',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
@@ -1105,7 +1371,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                '${eventProvider?.myEvents.length ?? 0} agenda terdaftar',
+                                '${eventProvider?.myEvents.length ?? 0} registered events',
                                 style: const TextStyle(
                                   fontSize: 12.5,
                                   color: Color(0xFF7E7A92),
@@ -1157,7 +1423,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           mainAxisSize: MainAxisSize.min,
                           children: const [
                             Text(
-                              'Lihat Semua',
+                              'View All',
                               style: TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w700,

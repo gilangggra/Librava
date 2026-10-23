@@ -39,20 +39,26 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      try {
-        context.read<BookProvider>().fetchBooksFromApi();
-      } catch (_) {}
-      try {
-        final auth = context.read<AuthProvider>();
-        if (auth.token != null) {
-          context.read<TransactionProvider>().fetchTransaksi(auth.token!);
-          context.read<ChatProvider>().fetchSummary(auth.token!);
-        }
-      } catch (_) {}
-      try {
-        context.read<EventProvider>().fetchEvents();
-      } catch (_) {}
+      _refreshHomeData();
     });
+  }
+
+  Future<void> _refreshHomeData() async {
+    try {
+      context.read<BookProvider>().fetchBooksFromApi();
+    } catch (_) {}
+    try {
+      final auth = context.read<AuthProvider>();
+      if (auth.token != null) {
+        await Future.wait([
+          context.read<TransactionProvider>().fetchTransaksi(auth.token!),
+          context.read<ChatProvider>().fetchSummary(auth.token!),
+        ]);
+      }
+    } catch (_) {}
+    try {
+      await context.read<EventProvider>().fetchEvents();
+    } catch (_) {}
   }
 
   String _getCoverForJudul(String judul) {
@@ -73,16 +79,48 @@ class _HomePageState extends State<HomePage> {
                 t.pemohonId == currentUserId) ||
             (currentUserName.isNotEmpty &&
                 t.pemohonNama.trim().toLowerCase() == currentUserName);
-        final isActive = t.status != 'selesai' &&
-            t.status != 'ditolak' &&
-            t.status != 'dibatalkan';
+        final isOwner = (currentUserId.isNotEmpty &&
+                t.pemilikId.isNotEmpty &&
+                t.pemilikId == currentUserId) ||
+            (currentUserName.isNotEmpty &&
+                t.pemilikNama.trim().toLowerCase() == currentUserName);
+        final s = t.status.toLowerCase();
+        final isActive = s != 'selesai' &&
+            s != 'ditolak' &&
+            s != 'dibatalkan';
         if (currentUserId.isNotEmpty || currentUserName.isNotEmpty) {
-          return isBorrower && isActive;
+          return (isBorrower || isOwner) && isActive;
         }
         return isActive;
       }).toList();
 
+      int statusPriority(String s) {
+        switch (s.toLowerCase()) {
+          case 'sedang_dipinjam':
+            return 0;
+          case 'lokasi_ditentukan':
+          case 'dalam_proses':
+            return 1;
+          case 'disetujui':
+            return 2;
+          case 'pending':
+            return 3;
+          default:
+            return 4;
+        }
+      }
+
+      userTxs.sort((a, b) =>
+          statusPriority(a.status).compareTo(statusPriority(b.status)));
+
       return userTxs.map((t) {
+        final isOwner = (currentUserId.isNotEmpty &&
+                t.pemilikId.isNotEmpty &&
+                t.pemilikId == currentUserId) ||
+            (currentUserName.isNotEmpty &&
+                t.pemilikNama.trim().toLowerCase() == currentUserName);
+        final isBarter = t.jenisTransaksi.toLowerCase() == 'barter';
+
         final author = t.penulisBuku.isNotEmpty && t.penulisBuku != 'Penulis'
             ? t.penulisBuku
             : (t.judulBuku.toLowerCase().contains('basis data')
@@ -97,34 +135,72 @@ class _HomePageState extends State<HomePage> {
         Color statusColor = const Color(0xFF34C759);
         switch (t.status.toLowerCase()) {
           case 'pending':
-            displayStatus = "Waiting for owner's response";
+            displayStatus = isOwner
+                ? 'Incoming request — needs approval'
+                : "Waiting for owner's response";
             statusColor = const Color(0xFFFFDD2D);
             break;
           case 'disetujui':
-            displayStatus = 'Approved';
+            displayStatus = isBarter ? 'Barter Approved' : 'Approved';
             statusColor = const Color(0xFF4C7BFE);
             break;
           case 'lokasi_ditentukan':
           case 'dalam_proses':
-            displayStatus = 'Handover scheduled';
+            displayStatus =
+                isBarter ? 'Ready for Book Swap' : 'Handover scheduled';
             statusColor = const Color(0xFF6356FF);
             break;
           case 'sedang_dipinjam':
-            displayStatus = 'Active Loan';
-            statusColor = const Color(0xFF10B981);
+            if (t.isOverdue) {
+              displayStatus = 'Overdue Return';
+              statusColor = const Color(0xFFDC2626);
+            } else {
+              final due = t.dueDate ?? t.effectiveDueDate;
+              if (due != null) {
+                final now = DateTime.now();
+                final diff = DateTime(due.year, due.month, due.day)
+                    .difference(DateTime(now.year, now.month, now.day))
+                    .inDays;
+                if (diff > 0) {
+                  displayStatus =
+                      'Active Loan • $diff day${diff > 1 ? 's' : ''} left';
+                } else if (diff == 0) {
+                  displayStatus = 'Active Loan • Due today';
+                } else {
+                  displayStatus = 'Active Loan';
+                }
+              } else {
+                displayStatus = 'Active Loan';
+              }
+              statusColor = const Color(0xFF10B981);
+            }
             break;
           default:
             displayStatus = t.status;
             statusColor = const Color(0xFF34C759);
         }
 
+        final partnerName = isOwner ? t.pemohonNama : t.pemilikNama;
+        final String subtitle = isBarter
+            ? (t.bukuBarter.isNotEmpty
+                ? 'Barter ↔ ${t.bukuBarter} ($partnerName)'
+                : 'Barter with $partnerName')
+            : (isOwner
+                ? 'Lending to $partnerName'
+                : 'Borrowing from $partnerName');
+
+        final String roleBadge = isBarter
+            ? 'Barter'
+            : (isOwner ? 'Lending' : 'Borrowing');
+
         return {
           'id': t.id,
           'title': t.judulBuku,
           'author': author,
           'rawStatus': t.status,
-          'subtitle':
-              '${t.jenisTransaksi == "barter" ? "Bartered with" : "Borrowing from"} ${t.pemilikNama}',
+          'subtitle': subtitle,
+          'roleBadge': roleBadge,
+          'isOwner': isOwner,
           'status': displayStatus,
           'statusColor': statusColor,
           'image': cover,
@@ -132,7 +208,7 @@ class _HomePageState extends State<HomePage> {
           'ownerId': t.pemilikId,
           'requesterName': t.pemohonNama,
           'requesterId': t.pemohonId,
-          'type': t.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
+          'type': isBarter ? 'Barter' : 'Borrow',
           'exchangeBookTitle': t.bukuBarter,
           'exchangeBookAuthor': t.barterPenulis,
           'exchangeBookCover': t.barterCover,
@@ -219,9 +295,20 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildBorrowCard(Map<String, dynamic> item) {
+    final roleBadge = (item['roleBadge'] as String?) ?? 'Borrowing';
+    final isBarter = roleBadge == 'Barter';
+    final isOwner = (item['isOwner'] as bool?) ?? false;
+
+    final Color badgeBg = isBarter
+        ? const Color(0xFFF3EAFF)
+        : (isOwner ? const Color(0xFFF0EEFF) : const Color(0xFFE8F1FD));
+    final Color badgeColor = isBarter
+        ? const Color(0xFF722ED1)
+        : (isOwner ? AppColors.primary : const Color(0xFF388AF6));
+
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => TransactionDetailPage(
@@ -234,7 +321,7 @@ class _HomePageState extends State<HomePage> {
               ownerId: item['ownerId'] as String?,
               requesterName: item['requesterName'] as String?,
               requesterId: item['requesterId'] as String?,
-              isOwner: false,
+              isOwner: isOwner,
               type: (item['type'] as String?) ?? 'Borrow',
               handoverLocation: (item['handoverLocation'] as String?) ?? 'Set location',
               depositAmount: (item['depositAmount'] as String?) ?? '20.000 Rupiah',
@@ -246,6 +333,9 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         );
+        if (mounted) {
+          _refreshHomeData();
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 24),
@@ -279,12 +369,31 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: badgeBg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        roleBadge,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: badgeColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
                     Text(
                       item['title'] as String,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 17,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF130F26),
                         letterSpacing: -0.3,
@@ -297,24 +406,24 @@ class _HomePageState extends State<HomePage> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 13,
                         fontStyle: FontStyle.italic,
                         color: Color(0xFF8A859E),
                         height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Container(
-                          width: 14,
-                          height: 14,
+                          width: 12,
+                          height: 12,
                           decoration: BoxDecoration(
                             color: item['statusColor'] as Color,
                             shape: BoxShape.circle,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 7),
                         Expanded(
                           child: Text(
                             item['status'] as String,
@@ -322,7 +431,7 @@ class _HomePageState extends State<HomePage> {
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 12.5,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                               color: Color(0xFF6B667F),
                             ),
                           ),
@@ -639,37 +748,44 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24.0,
-                  vertical: 16.0,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Home',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF130F26),
-                        letterSpacing: -0.5,
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: _refreshHomeData,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 16.0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Home',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF130F26),
+                          letterSpacing: -0.5,
+                        ),
                       ),
-                    ),
-                    InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RequestListPage(),
-                          ),
-                        );
-                      },
+                      InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const RequestListPage(),
+                            ),
+                          );
+                          if (mounted) {
+                            _refreshHomeData();
+                          }
+                        },
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
@@ -917,12 +1033,12 @@ class _HomePageState extends State<HomePage> {
                               borderRadius: BorderRadius.circular(22),
                             ),
                           ),
-                          onPressed: () {
+                          onPressed: () async {
                             final currentBook = borrowedList[
                                 _currentBorrowIndex < borrowedList.length
                                     ? _currentBorrowIndex
                                     : 0];
-                            Navigator.push(
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => TransactionDetailPage(
@@ -936,7 +1052,7 @@ class _HomePageState extends State<HomePage> {
                                   ownerId: currentBook['ownerId'] as String?,
                                   requesterName: currentBook['requesterName'] as String?,
                                   requesterId: currentBook['requesterId'] as String?,
-                                  isOwner: false,
+                                  isOwner: (currentBook['isOwner'] as bool?) ?? false,
                                   type: (currentBook['type'] as String?) ?? 'Borrow',
                                   handoverLocation: (currentBook['handoverLocation'] as String?) ?? 'Set location',
                                   depositAmount: (currentBook['depositAmount'] as String?) ?? '20.000 Rupiah',
@@ -948,6 +1064,9 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                             );
+                            if (mounted) {
+                              _refreshHomeData();
+                            }
                           },
                           child: const Text(
                             'View transaction',
@@ -1211,6 +1330,7 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 24),
             ],
           ),
+        ),
         ),
       ),
       bottomNavigationBar: Container(

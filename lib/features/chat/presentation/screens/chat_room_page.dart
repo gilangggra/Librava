@@ -153,6 +153,21 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       );
 
       if (mounted) {
+        try {
+          final trxProvider =
+              Provider.of<TransactionProvider>(context, listen: false);
+          for (final m in apiMessages) {
+            if (m.pesan.trim() == '[BOOK_RETURNED]') {
+              trxProvider.markAsReturned(txId.toString());
+            } else if (m.pesan.startsWith('[HANDOVER_LOCATION]:')) {
+              final loc =
+                  m.pesan.replaceFirst('[HANDOVER_LOCATION]:', '').trim();
+              if (loc.isNotEmpty) {
+                trxProvider.updateLokasiTransaksi(txId.toString(), loc);
+              }
+            }
+          }
+        } catch (_) {}
         setState(() {
           _messages.clear();
           _messages.addAll(apiMessages.map((m) {
