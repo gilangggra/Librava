@@ -111,7 +111,25 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     _youConfirmed = widget.youConfirmed;
     _ownerConfirmed = widget.ownerConfirmed;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final tx = _getTrx(context);
+      if (tx != null && tx.lokasiPertemuan.trim().isNotEmpty) {
+        setState(() {
+          _currentHandoverLocation = tx.lokasiPertemuan;
+        });
+      }
+      try {
+        final auth = context.read<AuthProvider>();
+        final intId = int.tryParse(widget.transactionId ?? tx?.id ?? '');
+        if (auth.token != null && intId != null && !_isHandoverSet) {
+          final loc = await context.read<TransactionProvider>().checkHandoverFromChat(auth.token!, intId);
+          if (mounted && loc != null && loc.isNotEmpty) {
+            setState(() {
+              _currentHandoverLocation = loc;
+            });
+          }
+        }
+      } catch (_) {}
       _refreshTransactionData();
     });
   }
@@ -131,6 +149,19 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             if (tx.lokasiPertemuan.trim().isNotEmpty) {
               _currentHandoverLocation = tx.lokasiPertemuan;
             }
+          });
+        }
+        final intId = int.tryParse(widget.transactionId!);
+        if (intId != null && (_currentHandoverLocation.isEmpty || !_isHandoverSet)) {
+          final loc = await trxProvider.checkHandoverFromChat(auth.token!, intId);
+          if (mounted && loc != null && loc.isNotEmpty) {
+            setState(() {
+              _currentHandoverLocation = loc;
+            });
+          }
+        }
+        if (mounted && tx != null) {
+          setState(() {
             final s = tx.status.toLowerCase();
             if (s == 'dalam_proses' ||
                 s == 'lokasi_ditentukan' ||
@@ -876,13 +907,29 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
-  void _bukaModalCekHandoverPemilik() {
+  void _bukaModalCekHandoverPemilik() async {
     final tx = _getTrx(context);
     if (tx != null && tx.lokasiPertemuan.trim().isNotEmpty) {
       _currentHandoverLocation = tx.lokasiPertemuan;
     }
+
+    if (!_isHandoverSet) {
+      try {
+        final auth = context.read<AuthProvider>();
+        final intId = int.tryParse(widget.transactionId ?? tx?.id ?? '');
+        if (auth.token != null && intId != null) {
+          final loc = await context.read<TransactionProvider>().checkHandoverFromChat(auth.token!, intId);
+          if (mounted && loc != null && loc.isNotEmpty) {
+            setState(() {
+              _currentHandoverLocation = loc;
+            });
+          }
+        }
+      } catch (_) {}
+    }
     _refreshTransactionData();
 
+    if (!mounted) return;
     final partnerName = _getPartnerName(context);
     final isSet = _isHandoverSet;
 

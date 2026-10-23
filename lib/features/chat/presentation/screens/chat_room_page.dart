@@ -197,6 +197,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   ({String text, String? imageUrl}) _parseMessageContent(String raw) {
+    if (raw.startsWith('[HANDOVER_LOCATION]:')) {
+      final loc = raw.replaceFirst('[HANDOVER_LOCATION]:', '').trim();
+      return (text: '📍 Jadwal & Lokasi Serah Terima: ' + loc, imageUrl: null);
+    }
     if (raw.startsWith('[FOTO:') && raw.contains(']')) {
       final closeIdx = raw.indexOf(']');
       final imgUrl = raw.substring(6, closeIdx).trim();

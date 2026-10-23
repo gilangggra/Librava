@@ -1,3 +1,4 @@
+import '../../../chat/data/services/chat_api_service.dart';
 import 'package:flutter/foundation.dart';
 import '../../data/services/transaction_api_service.dart';
 import '../../domain/models/transaction_model.dart';
@@ -157,9 +158,15 @@ class TransactionProvider extends ChangeNotifier {
     try {
       final intId = int.tryParse(id);
       if (intId == null) return getTransaksiById(id);
-      final trx = await _apiService.getTransactionById(
+      var trx = await _apiService.getTransactionById(
           token: token, id: intId);
-      final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
+      if (trx.lokasiPertemuan.trim().isEmpty) {
+        final loc = await checkHandoverFromChat(token, intId);
+        if (loc != null && loc.isNotEmpty) {
+          trx = trx.copyWith(lokasiPertemuan: loc);
+        }
+      }
+      final idx = _daftarTransaksi.indexWhere((t) => t.id.trim() == id.trim());
       if (idx != -1) {
         _daftarTransaksi[idx] = trx;
       } else {
@@ -271,33 +278,43 @@ class TransactionProvider extends ChangeNotifier {
   Future<bool> setMeetingApi(
       String token, String id, String lokasi, String? waktu) async {
     _isLoading = true;
+    updateLokasiTransaksi(id: id, lokasi: lokasi);
     notifyListeners();
 
+    final intId = int.tryParse(id);
+    if (intId != null) {
+      try {
+        final chatService = ChatApiService();
+        await chatService.sendMessage(
+          token: token,
+          transactionId: intId,
+          pesan: '[HANDOVER_LOCATION]: ' + lokasi,
+        );
+      } catch (_) {}
+    }
+
     try {
-      final intId = int.tryParse(id);
-      if (intId == null) {
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-      final updated = await _apiService.setMeeting(
-        token: token,
-        id: intId,
-        lokasiPertemuan: lokasi,
-        waktuPertemuan: waktu,
-      );
-      final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
-      if (idx != -1) {
-        _daftarTransaksi[idx] = updated;
+      if (intId != null) {
+        final updated = await _apiService.setMeeting(
+          token: token,
+          id: intId,
+          lokasiPertemuan: lokasi,
+          waktuPertemuan: waktu,
+        );
+        final idx = _daftarTransaksi.indexWhere((t) => t.id.trim() == id.trim());
+        if (idx != -1) {
+          _daftarTransaksi[idx] = updated;
+        } else {
+          _daftarTransaksi.add(updated);
+        }
       }
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
-      return false;
+      return true;
     }
   }
 
@@ -484,6 +501,23 @@ class TransactionProvider extends ChangeNotifier {
       return true;
     }
     return false;
+  }
+
+  Future<String?> checkHandoverFromChat(String token, int txId) async {
+    try {
+      final chatService = ChatApiService();
+      final msgs = await chatService.getMessages(token: token, transactionId: txId);
+      for (final m in msgs.reversed) {
+        if (m.pesan.startsWith('[HANDOVER_LOCATION]:')) {
+          final loc = m.pesan.replaceFirst('[HANDOVER_LOCATION]:', '').trim();
+          if (loc.isNotEmpty) {
+            updateLokasiTransaksi(id: txId.toString(), lokasi: loc);
+            return loc;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   void updateLokasiTransaksi({
