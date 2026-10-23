@@ -12,6 +12,7 @@ import '../../../chat/presentation/screens/chat_room_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import 'profile_page.dart';
 
+import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../../../transactions/presentation/screens/transaction_history_page.dart';
 import '../../domain/models/user_review_model.dart';
 import '../../data/services/review_api_service.dart';
