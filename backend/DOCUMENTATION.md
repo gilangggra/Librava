@@ -112,20 +112,22 @@ backend/
 - `GET /api/transactions/:id` — detail lengkap: kedua pihak, buku yang ditukar, deposit dummy, jadwal/lokasi.
 - `PUT /api/transactions/:id/status` — owner hanya dapat approve/reject request pending; requester dapat membatalkan request pending. Status buku ikut diperbarui secara atomic.
 - `PUT /api/transactions/:id/meeting` — set lokasi & jadwal setelah request disetujui, lalu status menjadi `DALAM_PROSES`.
-- `PUT /api/transactions/:id/handover` — mencatat konfirmasi requester atau owner. Status baru menjadi `SELESAI` setelah kedua pihak mengonfirmasi.
-- `PUT /api/transactions/:id/return` — menggunakan mekanisme konfirmasi dua pihak yang sama untuk menyelesaikan transaksi.
+- `PUT /api/transactions/:id/handover` — mencatat konfirmasi serah terima fisik dari requester atau owner:
+  - **Pinjam (`BORROW`):** Setelah kedua pihak konfirmasi serah terima, status berubah ke `SEDANG_DIPINJAM` (buku aktif dipinjam) dan batas tanggal pengembalian (`due_date`) dihitung mulai dari tanggal serah terima fisik buku.
+  - **Barter (`BARTER`):** Setelah kedua pihak konfirmasi serah terima fisik, status langsung `SELESAI`, kedua buku saling bertukar kepemilikan (`ownerId`), dan status buku kembali `Tersedia`.
+- `PUT /api/transactions/:id/return` — konfirmasi pengembalian buku pinjaman (dapat dilakukan lebih cepat kapan saja selama masa pinjam aktif `SEDANG_DIPINJAM`). Status transaksi menjadi `SELESAI`, buku kembali `Tersedia`, dan saldo deposit dummy otomatis dikembalikan ke requester.
 
 #### Lifecycle transaksi dan deposit
 
 Transisi status yang diizinkan:
 
 ```text
-MENUNGGU_KONFIRMASI -> DISETUJUI -> DALAM_PROSES -> SELESAI
-MENUNGGU_KONFIRMASI -> DITOLAK
-MENUNGGU_KONFIRMASI -> DIBATALKAN
+PINJAM:  MENUNGGU_KONFIRMASI -> DISETUJUI -> DALAM_PROSES -> SEDANG_DIPINJAM -> SELESAI
+BARTER:  MENUNGGU_KONFIRMASI -> DISETUJUI -> DALAM_PROSES -> SELESAI
+BATAL:   MENUNGGU_KONFIRMASI | DISETUJUI | DALAM_PROSES | SEDANG_DIPINJAM -> DITOLAK | DIBATALKAN
 ```
 
-Deposit tidak ditarik saat request dibuat. Pada approval, saldo requester dikurangi menggunakan conditional update (`saldo_dummy >= deposit`) di dalam transaksi database. Jika saldo tidak cukup, approval dibatalkan. Deposit dikembalikan satu kali ketika kedua pihak mengonfirmasi handover.
+Deposit tidak ditarik saat request dibuat. Pada saat pemilik menyetujui request (`DISETUJUI`), saldo dummy peminjam dipotong otomatis secara atomic (`saldo_dummy >= deposit`). Jika saldo tidak cukup, persetujuan ditolak. Deposit dummy dikembalikan penuh ke saldo peminjam ketika pengembalian buku dikonfirmasi (`confirmReturn` -> `SELESAI`), atau ketika transaksi dibatalkan sebelum pengembalian.
 
 ### Chat per Transaksi (`/api/chats`)
 

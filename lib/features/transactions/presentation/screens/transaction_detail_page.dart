@@ -92,10 +92,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     if (s != 'sedang_dipinjam') {
       return false;
     }
-    if (widget.isOverdue == true) return true;
-    if (widget.dueDate != null) {
-      return DateTime.now().isAfter(widget.dueDate!);
+    if (_isBarter) return false;
+    final tx = _getTrx(context);
+    final due = tx?.dueDate ?? widget.dueDate;
+    if (due != null) {
+      return DateTime.now().isAfter(due);
     }
+    if (widget.isOverdue == true) return true;
     return false;
   }
   late bool _depositPaid;
@@ -212,14 +215,19 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final isBarter = widget.type.toLowerCase() == 'barter';
     _depositPaid = isBarter ||
         widget.isDepositPaid ||
+        s == 'disetujui' ||
         s == 'dalam_proses' ||
         s == 'lokasi_ditentukan' ||
         s == 'sedang_dipinjam' ||
         s == 'selesai';
     _currentHandoverLocation = widget.handoverLocation;
     _currentStatus = widget.status;
-    _youConfirmed = widget.youConfirmed;
-    _ownerConfirmed = widget.ownerConfirmed;
+    _youConfirmed = widget.youConfirmed ||
+        s == 'sedang_dipinjam' ||
+        s == 'selesai';
+    _ownerConfirmed = widget.ownerConfirmed ||
+        s == 'sedang_dipinjam' ||
+        s == 'selesai';
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final tx = _getTrx(context);
@@ -330,7 +338,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         if (mounted && tx != null) {
           setState(() {
             final s = tx.status.toLowerCase();
-            if (s == 'dalam_proses' ||
+            if (s == 'disetujui' ||
+                s == 'dalam_proses' ||
                 s == 'lokasi_ditentukan' ||
                 s == 'sedang_dipinjam' ||
                 s == 'selesai') {
@@ -356,6 +365,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               _currentStatus = 'sedang_dipinjam';
             } else {
               _currentStatus = tx.status;
+            }
+            final currLow = _currentStatus.toLowerCase();
+            if (currLow == 'sedang_dipinjam' || currLow == 'selesai') {
+              _youConfirmed = true;
+              _ownerConfirmed = true;
             }
           });
         }
@@ -1996,6 +2010,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       widget.transactionId!,
                     );
                     await auth.segarkanProfil();
+                    try {
+                      await context.read<BookProvider>().fetchMyBooks(auth.token!);
+                    } catch (_) {}
+                    try {
+                      await trxProvider.fetchTransaksi(auth.token!);
+                    } catch (_) {}
                   } catch (_) {}
                 } else if (widget.transactionId != null) {
                   trxProvider.markAsReturned(widget.transactionId!);
@@ -2326,7 +2346,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 });
 
                 // Jika deposit sudah dibayar sebelumnya dan transaksi dibatalkan, kembalikan saldo
-                if (_depositPaid && !_isCurrentUserOwner(context)) {
+                if (_depositPaid && !_isCurrentUserOwner(context) && !_isBarter) {
                   auth?.tambahSaldoDummy(depositNominal);
                 }
 
@@ -3052,7 +3072,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         ? (isOwner ? 'Barter Requester' : 'Book Owner')
         : (isOwner ? 'Requester' : 'Owner');
     final tx = _getTrx(context);
-    final isDone = _currentStatus.toLowerCase() == 'selesai';
+    final s = _currentStatus.toLowerCase();
+    final isDone = s == 'selesai' || s == 'sedang_dipinjam';
 
     final bool youIsConfirmed = _youConfirmed ||
         isDone ||

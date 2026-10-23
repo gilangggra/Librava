@@ -64,7 +64,7 @@ export class TransactionService {
       where: {
         requesterId: dto.requester_id,
         bookId: dto.book_id,
-        status: { in: ['MENUNGGU_KONFIRMASI', 'DISETUJUI', 'DALAM_PROSES'] },
+        status: { in: ['MENUNGGU_KONFIRMASI', 'DISETUJUI', 'DALAM_PROSES', 'SEDANG_DIPINJAM'] },
       },
     });
 
@@ -131,7 +131,7 @@ export class TransactionService {
             { bookId: dto.barter_book_id },
             { barterBookId: dto.barter_book_id },
           ],
-          status: { in: ['MENUNGGU_KONFIRMASI', 'DISETUJUI', 'DALAM_PROSES'] },
+          status: { in: ['MENUNGGU_KONFIRMASI', 'DISETUJUI', 'DALAM_PROSES', 'SEDANG_DIPINJAM'] },
         },
       });
 
@@ -274,6 +274,23 @@ export class TransactionService {
     await prisma.$transaction(async (prismaTx) => {
       const updateData: any = { status: newStatus };
 
+      if (newStatus === 'DISETUJUI') {
+        const bookToApprove = await prismaTx.book.findUnique({ where: { id: tx.book_id } });
+        if (!bookToApprove || bookToApprove.status !== 'Tersedia') {
+          const error: any = new Error('Buku sudah tidak tersedia untuk dipinjam atau dibarter.');
+          error.statusCode = 400;
+          throw error;
+        }
+        if (tx.barter_book_id) {
+          const barterBookToApprove = await prismaTx.book.findUnique({ where: { id: tx.barter_book_id } });
+          if (!barterBookToApprove || barterBookToApprove.status !== 'Tersedia') {
+            const error: any = new Error('Buku penukar sudah tidak tersedia untuk dibarter.');
+            error.statusCode = 400;
+            throw error;
+          }
+        }
+      }
+
       if (newStatus === 'DISETUJUI' && tx.deposit_dummy > 0) {
         const deducted = await prismaTx.user.updateMany({
           where: {
@@ -313,7 +330,7 @@ export class TransactionService {
         }
       } else if (['DITOLAK', 'DIBATALKAN'].includes(newStatus)) {
         // Kembalikan saldo deposit jika transaksi dibatalkan setelah deposit dipotong
-        if (tx.deposit_dummy > 0 && ['DISETUJUI', 'DALAM_PROSES'].includes(tx.status)) {
+        if (tx.deposit_dummy > 0 && ['DISETUJUI', 'DALAM_PROSES', 'SEDANG_DIPINJAM'].includes(tx.status)) {
           await prismaTx.user.update({
             where: { id: tx.requester_id },
             data: { saldoDummy: { increment: tx.deposit_dummy } },
@@ -401,7 +418,7 @@ export class TransactionService {
       } else {
         // Pinjam: serah terima mengubah status ke SEDANG_DIPINJAM (masa peminjaman aktif)
         const durasiHari = tx.durasi_hari || 7;
-        const calculatedDueDate = tx.due_date || new Date(now.getTime() + durasiHari * 24 * 60 * 60 * 1000);
+        const calculatedDueDate = new Date(now.getTime() + durasiHari * 24 * 60 * 60 * 1000);
 
         await prismaTx.transaction.update({
           where: { id },
@@ -421,6 +438,11 @@ export class TransactionService {
     const tx = await this.getTransactionById(id, userId, userRole);
     if (tx.status === 'SELESAI') {
       return tx;
+    }
+    if (tx.tipe_transaksi === 'BARTER') {
+      const error: any = new Error('Transaksi barter selesai melalui konfirmasi serah terima fisik buku, bukan pengembalian.');
+      error.statusCode = 400;
+      throw error;
     }
     // Pengembalian bisa dilakukan kapan saja selama masa pinjam aktif (bisa lebih cepat dari tanggal jatuh tempo)
     if (!['SEDANG_DIPINJAM', 'DALAM_PROSES'].includes(tx.status)) {
