@@ -88,6 +88,29 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   String _myComment = '';
   bool _isLoadingAction = false;
 
+  String _parseDisplayLocation(String raw) {
+    if (raw.contains('| JADWAL:')) {
+      return raw.split('| JADWAL:').first.trim();
+    }
+    return raw.trim();
+  }
+
+  String _parseDisplayTime(String raw) {
+    if (raw.contains('| JADWAL:')) {
+      return raw.split('| JADWAL:').last.trim();
+    }
+    return '';
+  }
+
+  static String _getNamaBulan(int month) {
+    const bulan = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    if (month >= 1 && month <= 12) return bulan[month - 1];
+    return '';
+  }
+
   bool get _isHandoverSet {
     final loc = _currentHandoverLocation.trim().toLowerCase();
     return loc.isNotEmpty &&
@@ -1053,7 +1076,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             const SizedBox(width: 8),
                             Flexible(
                               child: Text(
-                                isSet ? _currentHandoverLocation : 'Belum ditentukan',
+                                isSet ? _parseDisplayLocation(_currentHandoverLocation) : 'Belum ditentukan',
                                 textAlign: TextAlign.end,
                                 style: TextStyle(
                                   fontSize: 13,
@@ -1066,6 +1089,34 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             ),
                           ],
                         ),
+                        if (isSet && _parseDisplayTime(_currentHandoverLocation).isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Jadwal Pertemuan',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF7E7A92),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  _parseDisplayTime(_currentHandoverLocation),
+                                  textAlign: TextAlign.end,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF130F26),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -1106,7 +1157,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   const SizedBox(height: 12),
                   Text(
                     isSet
-                        ? 'Silakan temui $partnerName di $_currentHandoverLocation untuk melakukan serah terima fisik buku.'
+                        ? (_parseDisplayTime(_currentHandoverLocation).isNotEmpty
+                            ? 'Silakan temui $partnerName di ${_parseDisplayLocation(_currentHandoverLocation)} pada ${_parseDisplayTime(_currentHandoverLocation)} untuk melakukan serah terima fisik buku.'
+                            : 'Silakan temui $partnerName di ${_parseDisplayLocation(_currentHandoverLocation)} untuk melakukan serah terima fisik buku.')
                         : 'Harap tunggu $partnerName menentukan lokasi dan waktu pertemuan setelah deposit diselesaikan.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
@@ -1181,8 +1234,15 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               isOwner: _isCurrentUserOwner(context),
               onClose: () => Navigator.pop(ctx),
               onHandoverConfirmed: (selectedLocation, [meetingTime]) async {
+                final String timeStr = meetingTime != null
+                    ? '${meetingTime.day} ${_getNamaBulan(meetingTime.month)} ${meetingTime.year}, ${meetingTime.hour.toString().padLeft(2, '0')}:${meetingTime.minute.toString().padLeft(2, '0')}'
+                    : '';
+                final combined = timeStr.isNotEmpty
+                    ? '$selectedLocation | JADWAL: $timeStr'
+                    : selectedLocation;
+
                 setState(() {
-                  _currentHandoverLocation = selectedLocation;
+                  _currentHandoverLocation = combined;
                 });
                 Navigator.pop(ctx);
 
@@ -1190,7 +1250,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 trxProv.updateLokasiTransaksi(
                   id: widget.transactionId,
                   judulBuku: widget.bookTitle,
-                  lokasi: selectedLocation,
+                  lokasi: combined,
                 );
 
                 try {
@@ -1201,7 +1261,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     await trxProv.setMeetingApi(
                       token,
                       txId,
-                      selectedLocation,
+                      combined,
                       meetingTime?.toIso8601String(),
                     );
                     if (mounted) {
@@ -2350,9 +2410,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     locTrim != 'set handover' &&
                     locTrim != 'pilih lokasi' &&
                     locTrim != 'belum ditentukan';
+                final cleanLoc = _parseDisplayLocation(effectiveLoc);
                 final String displayHandover = isOwner
-                    ? (isHandoverSet ? effectiveLoc : 'Belum ditentukan')
-                    : (isHandoverSet ? effectiveLoc : 'Tentukan lokasi');
+                    ? (isHandoverSet ? cleanLoc : 'Belum ditentukan')
+                    : (isHandoverSet ? cleanLoc : 'Tentukan lokasi');
                 final Color handoverDotColor = isHandoverSet
                     ? const Color(0xFF2FD677)
                     : const Color(0xFFF05151);

@@ -198,8 +198,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
   ({String text, String? imageUrl}) _parseMessageContent(String raw) {
     if (raw.startsWith('[HANDOVER_LOCATION]:')) {
-      final loc = raw.replaceFirst('[HANDOVER_LOCATION]:', '').trim();
-      return (text: '📍 Jadwal & Lokasi Serah Terima: ' + loc, imageUrl: null);
+      final body = raw.replaceFirst('[HANDOVER_LOCATION]:', '').trim();
+      final loc = body.contains('| JADWAL:') ? body.split('| JADWAL:').first.trim() : body;
+      final time = body.contains('| JADWAL:') ? body.split('| JADWAL:').last.trim() : '';
+      final text = time.isNotEmpty
+          ? '📍 Jadwal & Lokasi Serah Terima: $loc ($time)'
+          : '📍 Jadwal & Lokasi Serah Terima: $loc';
+      return (text: text, imageUrl: null);
     }
     if (raw.startsWith('[FOTO:') && raw.contains(']')) {
       final closeIdx = raw.indexOf(']');
