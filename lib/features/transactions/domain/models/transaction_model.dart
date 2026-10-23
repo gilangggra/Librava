@@ -63,7 +63,8 @@ class TransactionModel {
   bool get isOverdue {
     if (jenisTransaksi.toLowerCase() != 'pinjam') return false;
     final s = status.toLowerCase();
-    if (s == 'selesai' || s == 'ditolak' || s == 'dibatalkan' || s == 'pending') {
+    // Overdue HANYA berlaku saat buku sedang aktif dipinjam oleh peminjam
+    if (s != 'sedang_dipinjam') {
       return false;
     }
     final due = effectiveDueDate;

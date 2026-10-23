@@ -36,6 +36,8 @@ class TransactionDetailPage extends StatefulWidget {
   final bool ownerConfirmed;
   final String? ownerId;
   final bool? isOwner;
+  final String? requesterName;
+  final String? requesterId;
   final DateTime? dueDate;
   final bool? isOverdue;
 
@@ -44,6 +46,8 @@ class TransactionDetailPage extends StatefulWidget {
     this.transactionId,
     this.ownerId,
     this.isOwner,
+    this.requesterName,
+    this.requesterId,
     this.bookTitle = 'Buku Kampus',
     this.bookAuthor = 'Penulis',
     this.coverPath = 'assets/images/bookshelf.jpg',
@@ -70,11 +74,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   final int _selectedIndex = 2;
 
   bool get _isOverdue {
-    if (widget.isOverdue == true) return true;
     final s = _currentStatus.toLowerCase();
-    if (s == 'selesai' || s == 'ditolak' || s == 'dibatalkan' || s == 'pending' || s == 'menunggu konfirmasi') {
+    // Overdue HANYA berlaku jika buku sedang dalam masa peminjaman aktif (sedang_dipinjam)
+    if (s != 'sedang_dipinjam') {
       return false;
     }
+    if (widget.isOverdue == true) return true;
     if (widget.dueDate != null) {
       return DateTime.now().isAfter(widget.dueDate!);
     }
@@ -391,11 +396,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     (isOwner
                         ? (txAfter?.requesterConfirmedAt != null)
                         : (txAfter?.ownerConfirmedAt != null));
+                final isBarter = widget.type.toLowerCase() == 'barter';
 
                 setState(() {
                   if (partnerAlsoConfirmed ||
                       txAfter?.status.toLowerCase() == 'selesai') {
-                    _currentStatus = 'selesai';
+                    _currentStatus = isBarter ? 'selesai' : 'sedang_dipinjam';
                   }
                 });
 
@@ -404,7 +410,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     content: Text(
                       partnerAlsoConfirmed ||
                               txAfter?.status.toLowerCase() == 'selesai'
-                          ? 'Handover completed! Transaction is now completed.'
+                          ? (isBarter
+                              ? 'Barter handover completed! Transaction is finished.'
+                              : 'Handover confirmed! The book is now actively on loan.')
                           : 'Your handover confirmation has been recorded.',
                     ),
                     backgroundColor: const Color(0xFF2FD677),
@@ -1489,7 +1497,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     if (isOwner) {
       partner = (tx != null && tx.pemohonNama.isNotEmpty)
           ? tx.pemohonNama
-          : 'Peminjam Buku';
+          : ((widget.requesterName != null && widget.requesterName!.isNotEmpty)
+              ? widget.requesterName!
+              : 'Peminjam Buku');
     } else {
       partner = widget.ownerName.isNotEmpty
           ? widget.ownerName
@@ -1508,12 +1518,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           if (tx != null && tx.pemilikNama.isNotEmpty && tx.pemilikNama.toLowerCase() != myName) {
             return tx.pemilikNama;
           }
-          return 'Peminjam Buku';
+          return (widget.requesterName != null && widget.requesterName!.isNotEmpty)
+              ? widget.requesterName!
+              : 'Peminjam Buku';
         } else {
           if (tx != null && tx.pemohonNama.isNotEmpty && tx.pemohonNama.toLowerCase() != myName) {
             return tx.pemohonNama;
           }
-          return 'Pemilik Buku';
+          return widget.ownerName.isNotEmpty ? widget.ownerName : 'Pemilik Buku';
         }
       }
     } catch (_) {}
@@ -1526,7 +1538,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final isOwner = _isCurrentUserOwner(context);
     String? pId;
     if (isOwner) {
-      pId = (tx != null && tx.pemohonId.isNotEmpty) ? tx.pemohonId : null;
+      pId = (tx != null && tx.pemohonId.isNotEmpty)
+          ? tx.pemohonId
+          : widget.requesterId;
     } else {
       pId = widget.ownerId ??
           (tx != null && tx.pemilikId.isNotEmpty ? tx.pemilikId : null);
@@ -2801,8 +2815,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 Expanded(
                   child: Text(
                     bothConfirmed
-                        ? 'Kedua pihak telah mengonfirmasi serah terima'
-                        : 'Transaction will complete after both parties confirm',
+                        ? 'Kedua pihak telah mengonfirmasi serah terima fisik buku'
+                        : 'Kedua pihak harus saling mengonfirmasi saat serah terima buku fisik',
                     style: const TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w400,

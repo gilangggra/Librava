@@ -844,6 +844,8 @@ class _MyBookPageState extends State<MyBookPage> {
                         : 'Tentukan lokasi',
                     ownerName: trx.pemilikNama,
                     ownerId: trx.pemilikId,
+                    requesterName: trx.pemohonNama,
+                    requesterId: trx.pemohonId,
                     isOwner: isOwner,
                     type: trx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
                     dueDate: trx.dueDate ?? trx.effectiveDueDate,

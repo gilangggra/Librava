@@ -738,6 +738,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         : 'Tentukan lokasi',
                     ownerName: trx.pemilikNama,
                     ownerId: trx.pemilikId,
+                    requesterName: trx.pemohonNama,
+                    requesterId: trx.pemohonId,
                     isOwner: isOwner,
                     type: trx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
                   ),

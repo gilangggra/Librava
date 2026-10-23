@@ -445,6 +445,8 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                       : 'Tentukan lokasi',
                   ownerName: trx.pemilikNama,
                   ownerId: trx.pemilikId,
+                  requesterName: trx.pemohonNama,
+                  requesterId: trx.pemohonId,
                   isOwner: isOwner,
                   type: trx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
                   dueDate: trx.dueDate ?? trx.effectiveDueDate,

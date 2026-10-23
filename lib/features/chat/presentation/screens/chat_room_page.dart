@@ -1268,6 +1268,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 handoverLocation: tx.lokasiPertemuan.isNotEmpty ? tx.lokasiPertemuan : 'Set handover',
                 ownerName: tx.pemilikNama,
                 ownerId: tx.pemilikId,
+                requesterName: tx.pemohonNama,
+                requesterId: tx.pemohonId,
                 isOwner: isOwner,
                 type: isBarter ? 'Barter' : 'Borrow',
                 dueDate: tx.dueDate ?? tx.effectiveDueDate,
