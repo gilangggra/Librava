@@ -219,7 +219,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         for (final r in userReviews.reviews) {
           final isMatchTx = txIntId != null && r.transactionId == txIntId;
           final isMatchReviewer = myUid != null && r.reviewerId == myUid;
-          if (isMatchTx || isMatchReviewer) {
+          if (txIntId != null ? (isMatchTx && isMatchReviewer) : isMatchReviewer) {
             trxProvider.recordTransactionReview(txId, r.rating, r.komentar);
             if (mounted) {
               setState(() {

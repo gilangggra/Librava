@@ -1416,10 +1416,31 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(12),
                         onTap: () {
+                          TransactionModel? currentTx;
+                          try {
+                            final trxProvider =
+                                context.read<TransactionProvider>();
+                            currentTx = trxProvider.semuaTransaksi
+                                .where((t) => t.id == widget.transactionId)
+                                .firstOrNull;
+                          } catch (_) {}
+                          final auth = context.read<AuthProvider>();
+                          final myId = auth.currentUser?.id ?? '';
+                          final myName = auth.currentUser?.nama.trim().toLowerCase() ?? '';
+                          final bool isMeOwner = (myId.isNotEmpty &&
+                                  currentTx?.pemilikId.isNotEmpty == true &&
+                                  currentTx?.pemilikId == myId) ||
+                              (myName.isNotEmpty &&
+                                  currentTx?.pemilikNama.trim().toLowerCase() == myName);
+                          final partnerId = isMeOwner
+                              ? currentTx?.pemohonId
+                              : currentTx?.pemilikId;
+
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => ProfileViewPage(
+                                userId: partnerId,
                                 name: widget.userName,
                                 transactionId: widget.transactionId,
                               ),

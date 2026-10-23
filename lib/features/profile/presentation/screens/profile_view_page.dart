@@ -55,12 +55,44 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
   bool _isLoading = false;
   UserReviewsData? _reviewsData;
   bool _isLoadingReviews = false;
+  String? _resolvedUserId;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.userId != null && widget.user == null) {
+      if ((widget.userId == null || widget.userId!.isEmpty) &&
+          widget.transactionId != null &&
+          widget.transactionId!.isNotEmpty) {
+        try {
+          final trx = context
+              .read<TransactionProvider>()
+              .getTransaksiById(widget.transactionId!);
+          final myId = context.read<AuthProvider>().currentUser?.id ?? '';
+          final myName = context
+                  .read<AuthProvider>()
+                  .currentUser
+                  ?.nama
+                  .trim()
+                  .toLowerCase() ??
+              '';
+          if (trx != null) {
+            final isMeOwner = (myId.isNotEmpty && trx.pemilikId == myId) ||
+                (myName.isNotEmpty &&
+                    trx.pemilikNama.trim().toLowerCase() == myName);
+            final targetId = isMeOwner ? trx.pemohonId : trx.pemilikId;
+            if (targetId.isNotEmpty) {
+              _resolvedUserId = targetId;
+              _muatProfilDariDatabase();
+              _muatUlasanPengguna();
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+
+      final effectiveId = widget.userId ?? _resolvedUserId;
+      if (effectiveId != null && effectiveId.isNotEmpty && widget.user == null) {
         _muatProfilDariDatabase();
       }
       _muatUlasanPengguna();
@@ -68,7 +100,8 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
   }
 
   Future<void> _muatUlasanPengguna() async {
-    final int? targetUserId = int.tryParse(widget.userId ?? '') ??
+    final effectiveId = widget.userId ?? _resolvedUserId;
+    final int? targetUserId = int.tryParse(effectiveId ?? '') ??
         int.tryParse(widget.user?.id ?? '') ??
         int.tryParse(_fetchedUser?.id ?? '');
 
@@ -91,11 +124,12 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
   }
 
   Future<void> _muatProfilDariDatabase() async {
-    if (widget.userId == null) return;
+    final effectiveId = widget.userId ?? _resolvedUserId;
+    if (effectiveId == null || effectiveId.isEmpty) return;
     setState(() => _isLoading = true);
     try {
       final auth = context.read<AuthProvider>();
-      final userDb = await auth.ambilProfilPenggunaLain(widget.userId!);
+      final userDb = await auth.ambilProfilPenggunaLain(effectiveId);
       if (mounted) {
         setState(() {
           _fetchedUser = userDb;

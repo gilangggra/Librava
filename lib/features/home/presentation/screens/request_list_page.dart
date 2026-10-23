@@ -55,9 +55,31 @@ class _RequestListPageState extends State<RequestListPage> {
 
   void _gabungkanDataDatabase(
       TransactionProvider trxProvider, String? currentUserName) {
+    String currentUserId = '';
+    try {
+      final auth = context.read<AuthProvider>();
+      currentUserId = auth.currentUser?.id ?? '';
+    } catch (_) {}
+
     final incomingTxs = trxProvider.semuaTransaksi.where((t) {
-      if (currentUserName != null && currentUserName.isNotEmpty) {
-        return t.pemilikNama.toLowerCase() == currentUserName.toLowerCase();
+      final isOwner = (currentUserId.isNotEmpty &&
+              t.pemilikId.isNotEmpty &&
+              t.pemilikId == currentUserId) ||
+          (currentUserName != null &&
+              currentUserName.isNotEmpty &&
+              t.pemilikNama.trim().toLowerCase() ==
+                  currentUserName.trim().toLowerCase());
+      final notRequester = (currentUserId.isNotEmpty &&
+              t.pemohonId.isNotEmpty &&
+              t.pemohonId != currentUserId) ||
+          (currentUserName != null &&
+              currentUserName.isNotEmpty &&
+              t.pemohonNama.trim().toLowerCase() !=
+                  currentUserName.trim().toLowerCase());
+
+      if (currentUserId.isNotEmpty ||
+          (currentUserName != null && currentUserName.isNotEmpty)) {
+        return isOwner && notRequester;
       }
       return t.pemilikNama == 'Gilang Ramadan' ||
           (t.pemilikNama != t.pemohonNama && t.pemilikNama.isNotEmpty);
@@ -66,9 +88,14 @@ class _RequestListPageState extends State<RequestListPage> {
     if (incomingTxs.isNotEmpty && mounted) {
       final List<BookRequestItem> realItems = incomingTxs.map((t) {
         String statusMapped = 'Pending';
-        if (t.status == 'disetujui' || t.status == 'selesai') {
+        final st = t.status.toLowerCase();
+        if (st == 'disetujui' ||
+            st == 'dalam_proses' ||
+            st == 'lokasi_ditentukan' ||
+            st == 'sedang_dipinjam' ||
+            st == 'selesai') {
           statusMapped = 'Accepted';
-        } else if (t.status == 'ditolak' || t.status == 'dibatalkan') {
+        } else if (st == 'ditolak' || st == 'dibatalkan') {
           statusMapped = 'Declined';
         }
 
@@ -378,10 +405,13 @@ class _RequestListPageState extends State<RequestListPage> {
       ),
     );
 
-    if (updatedStatus != null && mounted) {
-      setState(() {
-        item.status = updatedStatus;
-      });
+    if (mounted) {
+      if (updatedStatus != null) {
+        setState(() {
+          item.status = updatedStatus;
+        });
+      }
+      _loadRealRequests();
     }
   }
 

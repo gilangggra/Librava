@@ -74,10 +74,24 @@ class _ChatPageState extends State<ChatPage> {
     final Map<String, List<TransactionModel>> partnerGroups = {};
 
     for (final trx in trxProvider.semuaTransaksi) {
-      final bool isOwner = currentUserId.isNotEmpty && trx.pemilikId.isNotEmpty
-          ? (trx.pemilikId == currentUserId)
-          : (currentUserName.isNotEmpty &&
+      final bool isOwner = (currentUserId.isNotEmpty &&
+              trx.pemilikId.isNotEmpty &&
+              trx.pemilikId == currentUserId) ||
+          (currentUserName.isNotEmpty &&
               trx.pemilikNama.trim().toLowerCase() == currentUserName);
+      final bool isBorrower = (currentUserId.isNotEmpty &&
+              trx.pemohonId.isNotEmpty &&
+              trx.pemohonId == currentUserId) ||
+          (currentUserName.isNotEmpty &&
+              trx.pemohonNama.trim().toLowerCase() == currentUserName);
+
+      // Hanya tampilkan percakapan transaksi di mana pengguna adalah pemilik atau peminjam
+      if (currentUserId.isNotEmpty || currentUserName.isNotEmpty) {
+        if (!isOwner && !isBorrower) {
+          continue;
+        }
+      }
+
       final partnerId = isOwner ? trx.pemohonId : trx.pemilikId;
       final partnerName = isOwner ? trx.pemohonNama : trx.pemilikNama;
       final partnerDisplay =
@@ -209,8 +223,8 @@ class _ChatPageState extends State<ChatPage> {
   Widget _buildChatCard(ChatItemModel chat) {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ChatRoomPage(
@@ -220,6 +234,14 @@ class _ChatPageState extends State<ChatPage> {
             ),
           ),
         );
+        if (mounted) {
+          try {
+            final auth = context.read<AuthProvider>();
+            if (auth.token != null) {
+              context.read<ChatProvider>().fetchSummary(auth.token!);
+            }
+          } catch (_) {}
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),

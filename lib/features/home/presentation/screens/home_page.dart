@@ -64,9 +64,25 @@ class _HomePageState extends State<HomePage> {
   }
 
   List<Map<String, dynamic>> _getBorrowedBooks(
-      TransactionProvider? trxProvider) {
+      TransactionProvider? trxProvider,
+      {String currentUserId = '', String currentUserName = ''}) {
     if (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty) {
-      return trxProvider.semuaTransaksi.map((t) {
+      final userTxs = trxProvider.semuaTransaksi.where((t) {
+        final isBorrower = (currentUserId.isNotEmpty &&
+                t.pemohonId.isNotEmpty &&
+                t.pemohonId == currentUserId) ||
+            (currentUserName.isNotEmpty &&
+                t.pemohonNama.trim().toLowerCase() == currentUserName);
+        final isActive = t.status != 'selesai' &&
+            t.status != 'ditolak' &&
+            t.status != 'dibatalkan';
+        if (currentUserId.isNotEmpty || currentUserName.isNotEmpty) {
+          return isBorrower && isActive;
+        }
+        return isActive;
+      }).toList();
+
+      return userTxs.map((t) {
         final author = t.penulisBuku.isNotEmpty && t.penulisBuku != 'Penulis'
             ? t.penulisBuku
             : (t.judulBuku.toLowerCase().contains('basis data')
@@ -76,25 +92,53 @@ class _HomePageState extends State<HomePage> {
                 t.coverBuku != 'assets/images/book_the_unknown.jpg'
             ? t.coverBuku
             : _getCoverForJudul(t.judulBuku);
+
+        String displayStatus = t.status;
+        Color statusColor = const Color(0xFF34C759);
+        switch (t.status.toLowerCase()) {
+          case 'pending':
+            displayStatus = "Waiting for owner's response";
+            statusColor = const Color(0xFFFFDD2D);
+            break;
+          case 'disetujui':
+            displayStatus = 'Approved';
+            statusColor = const Color(0xFF4C7BFE);
+            break;
+          case 'lokasi_ditentukan':
+          case 'dalam_proses':
+            displayStatus = 'Handover scheduled';
+            statusColor = const Color(0xFF6356FF);
+            break;
+          case 'sedang_dipinjam':
+            displayStatus = 'Active Loan';
+            statusColor = const Color(0xFF10B981);
+            break;
+          default:
+            displayStatus = t.status;
+            statusColor = const Color(0xFF34C759);
+        }
+
         return {
           'id': t.id,
           'title': t.judulBuku,
           'author': author,
+          'rawStatus': t.status,
           'subtitle':
               '${t.jenisTransaksi == "barter" ? "Bartered with" : "Borrowing from"} ${t.pemilikNama}',
-          'status': t.status == 'pending'
-              ? 'Waiting for owner’s response'
-              : t.status == 'disetujui'
-                  ? 'Approved'
-                  : t.status == 'selesai'
-                      ? 'Barter completed'
-                      : t.status,
-          'statusColor': t.status == 'pending'
-              ? const Color(0xFFFFDD2D)
-              : t.status == 'disetujui'
-                  ? const Color(0xFF4C7BFE)
-                  : const Color(0xFF34C759),
+          'status': displayStatus,
+          'statusColor': statusColor,
           'image': cover,
+          'ownerName': t.pemilikNama,
+          'ownerId': t.pemilikId,
+          'requesterName': t.pemohonNama,
+          'requesterId': t.pemohonId,
+          'type': t.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
+          'handoverLocation': t.lokasiPertemuan.isNotEmpty
+              ? t.lokasiPertemuan
+              : 'Tentukan lokasi',
+          'depositAmount': '${t.depositSimulasi.toInt()} Rupiah',
+          'dueDate': t.dueDate ?? t.effectiveDueDate,
+          'isOverdue': t.isOverdue,
         };
       }).toList();
     }
@@ -182,7 +226,17 @@ class _HomePageState extends State<HomePage> {
               bookTitle: item['title'] as String,
               bookAuthor: (item['author'] as String?) ?? 'Penulis',
               coverPath: item['image'] as String,
-              status: item['status'] as String,
+              status: (item['rawStatus'] as String?) ?? (item['status'] as String),
+              ownerName: item['ownerName'] as String?,
+              ownerId: item['ownerId'] as String?,
+              requesterName: item['requesterName'] as String?,
+              requesterId: item['requesterId'] as String?,
+              isOwner: false,
+              type: (item['type'] as String?) ?? 'Borrow',
+              handoverLocation: item['handoverLocation'] as String?,
+              depositAmount: item['depositAmount'] as String?,
+              dueDate: item['dueDate'] as DateTime?,
+              isOverdue: (item['isOverdue'] as bool?) ?? false,
             ),
           ),
         );
@@ -552,15 +606,26 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    AuthProvider? authProvider;
     BookProvider? bookProvider;
     TransactionProvider? trxProvider;
+    try {
+      authProvider = Provider.of<AuthProvider>(context);
+    } catch (_) {}
     try {
       bookProvider = Provider.of<BookProvider>(context);
     } catch (_) {}
     try {
       trxProvider = Provider.of<TransactionProvider>(context);
     } catch (_) {}
-    final borrowedList = _getBorrowedBooks(trxProvider);
+    final currentUserId = authProvider?.currentUser?.id ?? '';
+    final currentUserName =
+        authProvider?.currentUser?.nama.trim().toLowerCase() ?? '';
+    final borrowedList = _getBorrowedBooks(
+      trxProvider,
+      currentUserId: currentUserId,
+      currentUserName: currentUserName,
+    );
     final pendingRequestCount =
         trxProvider?.requestMasuk.where((t) => t.status == 'pending').length ??
             0;

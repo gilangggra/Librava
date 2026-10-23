@@ -702,9 +702,18 @@ class _ProfilePageState extends State<ProfilePage> {
       final recentList = transactions.take(5).toList();
       for (int i = 0; i < recentList.length; i++) {
         final trx = recentList[i];
-        final subtitleText = trx.jenisTransaksi == 'barter'
-            ? 'Barter with ${trx.pemilikNama}'
-            : (trx.pemilikNama == namaUser
+        final bool isOwnerItem = (currentUserId.isNotEmpty &&
+                trx.pemilikId.isNotEmpty &&
+                trx.pemilikId == currentUserId) ||
+            (namaUser != 'Pengguna' &&
+                trx.pemilikNama.trim().toLowerCase() ==
+                    namaUser.trim().toLowerCase());
+
+        final subtitleText = trx.jenisTransaksi.toLowerCase() == 'barter'
+            ? (isOwnerItem
+                ? 'Barter with ${trx.pemohonNama}'
+                : 'Barter with ${trx.pemilikNama}')
+            : (isOwnerItem
                 ? 'Lent to ${trx.pemohonNama}'
                 : 'Borrowing from ${trx.pemilikNama}');
         recentWidgets.add(
@@ -741,7 +750,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     requesterName: trx.pemohonNama,
                     requesterId: trx.pemohonId,
                     isOwner: isOwner,
-                    type: trx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
+                    type: trx.jenisTransaksi.toLowerCase() == 'barter' ? 'Barter' : 'Borrow',
+                    dueDate: trx.dueDate ?? trx.effectiveDueDate,
+                    isOverdue: trx.isOverdue,
                   ),
                 ),
               );
