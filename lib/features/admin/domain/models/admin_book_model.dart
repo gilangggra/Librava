@@ -68,11 +68,12 @@ class AdminBookModel {
   }
 
   String get statusTampil {
-    if (status == 'Tersedia') {
+    final s = status.trim().toLowerCase();
+    if (s == 'tersedia' || s == 'available') {
       return 'Available';
-    } else if (status == 'Dipinjam') {
+    } else if (s == 'dipinjam' || s == 'borrowed') {
       return 'Borrowed';
-    } else if (status == 'Dibarter') {
+    } else if (s == 'dibarter' || s == 'bartered') {
       return 'Bartered';
     }
     return status;

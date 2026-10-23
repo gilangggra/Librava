@@ -107,20 +107,38 @@ class AdminDashboardModel {
         final person = item['requester_nama']?.toString() ??
             item['owner_nama']?.toString() ??
             'Mahasiswa';
-        final rawStatus = item['status']?.toString() ?? 'MENUNGGU_KONFIRMASI';
+        final normStatus = (item['status']?.toString() ?? 'MENUNGGU_KONFIRMASI').trim().toUpperCase();
 
         String activityStatus = 'Pending';
-        if (rawStatus == 'DISETUJUI' || rawStatus == 'DALAM_PROSES') {
+        if (normStatus == 'DISETUJUI' ||
+            normStatus == 'ACCEPTED' ||
+            normStatus == 'DALAM_PROSES' ||
+            normStatus == 'DEPOSIT_DIBAYAR' ||
+            normStatus == 'LOKASI_DITENTUKAN') {
           activityStatus = 'Accepted';
-        } else if (rawStatus == 'SELESAI') {
+        } else if (normStatus == 'SEDANG_DIPINJAM' || normStatus == 'ON_LOAN') {
+          activityStatus = 'On Loan';
+        } else if (normStatus == 'SELESAI' || normStatus == 'COMPLETED') {
           activityStatus = 'Completed';
-        } else if (rawStatus == 'DITOLAK' || rawStatus == 'DIBATALKAN') {
+        } else if (normStatus == 'DITOLAK' ||
+            normStatus == 'REJECTED' ||
+            normStatus == 'DIBATALKAN' ||
+            normStatus == 'CANCELLED') {
           activityStatus = 'Rejected';
         }
 
-        String txStatus = 'Incompleted';
-        if (rawStatus == 'SELESAI') {
+        String txStatus = 'In Progress';
+        if (normStatus == 'SELESAI' || normStatus == 'COMPLETED') {
           txStatus = 'Completed';
+        } else if (normStatus == 'SEDANG_DIPINJAM' || normStatus == 'ON_LOAN') {
+          txStatus = 'On Loan';
+        } else if (normStatus == 'MENUNGGU_KONFIRMASI' || normStatus == 'PENDING') {
+          txStatus = 'Pending';
+        } else if (normStatus == 'DITOLAK' ||
+            normStatus == 'REJECTED' ||
+            normStatus == 'DIBATALKAN' ||
+            normStatus == 'CANCELLED') {
+          txStatus = 'Rejected';
         }
 
         final String cover = BookCoverHelper.getCover(

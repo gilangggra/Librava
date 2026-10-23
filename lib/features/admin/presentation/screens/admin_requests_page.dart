@@ -51,8 +51,8 @@ class _AdminRequestsPageState extends State<AdminRequestsPage> {
   }
 
   Color _warnaStatus(String statusTampil) {
-    if (statusTampil == 'Accepted') return const Color(0xFF22C55E);
-    if (statusTampil == 'Rejected') return const Color(0xFFEF4444);
+    if (statusTampil == 'Accepted' || statusTampil == 'In Progress') return const Color(0xFF22C55E);
+    if (statusTampil == 'Rejected' || statusTampil == 'Cancelled') return const Color(0xFFEF4444);
     return const Color(0xFFF59E0B);
   }
 
