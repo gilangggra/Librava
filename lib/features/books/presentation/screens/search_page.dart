@@ -27,10 +27,10 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   int _selectedIndex = 2;
   int _selectedSegment = 0;
-  String _selectedGenreFilter = 'Semua';
-  String _selectedStatusFilter = 'Semua';
-  String _selectedLanguageFilter = 'Semua';
-  String _selectedRatingFilter = 'Semua';
+  String _selectedGenreFilter = 'All';
+  String _selectedStatusFilter = 'All';
+  String _selectedLanguageFilter = 'All';
+  String _selectedRatingFilter = 'All';
   late final TextEditingController _searchController;
 
   @override
@@ -54,10 +54,10 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   bool get _hasActiveFilters =>
-      _selectedGenreFilter != 'Semua' ||
-      _selectedStatusFilter != 'Semua' ||
-      _selectedLanguageFilter != 'Semua' ||
-      _selectedRatingFilter != 'Semua';
+      _selectedGenreFilter != 'All' ||
+      _selectedStatusFilter != 'All' ||
+      _selectedLanguageFilter != 'All' ||
+      _selectedRatingFilter != 'All';
 
   Widget _buildActiveFilterChip({
     required String label,
@@ -100,7 +100,7 @@ class _SearchPageState extends State<SearchPage> {
     required String? selectedValue,
     required VoidCallback onTap,
   }) {
-    final hasSelection = selectedValue != null && selectedValue != 'Semua';
+    final hasSelection = selectedValue != null && selectedValue != 'All';
 
     return GestureDetector(
       onTap: onTap,
@@ -476,14 +476,14 @@ class _SearchPageState extends State<SearchPage> {
                         onSelect: (val) {
                           setModalState(() {
                             if (expandedIndex == 0) {
-                              tempGenre = tempGenre == val ? 'Semua' : val;
+                              tempGenre = tempGenre == val ? 'All' : val;
                             } else if (expandedIndex == 1) {
-                              tempStatus = tempStatus == val ? 'Semua' : val;
+                              tempStatus = tempStatus == val ? 'All' : val;
                             } else if (expandedIndex == 2) {
                               tempLanguage =
-                                  tempLanguage == val ? 'Semua' : val;
+                                  tempLanguage == val ? 'All' : val;
                             } else if (expandedIndex == 3) {
-                              tempRating = tempRating == val ? 'Semua' : val;
+                              tempRating = tempRating == val ? 'All' : val;
                             }
                             expandedIndex = null;
                           });
@@ -1131,49 +1131,49 @@ class _SearchPageState extends State<SearchPage> {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        if (_selectedGenreFilter != 'Semua')
+                        if (_selectedGenreFilter != 'All')
                           _buildActiveFilterChip(
                             label: _selectedGenreFilter,
                             onRemove: () {
                               setState(() {
-                                _selectedGenreFilter = 'Semua';
+                                _selectedGenreFilter = 'All';
                               });
                             },
                           ),
-                        if (_selectedStatusFilter != 'Semua')
+                        if (_selectedStatusFilter != 'All')
                           _buildActiveFilterChip(
                             label: _selectedStatusFilter,
                             onRemove: () {
                               setState(() {
-                                _selectedStatusFilter = 'Semua';
+                                _selectedStatusFilter = 'All';
                               });
                             },
                           ),
-                        if (_selectedLanguageFilter != 'Semua')
+                        if (_selectedLanguageFilter != 'All')
                           _buildActiveFilterChip(
                             label: _selectedLanguageFilter,
                             onRemove: () {
                               setState(() {
-                                _selectedLanguageFilter = 'Semua';
+                                _selectedLanguageFilter = 'All';
                               });
                             },
                           ),
-                        if (_selectedRatingFilter != 'Semua')
+                        if (_selectedRatingFilter != 'All')
                           _buildActiveFilterChip(
                             label: _selectedRatingFilter,
                             onRemove: () {
                               setState(() {
-                                _selectedRatingFilter = 'Semua';
+                                _selectedRatingFilter = 'All';
                               });
                             },
                           ),
                         GestureDetector(
                           onTap: () {
                             setState(() {
-                              _selectedGenreFilter = 'Semua';
-                              _selectedStatusFilter = 'Semua';
-                              _selectedLanguageFilter = 'Semua';
-                              _selectedRatingFilter = 'Semua';
+                              _selectedGenreFilter = 'All';
+                              _selectedStatusFilter = 'All';
+                              _selectedLanguageFilter = 'All';
+                              _selectedRatingFilter = 'All';
                             });
                           },
                           child: const Padding(
@@ -1282,11 +1282,11 @@ class _SearchPageState extends State<SearchPage> {
                                     b.penulis.toLowerCase().contains(q) ||
                                     b.kategori.toLowerCase().contains(q);
                                 final matchGenre =
-                                    _selectedGenreFilter == 'Semua' ||
+                                    _selectedGenreFilter == 'All' ||
                                         b.kategori.toLowerCase() ==
                                             _selectedGenreFilter.toLowerCase();
                                 final matchStatus =
-                                    _selectedStatusFilter == 'Semua' ||
+                                    _selectedStatusFilter == 'All' ||
                                         (_selectedStatusFilter == 'Available'
                                             ? b.tersedia
                                             : !b.tersedia);
@@ -1297,7 +1297,7 @@ class _SearchPageState extends State<SearchPage> {
                                 results.sort((a, b) => b.rating.compareTo(a.rating));
                               } else if (_selectedRatingFilter == 'Lowest') {
                                 results.sort((a, b) => a.rating.compareTo(b.rating));
-                              } else if (_selectedRatingFilter != 'Semua') {
+                              } else if (_selectedRatingFilter != 'All') {
                                 final minRating = double.tryParse(
                                         _selectedRatingFilter.replaceAll(RegExp(r'[^0-9.]'), '')) ??
                                     0.0;

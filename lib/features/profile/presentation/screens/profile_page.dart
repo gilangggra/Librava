@@ -744,7 +744,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     depositAmount: '${trx.depositSimulasi.toInt()} Rupiah',
                     handoverLocation: trx.lokasiPertemuan.isNotEmpty
                         ? trx.lokasiPertemuan
-                        : 'Tentukan lokasi',
+                        : 'Set location',
                     ownerName: trx.pemilikNama,
                     ownerId: trx.pemilikId,
                     requesterName: trx.pemohonNama,

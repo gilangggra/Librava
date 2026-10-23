@@ -553,7 +553,7 @@ class _MyBookPageState extends State<MyBookPage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Penulis: ${book.penulis}',
+                  'Author: ${book.penulis}',
                   style: const TextStyle(
                     fontSize: 14,
                     color: Color(0xFF7E7A92),
@@ -599,7 +599,7 @@ class _MyBookPageState extends State<MyBookPage> {
                                 size: 12, color: Color(0xFF3730A3)),
                             SizedBox(width: 4),
                             Text(
-                              'Dipinjamkan',
+                              'Lent out',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -624,7 +624,7 @@ class _MyBookPageState extends State<MyBookPage> {
                                 size: 12, color: Color(0xFF6D28D9)),
                             SizedBox(width: 4),
                             Text(
-                              'Dalam Proses',
+                              'In Progress',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -650,7 +650,7 @@ class _MyBookPageState extends State<MyBookPage> {
                       border: Border.all(color: const Color(0xFFFCA5A5)),
                     ),
                     child: Text(
-                      'Alasan penolakan: ${book.catatanModerasi}',
+                      'Rejection reason: ${book.catatanModerasi}',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFFB91C1C),
@@ -673,8 +673,8 @@ class _MyBookPageState extends State<MyBookPage> {
                     ),
                     child: Text(
                       isLent
-                          ? 'Buku ini sedang dipinjamkan kepada mahasiswa lain.'
-                          : 'Buku ini sedang dalam proses peminjaman aktif.',
+                          ? 'This book is currently lent out to another student.'
+                          : 'This book is currently in an active loan process.',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF1E40AF),
@@ -699,7 +699,7 @@ class _MyBookPageState extends State<MyBookPage> {
                       icon: const Icon(CupertinoIcons.arrow_right_circle,
                           size: 16, color: AppColors.primary),
                       label: const Text(
-                        'Lihat Transaksi Peminjaman',
+                        'View Loan Transaction',
                         style: TextStyle(
                           color: AppColors.primary,
                           fontWeight: FontWeight.w700,
@@ -721,7 +721,7 @@ class _MyBookPageState extends State<MyBookPage> {
                               handoverLocation:
                                   activeTx.lokasiPertemuan.isNotEmpty
                                       ? activeTx.lokasiPertemuan
-                                      : 'Tentukan lokasi',
+                                      : 'Set location',
                               ownerName: activeTx.pemilikNama,
                               ownerId: activeTx.pemilikId,
                               requesterName: activeTx.pemohonNama,
@@ -815,7 +815,7 @@ class _MyBookPageState extends State<MyBookPage> {
                         ),
                         onPressed: () => Navigator.pop(ctx),
                         child: const Text(
-                          'Tutup',
+                          'Close',
                           style: TextStyle(
                             color: Color(0xFF7E7A92),
                             fontWeight: FontWeight.w600,
@@ -852,7 +852,7 @@ class _MyBookPageState extends State<MyBookPage> {
                           }
                         },
                         child: const Text(
-                          'Detail',
+                          'Details',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
@@ -967,10 +967,10 @@ class _MyBookPageState extends State<MyBookPage> {
             badgeWidget = _buildMiniBadge('Rejected', const Color(0xFFFEE2E2),
                 const Color(0xFFB91C1C));
           } else if (isLent) {
-            badgeWidget = _buildMiniBadge('Dipinjamkan', const Color(0xFFE0E7FF),
+            badgeWidget = _buildMiniBadge('Lent out', const Color(0xFFE0E7FF),
                 const Color(0xFF3730A3));
           } else if (isInProcess) {
-            badgeWidget = _buildMiniBadge('Dalam Proses', const Color(0xFFEDE9FE),
+            badgeWidget = _buildMiniBadge('In Progress', const Color(0xFFEDE9FE),
                 const Color(0xFF6D28D9));
           }
 
@@ -1058,7 +1058,7 @@ class _MyBookPageState extends State<MyBookPage> {
                 Colors.white, icon: CupertinoIcons.clock_fill);
           } else if (s == 'sedang_dipinjam') {
             statusBadge = _buildMiniBadge(
-              isLentOut ? 'Dipinjamkan' : 'Dipinjam',
+              isLentOut ? 'Lent out' : 'Borrowed',
               const Color(0xFFDCFCE7),
               const Color(0xFF15803D),
             );
@@ -1070,7 +1070,7 @@ class _MyBookPageState extends State<MyBookPage> {
             );
           } else if (s == 'disetujui' || s == 'deposit_dibayar') {
             statusBadge = _buildMiniBadge(
-              'Disetujui',
+              'Approved',
               const Color(0xFFDBEAFE),
               const Color(0xFF1D4ED8),
             );
@@ -1099,7 +1099,7 @@ class _MyBookPageState extends State<MyBookPage> {
                     depositAmount: '${trx.depositSimulasi.toInt()} Rupiah',
                     handoverLocation: trx.lokasiPertemuan.isNotEmpty
                         ? trx.lokasiPertemuan
-                        : 'Tentukan lokasi',
+                        : 'Set location',
                     ownerName: trx.pemilikNama,
                     ownerId: trx.pemilikId,
                     requesterName: trx.pemohonNama,

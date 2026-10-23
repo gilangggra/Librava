@@ -93,10 +93,10 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
     String teksStatus = buku.statusTampil;
     if (buku.isPending) {
       warna = const Color(0xFFF59E0B);
-      teksStatus = 'Pending Verifikasi';
+      teksStatus = 'Pending Verification';
     } else if (buku.isDitolak) {
       warna = const Color(0xFFDC2626);
-      teksStatus = 'Ditolak';
+      teksStatus = 'Rejected';
     } else {
       warna = _warnaStatus(buku.status);
     }

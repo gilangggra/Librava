@@ -76,6 +76,7 @@ class _HandoverModalContentState extends State<HandoverModalContent> {
     final loc = widget.initialLocation.trim();
     final isDefault = loc.isEmpty ||
         loc == 'Set handover' ||
+        loc == 'Set location' ||
         loc == 'Tentukan lokasi' ||
         loc == 'Belum ditentukan';
     _locationController = TextEditingController(

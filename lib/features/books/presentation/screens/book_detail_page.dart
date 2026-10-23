@@ -323,7 +323,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       depositAmount: '${tx.depositSimulasi.toInt()} Rupiah',
                       handoverLocation: tx.lokasiPertemuan.isNotEmpty
                           ? tx.lokasiPertemuan
-                          : 'Tentukan lokasi',
+                          : 'Set location',
                       ownerName: tx.pemilikNama,
                       ownerId: tx.pemilikId,
                       isOwner: isOwner,
@@ -365,7 +365,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     if (isMyBook) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Anda tidak dapat meminjam buku milik Anda sendiri.'),
+          content: Text('You cannot borrow your own book.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -383,8 +383,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
         SnackBar(
           content: Text(
             activeTx.status == 'pending'
-                ? 'Anda sudah memiliki permohonan pinjam untuk buku ini yang sedang menunggu konfirmasi.'
-                : 'Anda saat ini sedang dalam proses transaksi aktif untuk buku ini.',
+                ? 'You already have a pending borrow request for this book.'
+                : 'You are currently in an active transaction for this book.',
           ),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
@@ -657,7 +657,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     if (isMyBook) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Anda tidak dapat membarter buku milik Anda sendiri.'),
+          content: Text('You cannot barter your own book.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -675,8 +675,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
         SnackBar(
           content: Text(
             activeTx.status == 'pending'
-                ? 'Anda sudah memiliki permohonan barter untuk buku ini yang sedang menunggu konfirmasi.'
-                : 'Anda saat ini sedang dalam proses transaksi aktif untuk buku ini.',
+                ? 'You already have a pending barter request for this book.'
+                : 'You are currently in an active transaction for this book.',
           ),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
@@ -1378,7 +1378,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Buku Koleksi Anda',
+                                    'Your Book Collection',
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
@@ -1387,7 +1387,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                   ),
                                   SizedBox(height: 2),
                                   Text(
-                                    'Buku ini milik Anda sendiri. Anda dapat mengelola atau menyunting buku ini melalui tombol edit di kanan atas.',
+                                    'This book belongs to your collection. You can manage or edit it using the edit button at the top right.',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
@@ -1616,7 +1616,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                'Buku "${book.judul}" sedang dipinjam atau dalam proses transaksi aktif sehingga tidak dapat dihapus.'),
+                'Book "${book.judul}" is currently borrowed or in an active transaction and cannot be deleted.'),
             backgroundColor: const Color(0xFFDC2626),
             behavior: SnackBarBehavior.floating,
           ),
@@ -1790,7 +1790,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     if (_isBukuMilikSaya(context)) {
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Anda tidak dapat memberikan ulasan untuk buku koleksi Anda sendiri.'),
+          content: Text('You cannot review your own collection book.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -1802,7 +1802,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     if (bookIdNum == null) {
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Buku ini belum tersinkronisasi dengan server database.'),
+          content: Text('This book is not yet synchronized with the database server.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -2105,7 +2105,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       ),
                       SizedBox(width: 4),
                       Text(
-                        'Koleksi Anda',
+                        'Your Collection',
                         style: TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,

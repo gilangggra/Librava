@@ -64,14 +64,14 @@ class TransactionDetailPage extends StatefulWidget {
     this.ownerConfirmed = false,
     this.dueDate,
     this.isOverdue,
-  })  : bookTitle = bookTitle ?? 'Buku Kampus',
-        bookAuthor = bookAuthor ?? 'Penulis',
+  })  : bookTitle = bookTitle ?? 'Campus Book',
+        bookAuthor = bookAuthor ?? 'Author',
         coverPath = coverPath ?? 'assets/images/bookshelf.jpg',
         type = type ?? 'Borrow',
-        status = status ?? 'Menunggu Konfirmasi',
+        status = status ?? 'Waiting for Confirmation',
         depositAmount = depositAmount ?? '20.000 Rupiah',
-        handoverLocation = handoverLocation ?? 'Tentukan lokasi',
-        ownerName = ownerName ?? 'Pemilik Buku';
+        handoverLocation = handoverLocation ?? 'Set location',
+        ownerName = ownerName ?? 'Book Owner';
 
   @override
   State<TransactionDetailPage> createState() => _TransactionDetailPageState();
@@ -151,6 +151,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final loc = _currentHandoverLocation.trim().toLowerCase();
     return loc.isNotEmpty &&
         loc != 'tentukan lokasi' &&
+        loc != 'set location' &&
         loc != 'set handover' &&
         loc != 'pilih lokasi' &&
         loc != 'belum ditentukan';
@@ -302,7 +303,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-              'Silakan tentukan jadwal & lokasi handover terlebih dahulu.'),
+              'Please arrange the handover schedule and location first.'),
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -624,8 +625,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   const SizedBox(height: 12),
                   Text(
                     _depositPaid
-                        ? 'Dana jaminan sebesar ${widget.depositAmount} telah diamankan oleh sistem Librava.'
-                        : 'Harap pastikan $partnerName melunasi deposit sebelum melakukan serah terima fisik buku.',
+                        ? 'Deposit of ${widget.depositAmount} has been secured by the Librava system.'
+                        : 'Please ensure $partnerName completes the deposit before the physical book handover.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 12,
@@ -647,7 +648,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         elevation: 0,
                       ),
                       child: const Text(
-                        'Tutup',
+                        'Close',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -705,7 +706,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text(
-            'Deposit Sudah Dibayar',
+            'Deposit Already Paid',
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
@@ -713,7 +714,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             ),
           ),
           content: Text(
-            'Uang jaminan sebesar ${widget.depositAmount} sudah Anda bayarkan dan diamankan oleh sistem.\n\nDeposit akan dikembalikan penuh setelah buku dikembalikan ke pemilik.',
+            'Deposit amount of ${widget.depositAmount} has been paid and secured by the system.\n\nDeposit will be fully refunded after the book is returned to the owner.',
             style: const TextStyle(
               fontSize: 13.5,
               color: Color(0xFF7E7A92),
@@ -730,7 +731,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ),
               ),
               child: const Text(
-                'Tutup',
+                'Close',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -1275,8 +1276,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   const SizedBox(height: 12),
                   Text(
                     isSet
-                        ? 'Silakan temui $partnerName di ${_parseDisplayLocation(_currentHandoverLocation)} pada ${_parseDisplayDate(_currentHandoverLocation)}, ${_parseDisplayTimeOnly(_currentHandoverLocation)} untuk melakukan serah terima fisik buku.'
-                        : 'Harap tunggu $partnerName menentukan tanggal, waktu, dan lokasi serah terima setelah deposit diselesaikan.',
+                        ? 'Please meet $partnerName at ${_parseDisplayLocation(_currentHandoverLocation)} on ${_parseDisplayDate(_currentHandoverLocation)}, ${_parseDisplayTimeOnly(_currentHandoverLocation)} for the physical book handover.'
+                        : 'Please wait for $partnerName to set the handover date, time, and location after the deposit is completed.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 12,
@@ -1298,7 +1299,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         elevation: 0,
                       ),
                       child: const Text(
-                        'Tutup',
+                        'Close',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -1696,8 +1697,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   const SizedBox(height: 18),
                   Text(
                     isOwner
-                        ? 'Pengembalian Dikonfirmasi!'
-                        : 'Deposit Dikembalikan!',
+                        ? 'Return Confirmed!'
+                        : 'Deposit Refunded!',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 20,
@@ -1708,8 +1709,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   const SizedBox(height: 8),
                   Text(
                     isOwner
-                        ? 'Fisik buku "${widget.bookTitle}" telah diterima kembali dari $partnerName. Transaksi kini berstatus selesai.'
-                        : 'Buku "${widget.bookTitle}" telah dikembalikan kepada $partnerName. Jaminan peminjaman telah dikembalikan penuh ke saldo Anda.',
+                        ? 'Physical book "${widget.bookTitle}" has been received back from $partnerName. Transaction is now completed.'
+                        : 'Book "${widget.bookTitle}" has been returned to $partnerName. Security deposit has been fully refunded to your balance.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 13,
@@ -1820,7 +1821,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: const Text(
-                      'Tutup',
+                      'Close',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -2426,6 +2427,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       final effLocTrim = effLoc.trim().toLowerCase();
       final effHandoverSet = effLocTrim.isNotEmpty &&
           effLocTrim != 'tentukan lokasi' &&
+          effLocTrim != 'set location' &&
           effLocTrim != 'set handover' &&
           effLocTrim != 'pilih lokasi' &&
           effLocTrim != 'belum ditentukan';
@@ -2601,13 +2603,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 final locTrim = effectiveLoc.trim().toLowerCase();
                 final bool isHandoverSet = locTrim.isNotEmpty &&
                     locTrim != 'tentukan lokasi' &&
+                    locTrim != 'set location' &&
                     locTrim != 'set handover' &&
                     locTrim != 'pilih lokasi' &&
                     locTrim != 'belum ditentukan';
                 final cleanLoc = _parseDisplayLocation(effectiveLoc);
                 final String displayHandover = isOwner
-                    ? (isHandoverSet ? cleanLoc : 'Belum ditentukan')
-                    : (isHandoverSet ? cleanLoc : 'Tentukan lokasi');
+                    ? (isHandoverSet ? cleanLoc : 'Not set yet')
+                    : (isHandoverSet ? cleanLoc : 'Set location');
                 final Color handoverDotColor = isHandoverSet
                     ? const Color(0xFF2FD677)
                     : const Color(0xFFF05151);

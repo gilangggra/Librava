@@ -1226,22 +1226,22 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         status == 'selesai';
 
     Color statusColor = const Color(0xFFFFD027);
-    String statusLabel = 'Menunggu Persetujuan';
+    String statusLabel = 'Waiting for Approval';
     if (status == 'selesai') {
       statusColor = const Color(0xFF2FD677);
-      statusLabel = 'Selesai';
+      statusLabel = 'Completed';
     } else if (status == 'sedang_dipinjam') {
       statusColor = const Color(0xFF388AF6);
-      statusLabel = 'Aktif Dipinjam';
+      statusLabel = 'On Loan';
     } else if (status == 'disetujui') {
       statusColor = const Color(0xFF10B981);
-      statusLabel = 'Disetujui';
+      statusLabel = 'Approved';
     } else if (status == 'dalam_proses' || status == 'lokasi_ditentukan') {
       statusColor = const Color(0xFF6356FF);
-      statusLabel = 'Dalam Proses';
+      statusLabel = 'In Progress';
     } else if (status == 'ditolak' || status == 'dibatalkan') {
       statusColor = const Color(0xFFDC2626);
-      statusLabel = status == 'ditolak' ? 'Ditolak' : 'Dibatalkan';
+      statusLabel = status == 'ditolak' ? 'Rejected' : 'Cancelled';
     }
 
     return Padding(
@@ -1335,8 +1335,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                           ),
                           child: Text(
                             isBarter
-                                ? (isOwner ? 'Pemilik Buku' : 'Pengaju Barter')
-                                : (isOwner ? 'Pemilik (Meminjamkan)' : 'Peminjam'),
+                                ? (isOwner ? 'Book Owner' : 'Barter Requester')
+                                : (isOwner ? 'Lender' : 'Borrower'),
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
