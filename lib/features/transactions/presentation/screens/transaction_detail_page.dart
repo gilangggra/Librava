@@ -1138,26 +1138,30 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   _currentHandoverLocation = selectedLocation;
                 });
                 Navigator.pop(ctx);
-                if (widget.transactionId != null) {
-                  try {
-                    final auth = context.read<AuthProvider>();
-                    if (auth.token != null) {
-                      final trxProv = context.read<TransactionProvider>();
-                      final ok = await trxProv.setMeetingApi(
-                        auth.token!,
-                        widget.transactionId!,
-                        selectedLocation,
-                        meetingTime?.toIso8601String(),
-                      );
-                      if (ok && mounted) {
-                        await trxProv.fetchTransaksiById(
-                          auth.token!,
-                          widget.transactionId!,
-                        );
-                      }
+
+                final trxProv = context.read<TransactionProvider>();
+                trxProv.updateLokasiTransaksi(
+                  id: widget.transactionId,
+                  judulBuku: widget.bookTitle,
+                  lokasi: selectedLocation,
+                );
+
+                try {
+                  final auth = context.read<AuthProvider>();
+                  final token = auth.token;
+                  final txId = widget.transactionId ?? _getTrx(context)?.id;
+                  if (token != null && txId != null) {
+                    await trxProv.setMeetingApi(
+                      token,
+                      txId,
+                      selectedLocation,
+                      meetingTime?.toIso8601String(),
+                    );
+                    if (mounted) {
+                      await trxProv.fetchTransaksiById(token, txId);
                     }
-                  } catch (_) {}
-                }
+                  }
+                } catch (_) {}
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -1179,13 +1183,23 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   TransactionModel? _getTrx(BuildContext context) {
-    if (widget.transactionId == null) return null;
     try {
       final trxProvider = context.read<TransactionProvider>();
-      final txId = widget.transactionId!.trim().toLowerCase();
-      return trxProvider.semuaTransaksi
-          .where((t) => t.id.trim().toLowerCase() == txId)
-          .firstOrNull;
+      if (widget.transactionId != null && widget.transactionId!.trim().isNotEmpty) {
+        final txId = widget.transactionId!.trim().toLowerCase();
+        final found = trxProvider.semuaTransaksi
+            .where((t) => t.id.trim().toLowerCase() == txId)
+            .firstOrNull;
+        if (found != null) return found;
+      }
+      final title = widget.bookTitle.trim().toLowerCase();
+      if (title.isNotEmpty) {
+        final found = trxProvider.semuaTransaksi
+            .where((t) => t.judulBuku.trim().toLowerCase() == title)
+            .firstOrNull;
+        if (found != null) return found;
+      }
+      return null;
     } catch (_) {
       return null;
     }
@@ -3273,6 +3287,15 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    try {
+      context.watch<TransactionProvider>();
+    } catch (_) {}
+
+    final currentTx = _getTrx(context);
+    if (currentTx != null && currentTx.lokasiPertemuan.trim().isNotEmpty) {
+      _currentHandoverLocation = currentTx.lokasiPertemuan;
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(

@@ -486,6 +486,27 @@ class TransactionProvider extends ChangeNotifier {
     return false;
   }
 
+  void updateLokasiTransaksi({
+    String? id,
+    String? bukuId,
+    String? judulBuku,
+    required String lokasi,
+  }) {
+    for (int i = 0; i < _daftarTransaksi.length; i++) {
+      final trx = _daftarTransaksi[i];
+      final matchId = id != null && id.trim().isNotEmpty && trx.id.trim().toLowerCase() == id.trim().toLowerCase();
+      final matchBuku = bukuId != null && bukuId.trim().isNotEmpty && trx.bukuId.trim().toLowerCase() == bukuId.trim().toLowerCase();
+      final matchJudul = judulBuku != null && judulBuku.trim().isNotEmpty && trx.judulBuku.trim().toLowerCase() == judulBuku.trim().toLowerCase();
+      if (matchId || matchBuku || matchJudul) {
+        _daftarTransaksi[i] = trx.copyWith(
+          lokasiPertemuan: lokasi,
+          status: 'lokasi_ditentukan',
+        );
+      }
+    }
+    notifyListeners();
+  }
+
   bool tentukanLokasiPertemuan(String idTransaksi, String lokasi) {
     final index = _daftarTransaksi.indexWhere((trx) => trx.id == idTransaksi);
     if (index != -1) {
