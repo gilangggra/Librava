@@ -378,6 +378,22 @@ class TransactionProvider extends ChangeNotifier {
     }
   }
 
+  final Map<String, Map<String, dynamic>> _reviewedTransactions = {};
+
+  bool isTransactionReviewed(String transactionId) =>
+      _reviewedTransactions.containsKey(transactionId);
+
+  Map<String, dynamic>? getTransactionReview(String transactionId) =>
+      _reviewedTransactions[transactionId];
+
+  void recordTransactionReview(String transactionId, int rating, String? komentar) {
+    _reviewedTransactions[transactionId] = {
+      'rating': rating,
+      'komentar': komentar ?? '',
+    };
+    notifyListeners();
+  }
+
   Future<bool> submitReviewApi({
     required String token,
     required String transactionId,
@@ -401,11 +417,18 @@ class TransactionProvider extends ChangeNotifier {
         rating: rating,
         komentar: komentar,
       );
+      if (success) {
+        recordTransactionReview(transactionId, rating, komentar);
+      }
       _isLoading = false;
       notifyListeners();
       return success;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      _errorMessage = msg;
+      if (msg.contains('sudah memberikan ulasan')) {
+        recordTransactionReview(transactionId, rating, komentar);
+      }
       _isLoading = false;
       notifyListeners();
       return false;

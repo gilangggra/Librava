@@ -183,7 +183,6 @@ class _HomePageState extends State<HomePage> {
               bookAuthor: (item['author'] as String?) ?? 'Penulis',
               coverPath: item['image'] as String,
               status: item['status'] as String,
-              isOwner: false,
             ),
           ),
         );
@@ -862,7 +861,7 @@ class _HomePageState extends State<HomePage> {
                                   bookAuthor: (currentBook['author'] as String?) ?? 'Penulis',
                                   coverPath: currentBook['image'] as String,
                                   status: currentBook['status'] as String,
-                                  isOwner: false,
+
                                 ),
                               ),
                             );

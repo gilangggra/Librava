@@ -15,6 +15,8 @@ import '../../domain/models/transaction_model.dart';
 import 'deposit_page.dart';
 import 'handover_modal.dart';
 import '../../../profile/presentation/screens/profile_view_page.dart';
+import '../../../profile/data/services/review_api_service.dart';
+import '../../../books/presentation/providers/book_provider.dart';
 
 class TransactionDetailPage extends StatefulWidget {
   final String? transactionId;
@@ -176,7 +178,56 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         }
       } catch (_) {}
       _refreshTransactionData();
+      _checkExistingReview();
     });
+  }
+
+  Future<void> _checkExistingReview() async {
+    final txId = widget.transactionId;
+    if (txId == null || txId.isEmpty) return;
+
+    final trxProvider = context.read<TransactionProvider>();
+    if (trxProvider.isTransactionReviewed(txId)) {
+      final rev = trxProvider.getTransactionReview(txId);
+      if (mounted) {
+        setState(() {
+          _hasReviewed = true;
+          if (rev != null) {
+            _myRating = (rev['rating'] as num?)?.toInt() ?? 5;
+            _myComment = rev['komentar'] as String? ?? '';
+          }
+        });
+      }
+      return;
+    }
+
+    try {
+      final auth = context.read<AuthProvider>();
+      final currentUser = auth.currentUser;
+      final partnerId = _getPartnerId(context);
+      if (currentUser != null && partnerId != null && int.tryParse(partnerId) != null) {
+        final reviewService = ReviewApiService();
+        final userReviews = await reviewService.getUserReviews(int.parse(partnerId));
+        final myUid = int.tryParse(currentUser.id);
+        final txIntId = int.tryParse(txId);
+
+        for (final r in userReviews.reviews) {
+          final isMatchTx = txIntId != null && r.transactionId == txIntId;
+          final isMatchReviewer = myUid != null && r.reviewerId == myUid;
+          if (isMatchTx || isMatchReviewer) {
+            trxProvider.recordTransactionReview(txId, r.rating, r.komentar);
+            if (mounted) {
+              setState(() {
+                _hasReviewed = true;
+                _myRating = r.rating;
+                _myComment = r.komentar;
+              });
+            }
+            break;
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _refreshTransactionData() async {
@@ -1361,101 +1412,143 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   bool _isCurrentUserOwner(BuildContext context) {
-    if (widget.isOwner != null) return widget.isOwner!;
     try {
       final auth = context.read<AuthProvider>();
       final user = auth.currentUser;
-      if (user == null) return false;
-      final uid = user.id.trim();
-      final uname = user.nama.trim().toLowerCase();
-      final uusername = user.username.trim().toLowerCase();
+      if (user != null) {
+        final uid = user.id.trim();
+        final uname = user.nama.trim().toLowerCase();
+        final uusername = user.username.trim().toLowerCase();
 
-      // 1. Cek parameter eksplisit widget
-      if (widget.ownerId != null && widget.ownerId!.trim().isNotEmpty) {
-        if (uid.isNotEmpty && widget.ownerId!.trim() == uid) return true;
-      }
-      if (widget.ownerName.trim().isNotEmpty &&
-          widget.ownerName.trim().toLowerCase() != 'pemilik buku') {
-        final wOwnerName = widget.ownerName.trim().toLowerCase();
-        if (uname.isNotEmpty &&
-            (wOwnerName == uname ||
-                wOwnerName.contains(uname) ||
-                uname.contains(wOwnerName))) {
-          return true;
+        // 1. Cek terhadap transaksi di provider
+        final tx = _getTrx(context);
+        if (tx != null) {
+          // Jika ID pemohon cocok dengan user, pasti peminjam (bukan owner)
+          if (uid.isNotEmpty && tx.pemohonId.trim().isNotEmpty && tx.pemohonId.trim() == uid) {
+            return false;
+          }
+          // Jika ID pemilik cocok dengan user, pasti owner
+          if (uid.isNotEmpty && tx.pemilikId.trim().isNotEmpty && tx.pemilikId.trim() == uid) {
+            return true;
+          }
+          // Jika nama pemohon cocok, peminjam
+          if (uname.isNotEmpty && tx.pemohonNama.trim().isNotEmpty && tx.pemohonNama.trim().toLowerCase() == uname) {
+            return false;
+          }
+          // Jika nama pemilik cocok, owner
+          if (uname.isNotEmpty && tx.pemilikNama.trim().isNotEmpty && tx.pemilikNama.trim().toLowerCase() == uname) {
+            return true;
+          }
         }
-      }
-      if (widget.ownerUsername.trim().isNotEmpty &&
-          widget.ownerUsername.trim().toLowerCase() != '@pemilik') {
-        final cleanWidgetUsername =
-            widget.ownerUsername.replaceAll('@', '').trim().toLowerCase();
-        final cleanUserUsername =
-            uusername.replaceAll('@', '').trim().toLowerCase();
-        if (cleanWidgetUsername == cleanUserUsername) return true;
-      }
 
-      // 2. Cek transaksi dari provider jika ada transactionId
-      final tx = _getTrx(context);
-      if (tx != null) {
-        // Jika pemohon, pasti bukan owner
-        if (uid.isNotEmpty &&
-            tx.pemohonId.trim().isNotEmpty &&
-            tx.pemohonId.trim() == uid) {
-          return false;
+        // 2. Cek parameter eksplisit nama owner
+        if (widget.ownerId != null && widget.ownerId!.trim().isNotEmpty && uid.isNotEmpty) {
+          if (widget.ownerId!.trim() == uid) return true;
         }
-        if (uname.isNotEmpty &&
-            tx.pemohonNama.trim().isNotEmpty &&
-            tx.pemohonNama.trim().toLowerCase() == uname) {
-          return false;
+        if (widget.ownerName.trim().isNotEmpty &&
+            widget.ownerName.trim().toLowerCase() != 'pemilik buku') {
+          final wOwnerName = widget.ownerName.trim().toLowerCase();
+          if (uname.isNotEmpty &&
+              (wOwnerName == uname ||
+                  wOwnerName.contains(uname) ||
+                  uname.contains(wOwnerName))) {
+            return true;
+          }
         }
-        // Jika pemilik, pasti owner
-        if (uid.isNotEmpty &&
-            tx.pemilikId.trim().isNotEmpty &&
-            tx.pemilikId.trim() == uid) {
-          return true;
+        if (widget.ownerUsername.trim().isNotEmpty &&
+            widget.ownerUsername.trim().toLowerCase() != '@pemilik') {
+          final cleanWidgetUsername =
+              widget.ownerUsername.replaceAll('@', '').trim().toLowerCase();
+          final cleanUserUsername =
+              uusername.replaceAll('@', '').trim().toLowerCase();
+          if (cleanWidgetUsername == cleanUserUsername) return true;
         }
-        if (uname.isNotEmpty &&
-            tx.pemilikNama.trim().isNotEmpty &&
-            tx.pemilikNama.trim().toLowerCase() == uname) {
-          return true;
-        }
-      }
 
-      // 3. Cek daftar transaksi masuk di provider
-      if (widget.transactionId != null && widget.transactionId!.isNotEmpty) {
-        final trxProvider = context.read<TransactionProvider>();
-        final txId = widget.transactionId!.trim().toLowerCase();
-        final inMasuk = trxProvider.requestMasuk
-            .any((t) => t.id.trim().toLowerCase() == txId);
-        if (inMasuk) return true;
-        final inSaya = trxProvider.requestSaya
-            .any((t) => t.id.trim().toLowerCase() == txId);
-        if (inSaya) return false;
+        // 3. Cek daftar transaksi masuk di provider
+        if (widget.transactionId != null && widget.transactionId!.isNotEmpty) {
+          final trxProvider = context.read<TransactionProvider>();
+          final txId = widget.transactionId!.trim().toLowerCase();
+          final inMasuk = trxProvider.requestMasuk
+              .any((t) => t.id.trim().toLowerCase() == txId);
+          if (inMasuk) return true;
+          final inSaya = trxProvider.requestSaya
+              .any((t) => t.id.trim().toLowerCase() == txId);
+          if (inSaya) return false;
+        }
       }
     } catch (_) {}
+
+    if (widget.isOwner != null) return widget.isOwner!;
     return false;
   }
 
   String _getPartnerName(BuildContext context) {
     final tx = _getTrx(context);
     final isOwner = _isCurrentUserOwner(context);
+    String partner;
     if (isOwner) {
-      return (tx != null && tx.pemohonNama.isNotEmpty)
+      partner = (tx != null && tx.pemohonNama.isNotEmpty)
           ? tx.pemohonNama
-          : 'Pemohon Buku';
+          : 'Peminjam Buku';
+    } else {
+      partner = widget.ownerName.isNotEmpty
+          ? widget.ownerName
+          : (tx?.pemilikNama ?? 'Pemilik Buku');
     }
-    return widget.ownerName.isNotEmpty
-        ? widget.ownerName
-        : (tx?.pemilikNama ?? 'Pemilik Buku');
+
+    // Safety guard: Mitra transaksi tidak boleh nama diri sendiri
+    try {
+      final auth = context.read<AuthProvider>();
+      final myName = auth.currentUser?.nama.trim().toLowerCase() ?? '';
+      if (myName.isNotEmpty && partner.trim().toLowerCase() == myName) {
+        if (isOwner) {
+          if (widget.ownerName.isNotEmpty && widget.ownerName.toLowerCase() != myName) {
+            return widget.ownerName;
+          }
+          if (tx != null && tx.pemilikNama.isNotEmpty && tx.pemilikNama.toLowerCase() != myName) {
+            return tx.pemilikNama;
+          }
+          return 'Peminjam Buku';
+        } else {
+          if (tx != null && tx.pemohonNama.isNotEmpty && tx.pemohonNama.toLowerCase() != myName) {
+            return tx.pemohonNama;
+          }
+          return 'Pemilik Buku';
+        }
+      }
+    } catch (_) {}
+
+    return partner;
   }
 
   String? _getPartnerId(BuildContext context) {
     final tx = _getTrx(context);
     final isOwner = _isCurrentUserOwner(context);
+    String? pId;
     if (isOwner) {
-      return (tx != null && tx.pemohonId.isNotEmpty) ? tx.pemohonId : null;
+      pId = (tx != null && tx.pemohonId.isNotEmpty) ? tx.pemohonId : null;
+    } else {
+      pId = widget.ownerId ??
+          (tx != null && tx.pemilikId.isNotEmpty ? tx.pemilikId : null);
     }
-    return widget.ownerId ??
-        (tx != null && tx.pemilikId.isNotEmpty ? tx.pemilikId : null);
+
+    try {
+      final auth = context.read<AuthProvider>();
+      final myUid = auth.currentUser?.id.trim() ?? '';
+      if (myUid.isNotEmpty && pId != null && pId.trim() == myUid) {
+        if (isOwner) {
+          return (widget.ownerId != null && widget.ownerId!.trim() != myUid)
+              ? widget.ownerId
+              : (tx != null && tx.pemilikId != myUid ? tx.pemilikId : null);
+        } else {
+          return (tx != null && tx.pemohonId.isNotEmpty && tx.pemohonId != myUid)
+              ? tx.pemohonId
+              : null;
+        }
+      }
+    } catch (_) {}
+
+    return pId;
   }
 
   String _getDisplayAuthor(BuildContext context) {
@@ -1848,6 +1941,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   void _bukaModalReview() {
+    if (_hasReviewed) return;
+    final isOwner = _isCurrentUserOwner(context);
+    final partnerName = _getPartnerName(context);
     int selectedRating = _myRating > 0 ? _myRating : 5;
     final commentController = TextEditingController(text: _myComment);
 
@@ -1883,9 +1979,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Text(
-                    'Leave Review & Rating',
-                    style: TextStyle(
+                  Text(
+                    isOwner ? 'Review Borrower' : 'Leave Review & Rating',
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF130F26),
@@ -1893,7 +1989,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Share your transaction experience with ${_getPartnerName(context)}',
+                    isOwner
+                        ? 'Share your review and rating for $partnerName regarding book return condition and communication'
+                        : 'Share your transaction experience with $partnerName',
                     style: const TextStyle(
                       fontSize: 13.5,
                       color: Color(0xFF7E7A92),
@@ -1982,22 +2080,45 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                           _myComment = comment;
                         });
 
-                        if (widget.transactionId != null && auth.token != null) {
-                          try {
-                            await trxProvider.submitReviewApi(
-                              token: auth.token!,
-                              transactionId: widget.transactionId!,
-                              rating: selectedRating,
-                              komentar: comment.isNotEmpty ? comment : null,
-                            );
-                          } catch (_) {}
+                        final txId = widget.transactionId;
+                        if (txId != null && txId.isNotEmpty) {
+                          trxProvider.recordTransactionReview(txId, selectedRating, comment);
+                          if (auth.token != null) {
+                            try {
+                              await trxProvider.submitReviewApi(
+                                token: auth.token!,
+                                transactionId: txId,
+                                rating: selectedRating,
+                                komentar: comment.isNotEmpty ? comment : null,
+                              );
+                            } catch (_) {}
+
+                            if (!isOwner) {
+                              try {
+                                final tx = _getTrx(context);
+                                final bId = tx != null ? int.tryParse(tx.bukuId) : null;
+                                if (bId != null) {
+                                  final bookProvider = context.read<BookProvider>();
+                                  await bookProvider.submitBookReview(
+                                    token: auth.token!,
+                                    bookId: bId,
+                                    rating: selectedRating,
+                                    komentar: comment.isNotEmpty ? comment : null,
+                                  );
+                                }
+                              } catch (_) {}
+                            }
+                          }
                         }
 
                         if (!mounted) return;
                         messenger.showSnackBar(
                           SnackBar(
-                            content:
-                                const Text('Your review has been submitted successfully!'),
+                            content: Text(
+                              isOwner
+                                  ? 'Your review for $partnerName has been submitted successfully!'
+                                  : 'Your review has been submitted successfully!',
+                            ),
                             backgroundColor: const Color(0xFF2FD677),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
@@ -3012,6 +3133,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   Widget _buildReviewSection() {
+    final isOwner = _isCurrentUserOwner(context);
+    final partnerName = _getPartnerName(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Container(
@@ -3049,10 +3173,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Transaction Review & Rating',
-                    style: TextStyle(
+                    isOwner
+                        ? 'Borrower Review & Rating'
+                        : 'Transaction Review & Rating',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF130F26),
@@ -3064,7 +3190,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             const SizedBox(height: 10),
             if (!_hasReviewed) ...[
               Text(
-                'Transaction completed! Share a review and star rating for ${_getPartnerName(context)} to help build community trust.',
+                'Transaction completed! Share a review and star rating for $partnerName to help build community trust.',
                 style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF7E7A92),
@@ -3089,9 +3215,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     size: 18,
                     color: Colors.white,
                   ),
-                  label: const Text(
-                    'Leave Review Now',
-                    style: TextStyle(
+                  label: Text(
+                    isOwner ? 'Review Borrower Now' : 'Leave Review Now',
+                    style: const TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -3320,7 +3446,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       )
                     : isDone
                         ? ElevatedButton(
-                            onPressed: _bukaModalReview,
+                            onPressed: _hasReviewed ? null : _bukaModalReview,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _hasReviewed
                                    ? const Color(0xFFE8FAF0)
@@ -3334,7 +3460,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                _hasReviewed ? 'Edit Review' : 'Leave Review',
+                                _hasReviewed
+                                    ? 'Reviewed'
+                                    : (isOwner ? 'Review Borrower' : 'Leave Review'),
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
