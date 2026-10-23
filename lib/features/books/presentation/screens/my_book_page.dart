@@ -821,6 +821,12 @@ class _MyBookPageState extends State<MyBookPage> {
           final coverPath = _getCoverForTransaction(trx);
           return GestureDetector(
             onTap: () {
+              final auth = context.read<AuthProvider>();
+              final currentId = auth.currentUser?.id ?? '';
+              final currentName = auth.currentUser?.nama.trim().toLowerCase() ?? '';
+              final isOwner = (currentId.isNotEmpty && trx.pemilikId.isNotEmpty && trx.pemilikId == currentId) ||
+                  (currentName.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == currentName);
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -833,7 +839,12 @@ class _MyBookPageState extends State<MyBookPage> {
                     coverPath: coverPath,
                     status: trx.status,
                     depositAmount: '${trx.depositSimulasi.toInt()} Rupiah',
+                    handoverLocation: trx.lokasiPertemuan.isNotEmpty
+                        ? trx.lokasiPertemuan
+                        : 'Tentukan lokasi',
                     ownerName: trx.pemilikNama,
+                    ownerId: trx.pemilikId,
+                    isOwner: isOwner,
                     type: trx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
                     dueDate: trx.dueDate ?? trx.effectiveDueDate,
                     isOverdue: trx.isOverdue,

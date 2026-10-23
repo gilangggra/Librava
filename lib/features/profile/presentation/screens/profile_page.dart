@@ -715,6 +715,12 @@ class _ProfilePageState extends State<ProfilePage> {
             statusColor: _getStatusColor(trx.status),
             status: _getStatusText(trx),
             onTap: () {
+              final auth = context.read<AuthProvider>();
+              final currentId = auth.currentUser?.id ?? '';
+              final currentName = auth.currentUser?.nama.trim().toLowerCase() ?? '';
+              final isOwner = (currentId.isNotEmpty && trx.pemilikId.isNotEmpty && trx.pemilikId == currentId) ||
+                  (currentName.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == currentName);
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -727,7 +733,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     coverPath: _getCoverForTransaction(trx),
                     status: trx.status,
                     depositAmount: '${trx.depositSimulasi.toInt()} Rupiah',
+                    handoverLocation: trx.lokasiPertemuan.isNotEmpty
+                        ? trx.lokasiPertemuan
+                        : 'Tentukan lokasi',
                     ownerName: trx.pemilikNama,
+                    ownerId: trx.pemilikId,
+                    isOwner: isOwner,
                     type: trx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
                   ),
                 ),

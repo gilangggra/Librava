@@ -18,3 +18,9 @@ Future<PickedImageData?> pickImageFromDevice() async {
   // Pada platform IO/Desktop/Mobile tanpa plugin native
   return null;
 }
+
+/// Helper pengambilan foto dari kamera untuk platform non-web
+Future<PickedImageData?> takePhotoFromCamera() async {
+  // Pada platform IO/Desktop/Mobile tanpa plugin native
+  return null;
+}
