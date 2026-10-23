@@ -753,6 +753,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     type: trx.jenisTransaksi.toLowerCase() == 'barter' ? 'Barter' : 'Borrow',
                     dueDate: trx.dueDate ?? trx.effectiveDueDate,
                     isOverdue: trx.isOverdue,
+                    exchangeBookTitle: trx.bukuBarter,
+                    exchangeBookAuthor: trx.barterPenulis,
+                    exchangeBookCover: trx.barterCover,
                   ),
                 ),
               );

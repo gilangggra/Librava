@@ -133,6 +133,9 @@ class _HomePageState extends State<HomePage> {
           'requesterName': t.pemohonNama,
           'requesterId': t.pemohonId,
           'type': t.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
+          'exchangeBookTitle': t.bukuBarter,
+          'exchangeBookAuthor': t.barterPenulis,
+          'exchangeBookCover': t.barterCover,
           'handoverLocation': t.lokasiPertemuan.isNotEmpty
               ? t.lokasiPertemuan
               : 'Set location',
@@ -237,6 +240,9 @@ class _HomePageState extends State<HomePage> {
               depositAmount: (item['depositAmount'] as String?) ?? '20.000 Rupiah',
               dueDate: item['dueDate'] as DateTime?,
               isOverdue: (item['isOverdue'] as bool?) ?? false,
+              exchangeBookTitle: item['exchangeBookTitle'] as String?,
+              exchangeBookAuthor: item['exchangeBookAuthor'] as String?,
+              exchangeBookCover: item['exchangeBookCover'] as String?,
             ),
           ),
         );
@@ -936,6 +942,9 @@ class _HomePageState extends State<HomePage> {
                                   depositAmount: (currentBook['depositAmount'] as String?) ?? '20.000 Rupiah',
                                   dueDate: currentBook['dueDate'] as DateTime?,
                                   isOverdue: (currentBook['isOverdue'] as bool?) ?? false,
+                                  exchangeBookTitle: currentBook['exchangeBookTitle'] as String?,
+                                  exchangeBookAuthor: currentBook['exchangeBookAuthor'] as String?,
+                                  exchangeBookCover: currentBook['exchangeBookCover'] as String?,
                                 ),
                               ),
                             );

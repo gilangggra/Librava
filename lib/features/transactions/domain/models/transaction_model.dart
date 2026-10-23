@@ -80,6 +80,24 @@ class TransactionModel {
       parsedDueDate = DateTime.tryParse(json['due_date'].toString());
     }
 
+    DateTime? parsedReqConfirmedAt;
+    if (json['requester_confirmed_at'] != null) {
+      parsedReqConfirmedAt =
+          DateTime.tryParse(json['requester_confirmed_at'].toString());
+    } else if (json['requesterConfirmedAt'] != null) {
+      parsedReqConfirmedAt =
+          DateTime.tryParse(json['requesterConfirmedAt'].toString());
+    }
+
+    DateTime? parsedOwnConfirmedAt;
+    if (json['owner_confirmed_at'] != null) {
+      parsedOwnConfirmedAt =
+          DateTime.tryParse(json['owner_confirmed_at'].toString());
+    } else if (json['ownerConfirmedAt'] != null) {
+      parsedOwnConfirmedAt =
+          DateTime.tryParse(json['ownerConfirmedAt'].toString());
+    }
+
     return TransactionModel(
       id: json['id'] ?? '',
       bukuId: json['bukuId'] ?? '',
@@ -89,6 +107,8 @@ class TransactionModel {
       jenisTransaksi: json['jenisTransaksi'] ?? 'pinjam',
       durasiHari: json['durasiHari'] ?? 7,
       bukuBarter: json['bukuBarter'] ?? '',
+      barterPenulis: json['barterPenulis'] ?? '',
+      barterCover: json['barterCover'] ?? '',
       depositSimulasi: (json['depositSimulasi'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] ?? 'pending',
       lokasiPertemuan: json['lokasiPertemuan'] ?? '',
@@ -96,6 +116,8 @@ class TransactionModel {
       tanggalPengembalian: json['tanggalPengembalian'] ?? '',
       coverBuku: json['coverBuku'] ?? 'assets/images/book_the_unknown.jpg',
       dueDate: parsedDueDate,
+      requesterConfirmedAt: parsedReqConfirmedAt,
+      ownerConfirmedAt: parsedOwnConfirmedAt,
     );
   }
 
