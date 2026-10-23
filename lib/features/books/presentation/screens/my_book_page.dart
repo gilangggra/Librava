@@ -32,24 +32,39 @@ class _MyBookPageState extends State<MyBookPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      try {
-        final auth = context.read<AuthProvider>();
-        if (auth.token != null) {
-          context.read<BookProvider>().fetchMyBooks(auth.token!);
-          context.read<TransactionProvider>().fetchTransaksi(auth.token!);
-        }
-      } catch (_) {}
+      _refreshData();
     });
   }
 
+  Future<void> _refreshData() async {
+    try {
+      final auth = context.read<AuthProvider>();
+      if (auth.token != null) {
+        if (auth.currentUser != null) {
+          context.read<TransactionProvider>().setCurrentUser(
+                id: auth.currentUser!.id,
+                name: auth.currentUser!.nama,
+              );
+        }
+        await Future.wait([
+          context.read<BookProvider>().fetchMyBooks(auth.token!),
+          context.read<TransactionProvider>().fetchTransaksi(auth.token!),
+        ]);
+      }
+    } catch (_) {}
+  }
+
   /// Membuka halaman AddBookPage sesuai mockup desain tampilan
-  void _bukaModalTambahBuku(BuildContext context) {
-    Navigator.push(
+  void _bukaModalTambahBuku(BuildContext context) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => const AddBookPage(),
       ),
     );
+    if (mounted) {
+      _refreshData();
+    }
   }
 
   /// Membuka dialog pemilihan buku untuk diedit pada EditBookPage
@@ -137,14 +152,17 @@ class _MyBookPageState extends State<MyBookPage> {
                           size: 18,
                           color: Color(0xFF7E7A92),
                         ),
-                        onTap: () {
+                        onTap: () async {
                           Navigator.pop(ctx);
-                          Navigator.push(
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => EditBookPage(book: b),
                             ),
                           );
+                          if (mounted) {
+                            _refreshData();
+                          }
                         },
                       );
                     },
@@ -263,7 +281,9 @@ class _MyBookPageState extends State<MyBookPage> {
     try {
       final trxProvider = pageContext.read<TransactionProvider>();
       final hasActiveTx = trxProvider.semuaTransaksi.any((t) =>
-          (t.bukuId == book.id || t.bukuBarter == book.judul) &&
+          ((t.bukuId.isNotEmpty && t.bukuId == book.id) ||
+              t.bukuBarter.trim().toLowerCase() == book.judul.trim().toLowerCase() ||
+              t.judulBuku.trim().toLowerCase() == book.judul.trim().toLowerCase()) &&
           t.status != 'selesai' &&
           t.status != 'ditolak' &&
           t.status != 'dibatalkan');
@@ -379,6 +399,7 @@ class _MyBookPageState extends State<MyBookPage> {
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
+                        _refreshData();
                       }
                     },
                     child: const Text(
@@ -434,11 +455,76 @@ class _MyBookPageState extends State<MyBookPage> {
     );
   }
 
+  Widget _buildMiniBadge(
+    String text,
+    Color bg,
+    Color fg, {
+    IconData? icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 9, color: fg),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              color: fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int _statusPriority(TransactionModel t) {
+    if (t.isOverdue) return 5;
+    switch (t.status.toLowerCase()) {
+      case 'sedang_dipinjam':
+        return 4;
+      case 'lokasi_ditentukan':
+        return 3;
+      case 'deposit_dibayar':
+      case 'disetujui':
+        return 2;
+      case 'pending':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
   void _tampilkanDetailBukuModel(
-      BuildContext context, BookModel book, String coverAsset) {
+    BuildContext context,
+    BookModel book,
+    String coverAsset, {
+    TransactionModel? activeTx,
+  }) {
     showDialog(
       context: context,
       builder: (ctx) {
+        final bool isLent = !book.tersedia ||
+            (activeTx != null &&
+                activeTx.status.toLowerCase() == 'sedang_dipinjam');
+        final bool isInProcess = activeTx != null && !isLent;
+
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
@@ -453,6 +539,7 @@ class _MyBookPageState extends State<MyBookPage> {
                   width: 120,
                   height: 160,
                   borderRadius: 16,
+                  fallbackJudul: book.judul,
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -497,6 +584,56 @@ class _MyBookPageState extends State<MyBookPage> {
                       ),
                     ),
                     _buildStatusModerasiBadge(book),
+                    if (isLent)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0E7FF),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.bookmark,
+                                size: 12, color: Color(0xFF3730A3)),
+                            SizedBox(width: 4),
+                            Text(
+                              'Dipinjamkan',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF3730A3),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (isInProcess)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEDE9FE),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.sync,
+                                size: 12, color: Color(0xFF6D28D9)),
+                            SizedBox(width: 4),
+                            Text(
+                              'Dalam Proses',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF6D28D9),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
                 if (book.isDitolak &&
@@ -523,7 +660,88 @@ class _MyBookPageState extends State<MyBookPage> {
                     ),
                   ),
                 ],
+                if (isLent || isInProcess) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                    ),
+                    child: Text(
+                      isLent
+                          ? 'Buku ini sedang dipinjamkan kepada mahasiswa lain.'
+                          : 'Buku ini sedang dalam proses peminjaman aktif.',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF1E40AF),
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
+                if (activeTx != null) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: const BorderSide(color: AppColors.primary),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      icon: const Icon(CupertinoIcons.arrow_right_circle,
+                          size: 16, color: AppColors.primary),
+                      label: const Text(
+                        'Lihat Transaksi Peminjaman',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TransactionDetailPage(
+                              transactionId: activeTx.id,
+                              bookTitle: activeTx.judulBuku,
+                              bookAuthor: activeTx.penulisBuku,
+                              coverPath: coverAsset,
+                              status: activeTx.status,
+                              depositAmount:
+                                  '${activeTx.depositSimulasi.toInt()} Rupiah',
+                              handoverLocation:
+                                  activeTx.lokasiPertemuan.isNotEmpty
+                                      ? activeTx.lokasiPertemuan
+                                      : 'Tentukan lokasi',
+                              ownerName: activeTx.pemilikNama,
+                              ownerId: activeTx.pemilikId,
+                              requesterName: activeTx.pemohonNama,
+                              requesterId: activeTx.pemohonId,
+                              isOwner: true,
+                              type: 'Borrow',
+                              dueDate: activeTx.dueDate ??
+                                  activeTx.effectiveDueDate,
+                              isOverdue: activeTx.isOverdue,
+                            ),
+                          ),
+                        );
+                        if (mounted) {
+                          _refreshData();
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 Row(
                   children: [
                     // Tombol Edit Buku
@@ -544,14 +762,17 @@ class _MyBookPageState extends State<MyBookPage> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        onPressed: () {
+                        onPressed: () async {
                           Navigator.pop(ctx);
-                          Navigator.push(
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => EditBookPage(book: book),
                             ),
                           );
+                          if (mounted) {
+                            _refreshData();
+                          }
                         },
                       ),
                     ),
@@ -612,9 +833,9 @@ class _MyBookPageState extends State<MyBookPage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onPressed: () {
+                        onPressed: () async {
                           Navigator.pop(ctx);
-                          Navigator.push(
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => BookDetailPage(
@@ -626,6 +847,9 @@ class _MyBookPageState extends State<MyBookPage> {
                               ),
                             ),
                           );
+                          if (mounted) {
+                            _refreshData();
+                          }
                         },
                         child: const Text(
                           'Detail',
@@ -693,7 +917,8 @@ class _MyBookPageState extends State<MyBookPage> {
     );
   }
 
-  Widget _buildCollectionRow(List<BookModel> books) {
+  Widget _buildCollectionRow(
+      List<BookModel> books, List<TransactionModel> activeLentList) {
     if (books.isEmpty) {
       return Container(
         height: 100,
@@ -724,8 +949,34 @@ class _MyBookPageState extends State<MyBookPage> {
         itemBuilder: (context, index) {
           final book = books[index];
           final coverPath = _getCoverForBook(book);
+
+          final activeTx = activeLentList.where((t) =>
+              (t.bukuId.isNotEmpty && t.bukuId == book.id) ||
+              (t.judulBuku.trim().toLowerCase() ==
+                  book.judul.trim().toLowerCase())).firstOrNull;
+          final bool isLent = !book.tersedia ||
+              (activeTx != null &&
+                  activeTx.status.toLowerCase() == 'sedang_dipinjam');
+          final bool isInProcess = activeTx != null && !isLent;
+
+          Widget? badgeWidget;
+          if (book.isPending) {
+            badgeWidget = _buildMiniBadge('Pending', const Color(0xFFFEF3C7),
+                const Color(0xFFB45309));
+          } else if (book.isDitolak) {
+            badgeWidget = _buildMiniBadge('Rejected', const Color(0xFFFEE2E2),
+                const Color(0xFFB91C1C));
+          } else if (isLent) {
+            badgeWidget = _buildMiniBadge('Dipinjamkan', const Color(0xFFE0E7FF),
+                const Color(0xFF3730A3));
+          } else if (isInProcess) {
+            badgeWidget = _buildMiniBadge('Dalam Proses', const Color(0xFFEDE9FE),
+                const Color(0xFF6D28D9));
+          }
+
           return GestureDetector(
-            onTap: () => _tampilkanDetailBukuModel(context, book, coverPath),
+            onTap: () => _tampilkanDetailBukuModel(context, book, coverPath,
+                activeTx: activeTx),
             child: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -746,39 +997,14 @@ class _MyBookPageState extends State<MyBookPage> {
                     width: 108,
                     height: 165,
                     borderRadius: 18,
+                    fallbackJudul: book.judul,
                   ),
                 ),
-                if (book.isPending || book.isDitolak)
+                if (badgeWidget != null)
                   Positioned(
                     top: 6,
                     left: 6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: book.isPending
-                            ? const Color(0xFFFEF3C7)
-                            : const Color(0xFFFEE2E2),
-                        borderRadius: BorderRadius.circular(6),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        book.isPending ? 'Pending' : 'Rejected',
-                        style: TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          color: book.isPending
-                              ? const Color(0xFFB45309)
-                              : const Color(0xFFB91C1C),
-                        ),
-                      ),
-                    ),
+                    child: badgeWidget,
                   ),
               ],
             ),
@@ -788,7 +1014,10 @@ class _MyBookPageState extends State<MyBookPage> {
     );
   }
 
-  Widget _buildTransactionRow(List<TransactionModel> transactions) {
+  Widget _buildTransactionRow(
+    List<TransactionModel> transactions, {
+    required bool isLentOut,
+  }) {
     if (transactions.isEmpty) {
       return Container(
         height: 100,
@@ -799,9 +1028,11 @@ class _MyBookPageState extends State<MyBookPage> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFFEBE8F4)),
         ),
-        child: const Text(
-          'No transactions in this category.',
-          style: TextStyle(
+        child: Text(
+          isLentOut
+              ? 'No books currently lent out.'
+              : 'No borrowed books at the moment.',
+          style: const TextStyle(
             fontSize: 13,
             color: Color(0xFF8E8B9F),
             fontWeight: FontWeight.w500,
@@ -819,21 +1050,48 @@ class _MyBookPageState extends State<MyBookPage> {
         itemBuilder: (context, index) {
           final trx = transactions[index];
           final coverPath = _getCoverForTransaction(trx);
-          return GestureDetector(
-            onTap: () {
-              final auth = context.read<AuthProvider>();
-              final currentId = auth.currentUser?.id ?? '';
-              final currentName = auth.currentUser?.nama.trim().toLowerCase() ?? '';
-              final isOwner = (currentId.isNotEmpty && trx.pemilikId.isNotEmpty && trx.pemilikId == currentId) ||
-                  (currentName.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == currentName);
 
-              Navigator.push(
+          Widget? statusBadge;
+          final s = trx.status.toLowerCase();
+          if (trx.isOverdue) {
+            statusBadge = _buildMiniBadge('Overdue', const Color(0xFFDC2626),
+                Colors.white, icon: CupertinoIcons.clock_fill);
+          } else if (s == 'sedang_dipinjam') {
+            statusBadge = _buildMiniBadge(
+              isLentOut ? 'Dipinjamkan' : 'Dipinjam',
+              const Color(0xFFDCFCE7),
+              const Color(0xFF15803D),
+            );
+          } else if (s == 'lokasi_ditentukan') {
+            statusBadge = _buildMiniBadge(
+              'Handover',
+              const Color(0xFFCFFAFE),
+              const Color(0xFF0E7490),
+            );
+          } else if (s == 'disetujui' || s == 'deposit_dibayar') {
+            statusBadge = _buildMiniBadge(
+              'Disetujui',
+              const Color(0xFFDBEAFE),
+              const Color(0xFF1D4ED8),
+            );
+          } else if (s == 'pending') {
+            statusBadge = _buildMiniBadge(
+              'Pending',
+              const Color(0xFFFEF3C7),
+              const Color(0xFFB45309),
+            );
+          }
+
+          return GestureDetector(
+            onTap: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => TransactionDetailPage(
                     transactionId: trx.id,
                     bookTitle: trx.judulBuku,
-                    bookAuthor: trx.penulisBuku.isNotEmpty && trx.penulisBuku != 'Penulis'
+                    bookAuthor: trx.penulisBuku.isNotEmpty &&
+                            trx.penulisBuku != 'Penulis'
                         ? trx.penulisBuku
                         : trx.pemilikNama,
                     coverPath: coverPath,
@@ -846,13 +1104,18 @@ class _MyBookPageState extends State<MyBookPage> {
                     ownerId: trx.pemilikId,
                     requesterName: trx.pemohonNama,
                     requesterId: trx.pemohonId,
-                    isOwner: isOwner,
-                    type: trx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
+                    isOwner: isLentOut,
+                    type: trx.jenisTransaksi.toLowerCase() == 'barter'
+                        ? 'Barter'
+                        : 'Borrow',
                     dueDate: trx.dueDate ?? trx.effectiveDueDate,
                     isOverdue: trx.isOverdue,
                   ),
                 ),
               );
+              if (mounted) {
+                _refreshData();
+              }
             },
             child: Container(
               width: 108,
@@ -875,43 +1138,13 @@ class _MyBookPageState extends State<MyBookPage> {
                     width: 108,
                     height: 165,
                     borderRadius: 18,
+                    fallbackJudul: trx.judulBuku,
                   ),
-                  if (trx.isOverdue)
+                  if (statusBadge != null)
                     Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDC2626),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.25),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              CupertinoIcons.clock_fill,
-                              color: Colors.white,
-                              size: 10,
-                            ),
-                            SizedBox(width: 3),
-                            Text(
-                              'Overdue',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      top: 6,
+                      left: 6,
+                      child: statusBadge,
                     ),
                 ],
               ),
@@ -1040,45 +1273,60 @@ class _MyBookPageState extends State<MyBookPage> {
       trxProvider = Provider.of<TransactionProvider>(context);
     } catch (_) {}
 
-    final currentUserId = authProvider?.currentUser?.id;
-    final userNama = authProvider?.currentUser?.nama;
+    final currentUserId =
+        authProvider?.currentUser?.id ?? trxProvider?.currentUserId;
+    final userNama =
+        authProvider?.currentUser?.nama ?? trxProvider?.currentUserName;
 
     final myBooks = bookProvider?.koleksiSaya ?? [];
 
-    final rawBorrowedList = (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
-        ? trxProvider.semuaTransaksi.where((t) {
-            final isBorrow = t.jenisTransaksi == 'pinjam';
-            final isActive = t.status != 'selesai' &&
-                t.status != 'ditolak' &&
-                t.status != 'dibatalkan';
-            final matchUser = (currentUserId != null &&
-                    currentUserId.isNotEmpty &&
-                    t.pemohonId == currentUserId) ||
-                (userNama != null &&
-                    userNama.isNotEmpty &&
-                    t.pemohonNama.trim().toLowerCase() ==
-                        userNama.trim().toLowerCase());
-            return isBorrow && isActive && matchUser;
-          }).toList()
-        : <TransactionModel>[];
+    final rawBorrowedList =
+        (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
+            ? trxProvider.semuaTransaksi.where((t) {
+                final isBorrow = t.jenisTransaksi.toLowerCase() == 'pinjam';
+                final isActive = t.status != 'selesai' &&
+                    t.status != 'ditolak' &&
+                    t.status != 'dibatalkan';
+                final matchUser = (currentUserId != null &&
+                        currentUserId.isNotEmpty &&
+                        t.pemohonId.isNotEmpty &&
+                        t.pemohonId == currentUserId) ||
+                    (userNama != null &&
+                        userNama.isNotEmpty &&
+                        t.pemohonNama.trim().toLowerCase() ==
+                            userNama.trim().toLowerCase()) ||
+                    (authProvider?.currentUser == null &&
+                        trxProvider?.currentUserId == null);
+                return isBorrow && isActive && matchUser;
+              }).toList()
+            : <TransactionModel>[];
 
-    final rawLentOutList = (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
-        ? trxProvider.semuaTransaksi.where((t) {
-            final isActive = t.status != 'selesai' &&
-                t.status != 'ditolak' &&
-                t.status != 'dibatalkan';
-            final matchOwner = (currentUserId != null &&
-                    currentUserId.isNotEmpty &&
-                    t.pemilikId == currentUserId) ||
-                (userNama != null &&
-                    userNama.isNotEmpty &&
-                    t.pemilikNama.trim().toLowerCase() ==
-                        userNama.trim().toLowerCase());
-            return isActive && matchOwner;
-          }).toList()
-        : <TransactionModel>[];
+    final rawLentOutList =
+        (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
+            ? trxProvider.semuaTransaksi.where((t) {
+                final isBorrow = t.jenisTransaksi.toLowerCase() == 'pinjam';
+                final isActive = t.status != 'selesai' &&
+                    t.status != 'ditolak' &&
+                    t.status != 'dibatalkan';
+                final matchOwner = (currentUserId != null &&
+                        currentUserId.isNotEmpty &&
+                        t.pemilikId.isNotEmpty &&
+                        t.pemilikId == currentUserId) ||
+                    (userNama != null &&
+                        userNama.isNotEmpty &&
+                        t.pemilikNama.trim().toLowerCase() ==
+                            userNama.trim().toLowerCase()) ||
+                    (authProvider?.currentUser == null &&
+                        trxProvider?.currentUserId == null);
+                return isBorrow && isActive && matchOwner;
+              }).toList()
+            : <TransactionModel>[];
 
-    // Deduplikasi per buku (bukuId atau judul) agar tidak ada kartu buku kembar
+    // Urutkan berdasarkan prioritas status tertinggi
+    rawBorrowedList.sort((a, b) => _statusPriority(b).compareTo(_statusPriority(a)));
+    rawLentOutList.sort((a, b) => _statusPriority(b).compareTo(_statusPriority(a)));
+
+    // Deduplikasi per buku (bukuId atau judul) agar transaksi paling relevan/aktif yang ditampilkan
     final Map<String, TransactionModel> uniqueBorrowed = {};
     for (final t in rawBorrowedList) {
       final key = t.bukuId.isNotEmpty && t.bukuId != '0'
@@ -1104,132 +1352,137 @@ class _MyBookPageState extends State<MyBookPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'My book',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF130F26),
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Check your book collection',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF7E7A92),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'My Collection',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF130F26),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: const Icon(
-                            CupertinoIcons.plus_circle,
-                            size: 28,
-                            color: Color(0xFF7E7A92),
-                          ),
-                          onPressed: () => _bukaModalTambahBuku(context),
+        child: RefreshIndicator(
+          onRefresh: _refreshData,
+          color: AppColors.primary,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'My book',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF130F26),
+                          letterSpacing: -0.5,
                         ),
-                        const SizedBox(width: 14),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: const Icon(
-                            CupertinoIcons.square_pencil,
-                            size: 28,
-                            color: Color(0xFF7E7A92),
-                          ),
-                          onPressed: () =>
-                              _bukaModalPilihBukuEdit(context, myBooks),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Check your book collection',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF7E7A92),
                         ),
-                        const SizedBox(width: 14),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          icon: const Icon(
-                            CupertinoIcons.delete_left,
-                            size: 28,
-                            color: Color(0xFF7E7A92),
-                          ),
-                          onPressed: () =>
-                              _bukaModalPilihBukuHapus(context, myBooks),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: _buildCollectionRow(myBooks),
-              ),
-              const SizedBox(height: 24),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.0),
-                child: Text(
-                  'Borrowed',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF130F26),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: _buildTransactionRow(displayBorrowed),
-              ),
-              const SizedBox(height: 24),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.0),
-                child: Text(
-                  'Lent out',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF130F26),
+                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'My Collection',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF130F26),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: const Icon(
+                              CupertinoIcons.plus_circle,
+                              size: 28,
+                              color: Color(0xFF7E7A92),
+                            ),
+                            onPressed: () => _bukaModalTambahBuku(context),
+                          ),
+                          const SizedBox(width: 14),
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: const Icon(
+                              CupertinoIcons.square_pencil,
+                              size: 28,
+                              color: Color(0xFF7E7A92),
+                            ),
+                            onPressed: () =>
+                                _bukaModalPilihBukuEdit(context, myBooks),
+                          ),
+                          const SizedBox(width: 14),
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: const Icon(
+                              CupertinoIcons.delete_left,
+                              size: 28,
+                              color: Color(0xFF7E7A92),
+                            ),
+                            onPressed: () =>
+                                _bukaModalPilihBukuHapus(context, myBooks),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: _buildTransactionRow(displayLentOut),
-              ),
-              const SizedBox(height: 32),
-            ],
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: _buildCollectionRow(myBooks, rawLentOutList),
+                ),
+                const SizedBox(height: 24),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Text(
+                    'Borrowed',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: _buildTransactionRow(displayBorrowed, isLentOut: false),
+                ),
+                const SizedBox(height: 24),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Text(
+                    'Lent out',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: _buildTransactionRow(displayLentOut, isLentOut: true),
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),

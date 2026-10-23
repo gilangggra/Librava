@@ -50,12 +50,29 @@ class TransactionProvider extends ChangeNotifier {
       List.unmodifiable(_daftarTransaksi);
 
   List<TransactionModel> get requestMasuk {
-    if (_currentUserName != null && _currentUserName!.isNotEmpty) {
-      return _daftarTransaksi
-          .where((trx) =>
-              trx.pemilikNama.toLowerCase() == _currentUserName!.toLowerCase() &&
-              trx.pemohonNama.toLowerCase() != _currentUserName!.toLowerCase())
-          .toList();
+    if ((_currentUserId != null && _currentUserId!.isNotEmpty) ||
+        (_currentUserName != null && _currentUserName!.isNotEmpty)) {
+      return _daftarTransaksi.where((trx) {
+        final matchOwner = (_currentUserId != null &&
+                _currentUserId!.isNotEmpty &&
+                trx.pemilikId.isNotEmpty &&
+                trx.pemilikId == _currentUserId) ||
+            (_currentUserName != null &&
+                _currentUserName!.isNotEmpty &&
+                trx.pemilikNama.toLowerCase() ==
+                    _currentUserName!.toLowerCase());
+
+        final notBorrower = (_currentUserId != null &&
+                _currentUserId!.isNotEmpty &&
+                trx.pemohonId.isNotEmpty &&
+                trx.pemohonId != _currentUserId) ||
+            (_currentUserName != null &&
+                _currentUserName!.isNotEmpty &&
+                trx.pemohonNama.toLowerCase() !=
+                    _currentUserName!.toLowerCase());
+
+        return matchOwner && notBorrower;
+      }).toList();
     }
     return _daftarTransaksi
         .where((trx) =>
@@ -65,11 +82,18 @@ class TransactionProvider extends ChangeNotifier {
   }
 
   List<TransactionModel> get requestSaya {
-    if (_currentUserName != null && _currentUserName!.isNotEmpty) {
-      return _daftarTransaksi
-          .where((trx) =>
-              trx.pemohonNama.toLowerCase() == _currentUserName!.toLowerCase())
-          .toList();
+    if ((_currentUserId != null && _currentUserId!.isNotEmpty) ||
+        (_currentUserName != null && _currentUserName!.isNotEmpty)) {
+      return _daftarTransaksi.where((trx) {
+        return (_currentUserId != null &&
+                _currentUserId!.isNotEmpty &&
+                trx.pemohonId.isNotEmpty &&
+                trx.pemohonId == _currentUserId) ||
+            (_currentUserName != null &&
+                _currentUserName!.isNotEmpty &&
+                trx.pemohonNama.toLowerCase() ==
+                    _currentUserName!.toLowerCase());
+      }).toList();
     }
     return _daftarTransaksi
         .where((trx) => trx.pemohonNama == 'Gilang Ramadan')
