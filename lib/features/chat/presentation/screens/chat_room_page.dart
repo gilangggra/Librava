@@ -199,10 +199,24 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   ({String text, String? imageUrl}) _parseMessageContent(String raw) {
     if (raw.startsWith('[HANDOVER_LOCATION]:')) {
       final body = raw.replaceFirst('[HANDOVER_LOCATION]:', '').trim();
-      final loc = body.contains('| JADWAL:') ? body.split('| JADWAL:').first.trim() : body;
-      final time = body.contains('| JADWAL:') ? body.split('| JADWAL:').last.trim() : '';
-      final text = time.isNotEmpty
-          ? '📍 Jadwal & Lokasi Serah Terima: $loc ($time)'
+      String loc = body;
+      String dt = '';
+      if (body.contains('| DATE:')) {
+        loc = body.split('| DATE:')[0].trim();
+        final after = body.split('| DATE:')[1].trim();
+        if (after.contains('| TIME:')) {
+          final d = after.split('| TIME:')[0].trim();
+          final t = after.split('| TIME:')[1].trim();
+          dt = '$d, $t';
+        } else {
+          dt = after;
+        }
+      } else if (body.contains('| JADWAL:')) {
+        loc = body.split('| JADWAL:').first.trim();
+        dt = body.split('| JADWAL:').last.trim();
+      }
+      final text = dt.isNotEmpty
+          ? '📍 Jadwal & Lokasi Serah Terima: $loc ($dt)'
           : '📍 Jadwal & Lokasi Serah Terima: $loc';
       return (text: text, imageUrl: null);
     }

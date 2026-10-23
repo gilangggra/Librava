@@ -89,26 +89,48 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   bool _isLoadingAction = false;
 
   String _parseDisplayLocation(String raw) {
+    if (raw.contains('| DATE:')) {
+      return raw.split('| DATE:').first.trim();
+    }
     if (raw.contains('| JADWAL:')) {
       return raw.split('| JADWAL:').first.trim();
     }
     return raw.trim();
   }
 
-  String _parseDisplayTime(String raw) {
-    if (raw.contains('| JADWAL:')) {
-      return raw.split('| JADWAL:').last.trim();
+  String _parseDisplayDate(String raw) {
+    if (raw.contains('| DATE:')) {
+      final part = raw.split('| DATE:')[1];
+      if (part.contains('| TIME:')) {
+        return part.split('| TIME:')[0].trim();
+      }
+      return part.trim();
     }
-    return '';
+    return 'Aug 23, 2026';
   }
 
-  static String _getNamaBulan(int month) {
-    const bulan = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  String _parseDisplayTimeOnly(String raw) {
+    if (raw.contains('| TIME:')) {
+      return raw.split('| TIME:')[1].trim();
+    }
+    if (raw.contains('| JADWAL:')) {
+      return raw.split('| JADWAL:')[1].trim();
+    }
+    return '14:00 WIB';
+  }
+
+  static String _formatHandoverDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
-    if (month >= 1 && month <= 12) return bulan[month - 1];
-    return '';
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  static String _formatHandoverTime(DateTime date) {
+    final hh = date.hour.toString().padLeft(2, '0');
+    final mm = date.minute.toString().padLeft(2, '0');
+    return '$hh:$mm WIB';
   }
 
   bool get _isHandoverSet {
@@ -483,13 +505,15 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              widget.depositAmount,
-                              textAlign: TextAlign.end,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF130F26),
+                            Flexible(
+                              child: Text(
+                                widget.depositAmount,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF130F26),
+                                ),
                               ),
                             ),
                           ],
@@ -1066,7 +1090,63 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                           children: [
                             const Expanded(
                               child: Text(
-                                'Lokasi Handover',
+                                'Date',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                isSet ? _parseDisplayDate(_currentHandoverLocation) : 'Belum ditentukan',
+                                textAlign: TextAlign.end,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSet
+                                      ? const Color(0xFF130F26)
+                                      : const Color(0xFFDC2626),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Time',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                isSet ? _parseDisplayTimeOnly(_currentHandoverLocation) : 'Belum ditentukan',
+                                textAlign: TextAlign.end,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSet
+                                      ? const Color(0xFF130F26)
+                                      : const Color(0xFFDC2626),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Location',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: Color(0xFF7E7A92),
@@ -1089,34 +1169,6 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             ),
                           ],
                         ),
-                        if (isSet && _parseDisplayTime(_currentHandoverLocation).isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'Jadwal Pertemuan',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF7E7A92),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  _parseDisplayTime(_currentHandoverLocation),
-                                  textAlign: TextAlign.end,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF130F26),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -1157,10 +1209,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   const SizedBox(height: 12),
                   Text(
                     isSet
-                        ? (_parseDisplayTime(_currentHandoverLocation).isNotEmpty
-                            ? 'Silakan temui $partnerName di ${_parseDisplayLocation(_currentHandoverLocation)} pada ${_parseDisplayTime(_currentHandoverLocation)} untuk melakukan serah terima fisik buku.'
-                            : 'Silakan temui $partnerName di ${_parseDisplayLocation(_currentHandoverLocation)} untuk melakukan serah terima fisik buku.')
-                        : 'Harap tunggu $partnerName menentukan lokasi dan waktu pertemuan setelah deposit diselesaikan.',
+                        ? 'Silakan temui $partnerName di ${_parseDisplayLocation(_currentHandoverLocation)} pada ${_parseDisplayDate(_currentHandoverLocation)}, ${_parseDisplayTimeOnly(_currentHandoverLocation)} untuk melakukan serah terima fisik buku.'
+                        : 'Harap tunggu $partnerName menentukan tanggal, waktu, dan lokasi serah terima setelah deposit diselesaikan.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 12,
@@ -1234,12 +1284,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               isOwner: _isCurrentUserOwner(context),
               onClose: () => Navigator.pop(ctx),
               onHandoverConfirmed: (selectedLocation, [meetingTime]) async {
-                final String timeStr = meetingTime != null
-                    ? '${meetingTime.day} ${_getNamaBulan(meetingTime.month)} ${meetingTime.year}, ${meetingTime.hour.toString().padLeft(2, '0')}:${meetingTime.minute.toString().padLeft(2, '0')}'
-                    : '';
-                final combined = timeStr.isNotEmpty
-                    ? '$selectedLocation | JADWAL: $timeStr'
-                    : selectedLocation;
+                final dt = meetingTime ?? DateTime(2026, 8, 23, 14, 0);
+                final String dateStr = _formatHandoverDate(dt);
+                final String timeStr = _formatHandoverTime(dt);
+                final combined = '$selectedLocation | DATE: $dateStr | TIME: $timeStr';
 
                 setState(() {
                   _currentHandoverLocation = combined;
@@ -2152,7 +2200,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
                   decoration: BoxDecoration(
                     color: isOwner ? const Color(0xFFF0EEFF) : const Color(0xFFE8F1FD),
                     borderRadius: BorderRadius.circular(8),
@@ -2168,16 +2216,20 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     children: [
                       Icon(
                         isOwner ? Icons.share_rounded : Icons.bookmark_added_rounded,
-                        size: 13,
+                        size: 12,
                         color: isOwner ? AppColors.primary : const Color(0xFF388AF6),
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        isOwner ? 'Anda: Pemilik (Meminjamkan)' : 'Anda: Peminjam (Meminjam)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isOwner ? AppColors.primary : const Color(0xFF388AF6),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          isOwner ? 'Anda: Pemilik (Meminjamkan)' : 'Anda: Peminjam (Meminjam)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: isOwner ? AppColors.primary : const Color(0xFF388AF6),
+                          ),
                         ),
                       ),
                     ],
