@@ -412,20 +412,21 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
       separatorBuilder: (_, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final trx = filteredList[index];
+        final auth = context.read<AuthProvider>();
+        final currentId = auth.currentUser?.id ?? '';
+        final currentName = auth.currentUser?.nama.trim().toLowerCase() ?? '';
+        final isOwner = (currentId.isNotEmpty && trx.pemilikId.isNotEmpty && trx.pemilikId == currentId) ||
+            (currentName.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == currentName) ||
+            (namaUser.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == namaUser.trim().toLowerCase());
+
         final subtitleText = trx.jenisTransaksi == 'barter'
-            ? 'Barter with ${trx.pemilikNama}'
-            : (trx.pemilikNama == namaUser
+            ? (isOwner ? 'Barter with ${trx.pemohonNama}' : 'Barter with ${trx.pemilikNama}')
+            : (isOwner
                 ? 'Lent to ${trx.pemohonNama}'
                 : 'Borrowed from ${trx.pemilikNama}');
 
         return InkWell(
           onTap: () async {
-            final auth = context.read<AuthProvider>();
-            final currentId = auth.currentUser?.id ?? '';
-            final currentName = auth.currentUser?.nama.trim().toLowerCase() ?? '';
-            final isOwner = (currentId.isNotEmpty && trx.pemilikId.isNotEmpty && trx.pemilikId == currentId) ||
-                (currentName.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == currentName) ||
-                (namaUser.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == namaUser.trim().toLowerCase());
 
             await Navigator.push(
               context,
@@ -536,7 +537,9 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                                   ),
                                 ),
                                 child: Text(
-                                  isOwner ? 'Meminjamkan' : 'Meminjam',
+                                  trx.jenisTransaksi == 'barter'
+                                      ? (isOwner ? 'Pemilik Buku' : 'Pengaju Barter')
+                                      : (isOwner ? 'Meminjamkan' : 'Meminjam'),
                                   style: TextStyle(
                                     fontSize: 9.5,
                                     fontWeight: FontWeight.w700,

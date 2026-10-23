@@ -495,54 +495,61 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
     final authUser = auth?.currentUser;
     final activeUser = widget.user ?? _fetchedUser;
 
-    // Nilai tersinkronisasi dengan Database PostgreSQL
+    final targetId = widget.userId ?? _resolvedUserId ?? activeUser?.id;
+    final targetName = (widget.name ?? activeUser?.nama ?? '').trim().toLowerCase();
+    final bool isMyOwnProfile = authUser != null &&
+        ((targetId != null && targetId.isNotEmpty && targetId == authUser.id) ||
+         (targetName.isNotEmpty && authUser.nama.trim().toLowerCase() == targetName));
+
+    // Nilai tersinkronisasi dengan Database PostgreSQL (hanya fallback ke authUser jika melihat profil sendiri)
     final displayName = widget.name ??
         activeUser?.nama ??
-        authUser?.nama ??
+        (isMyOwnProfile ? authUser?.nama : null) ??
         'Pengguna';
 
     final displayRole = widget.role ??
         (activeUser?.username != null && activeUser!.username.isNotEmpty
             ? activeUser.username
-            : (authUser?.username != null && authUser!.username.isNotEmpty
+            : (isMyOwnProfile && authUser?.username != null && authUser!.username.isNotEmpty
                 ? authUser.username
                 : 'User'));
 
     final displayBio = widget.bio ??
         (activeUser?.bio != null && activeUser!.bio.isNotEmpty
             ? activeUser.bio
-            : (authUser?.bio != null && authUser!.bio.isNotEmpty
+            : (isMyOwnProfile && authUser?.bio != null && authUser!.bio.isNotEmpty
                 ? authUser.bio
                 : 'A casual reader'));
 
     final displayEmail = widget.email ??
         activeUser?.email ??
-        authUser?.email ??
+        (isMyOwnProfile ? authUser?.email : null) ??
         '-';
 
     final displayPhone = widget.phone ??
         (activeUser?.phone != null && activeUser!.phone.isNotEmpty
             ? activeUser.phone
-            : (authUser?.phone != null && authUser!.phone.isNotEmpty
+            : (isMyOwnProfile && authUser?.phone != null && authUser!.phone.isNotEmpty
                 ? authUser.phone
                 : '-'));
 
     final displayBooksRead = widget.booksRead ??
         activeUser?.booksRead ??
-        authUser?.booksRead ??
+        (isMyOwnProfile ? authUser?.booksRead : null) ??
         0;
 
     final displayBooksBorrowed = widget.booksBorrowed ??
         activeUser?.booksBorrowed ??
-        authUser?.booksBorrowed ??
+        (isMyOwnProfile ? authUser?.booksBorrowed : null) ??
         0;
 
     final displayFavorites = widget.favorites ??
         activeUser?.favorites ??
-        authUser?.favorites ??
+        (isMyOwnProfile ? authUser?.favorites : null) ??
         0;
 
-    final displayFoto = activeUser?.fotoProfil ?? authUser?.fotoProfil;
+    final displayFoto = activeUser?.fotoProfil ??
+        (isMyOwnProfile ? authUser?.fotoProfil : null);
 
     return Scaffold(
       backgroundColor: AppColors.background,
