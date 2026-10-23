@@ -1334,7 +1334,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: Text(
-                            isOwner ? 'Pemilik (Meminjamkan)' : 'Peminjam',
+                            isBarter
+                                ? (isOwner ? 'Pemilik Buku' : 'Pengaju Barter')
+                                : (isOwner ? 'Pemilik (Meminjamkan)' : 'Peminjam'),
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
