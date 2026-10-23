@@ -153,6 +153,29 @@ class _MyBookPageState extends State<MyBookPage> {
                           color: Color(0xFF7E7A92),
                         ),
                         onTap: () async {
+                          try {
+                            final trxProvider = context.read<TransactionProvider>();
+                            final hasActiveTx = trxProvider.semuaTransaksi.any((t) =>
+                                ((t.bukuId.isNotEmpty && t.bukuId == b.id) ||
+                                    t.bukuBarter.trim().toLowerCase() ==
+                                        b.judul.trim().toLowerCase() ||
+                                    t.judulBuku.trim().toLowerCase() ==
+                                        b.judul.trim().toLowerCase()) &&
+                                t.status != 'selesai' &&
+                                t.status != 'ditolak' &&
+                                t.status != 'dibatalkan');
+                            if (hasActiveTx || !b.tersedia) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Book "${b.judul}" is currently in an active loan or barter transaction and cannot be edited.'),
+                                  backgroundColor: const Color(0xFFDC2626),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              return;
+                            }
+                          } catch (_) {}
                           Navigator.pop(ctx);
                           await Navigator.push(
                             context,
@@ -770,6 +793,18 @@ class _MyBookPageState extends State<MyBookPage> {
                       ),
                       onPressed: () async {
                         Navigator.pop(ctx);
+                        bool isTxOwner = true;
+                        try {
+                          final auth = context.read<AuthProvider>();
+                          final uid = auth.currentUser?.id ?? '';
+                          final uname = auth.currentUser?.nama.trim().toLowerCase() ?? '';
+                          if (uid.isNotEmpty && activeTx.pemohonId == uid) {
+                            isTxOwner = false;
+                          } else if (uname.isNotEmpty &&
+                              activeTx.pemohonNama.trim().toLowerCase() == uname) {
+                            isTxOwner = false;
+                          }
+                        } catch (_) {}
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -777,7 +812,7 @@ class _MyBookPageState extends State<MyBookPage> {
                               transactionId: activeTx.id,
                               bookTitle: activeTx.judulBuku,
                               bookAuthor: activeTx.penulisBuku,
-                              coverPath: coverAsset,
+                              coverPath: _getCoverForTransaction(activeTx),
                               status: activeTx.status,
                               depositAmount:
                                   '${activeTx.depositSimulasi.toInt()} Rupiah',
@@ -789,7 +824,7 @@ class _MyBookPageState extends State<MyBookPage> {
                               ownerId: activeTx.pemilikId,
                               requesterName: activeTx.pemohonNama,
                               requesterId: activeTx.pemohonId,
-                              isOwner: true,
+                              isOwner: isTxOwner,
                               type: isBarterTx ? 'Barter' : 'Borrow',
                               dueDate: activeTx.dueDate ??
                                   activeTx.effectiveDueDate,
@@ -829,6 +864,17 @@ class _MyBookPageState extends State<MyBookPage> {
                           ),
                         ),
                         onPressed: () async {
+                          if (activeTx != null || !book.tersedia) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Book "${book.judul}" is currently in an active loan or barter transaction and cannot be edited.'),
+                                backgroundColor: const Color(0xFFDC2626),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
                           Navigator.pop(ctx);
                           await Navigator.push(
                             context,
@@ -984,7 +1030,10 @@ class _MyBookPageState extends State<MyBookPage> {
   }
 
   Widget _buildCollectionRow(
-      List<BookModel> books, List<TransactionModel> activeLentList) {
+      List<BookModel> books,
+      List<TransactionModel> activeLentList, [
+      List<TransactionModel> activeBorrowedList = const [],
+  ]) {
     if (books.isEmpty) {
       return Container(
         height: 100,
@@ -1016,10 +1065,19 @@ class _MyBookPageState extends State<MyBookPage> {
           final book = books[index];
           final coverPath = _getCoverForBook(book);
 
-          final activeTx = activeLentList.where((t) =>
-              (t.bukuId.isNotEmpty && t.bukuId == book.id) ||
-              (t.judulBuku.trim().toLowerCase() ==
-                  book.judul.trim().toLowerCase())).firstOrNull;
+          final activeTx = activeLentList
+                  .where((t) =>
+                      (t.bukuId.isNotEmpty && t.bukuId == book.id) ||
+                      (t.judulBuku.trim().toLowerCase() ==
+                          book.judul.trim().toLowerCase()))
+                  .firstOrNull ??
+              activeBorrowedList
+                  .where((t) =>
+                      t.jenisTransaksi.toLowerCase() == 'barter' &&
+                      t.bukuBarter.trim().isNotEmpty &&
+                      t.bukuBarter.trim().toLowerCase() ==
+                          book.judul.trim().toLowerCase())
+                  .firstOrNull;
           final bool isBarterTx = activeTx != null &&
               activeTx.jenisTransaksi.toLowerCase() == 'barter';
           final bool isLent = !book.tersedia ||
@@ -1556,7 +1614,8 @@ class _MyBookPageState extends State<MyBookPage> {
                 const SizedBox(height: 14),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: _buildCollectionRow(myBooks, rawLentOutList),
+                  child: _buildCollectionRow(
+                      myBooks, rawLentOutList, rawBorrowedList),
                 ),
                 const SizedBox(height: 24),
                 const Padding(

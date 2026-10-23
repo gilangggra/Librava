@@ -197,6 +197,12 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   ({String text, String? imageUrl}) _parseMessageContent(String raw) {
+    if (raw.trim() == '[BOOK_RETURNED]') {
+      return (
+        text: '✅ Buku telah dikembalikan & transaksi peminjaman selesai.',
+        imageUrl: null,
+      );
+    }
     if (raw.startsWith('[HANDOVER_LOCATION]:')) {
       final body = raw.replaceFirst('[HANDOVER_LOCATION]:', '').trim();
       String loc = body;

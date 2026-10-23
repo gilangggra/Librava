@@ -170,7 +170,17 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       String lastMsg = rawLastMsg;
-      if (lastMsg.startsWith('[FOTO:') && lastMsg.contains(']')) {
+      if (lastMsg.trim() == '[BOOK_RETURNED]') {
+        lastMsg = '✅ Buku telah dikembalikan';
+      } else if (lastMsg.startsWith('[HANDOVER_LOCATION]:')) {
+        final locBody = lastMsg.replaceFirst('[HANDOVER_LOCATION]:', '').trim();
+        final cleanLoc = locBody.contains('| DATE:')
+            ? locBody.split('| DATE:').first.trim()
+            : (locBody.contains('| JADWAL:')
+                ? locBody.split('| JADWAL:').first.trim()
+                : locBody);
+        lastMsg = '📍 Lokasi: $cleanLoc';
+      } else if (lastMsg.startsWith('[FOTO:') && lastMsg.contains(']')) {
         final closeIdx = lastMsg.indexOf(']');
         final caption = lastMsg.substring(closeIdx + 1).trim();
         lastMsg = caption.isNotEmpty ? '📷 $caption' : '📷 Foto kondisi buku';

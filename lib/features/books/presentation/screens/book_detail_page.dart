@@ -92,6 +92,30 @@ class _BookDetailPageState extends State<BookDetailPage> {
     final bookToEdit = _currentBook ?? widget.book;
     if (bookToEdit == null) return;
 
+    try {
+      final trxProvider = context.read<TransactionProvider>();
+      final hasActiveTx = trxProvider.semuaTransaksi.any((t) =>
+          ((t.bukuId.isNotEmpty && t.bukuId == bookToEdit.id) ||
+              t.bukuBarter.trim().toLowerCase() ==
+                  bookToEdit.judul.trim().toLowerCase() ||
+              t.judulBuku.trim().toLowerCase() ==
+                  bookToEdit.judul.trim().toLowerCase()) &&
+          t.status != 'selesai' &&
+          t.status != 'ditolak' &&
+          t.status != 'dibatalkan');
+      if (hasActiveTx || !bookToEdit.tersedia) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Book "${bookToEdit.judul}" is currently in an active loan or barter transaction and cannot be edited.'),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    } catch (_) {}
+
     final updated = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -695,8 +719,13 @@ class _BookDetailPageState extends State<BookDetailPage> {
       koleksi = bp.koleksiSaya.where((b) {
         if (b.id == widget.book?.id) return false;
         if (!b.tersedia) return false;
+        if (!b.isDisetujui) return false;
         final hasActiveTx = tp.semuaTransaksi.any((t) =>
-            (t.bukuId == b.id || t.bukuBarter == b.judul) &&
+            (t.bukuId == b.id ||
+                t.bukuBarter.trim().toLowerCase() ==
+                    b.judul.trim().toLowerCase() ||
+                t.judulBuku.trim().toLowerCase() ==
+                    b.judul.trim().toLowerCase()) &&
             t.status != 'selesai' &&
             t.status != 'ditolak' &&
             t.status != 'dibatalkan');
@@ -1610,7 +1639,11 @@ class _BookDetailPageState extends State<BookDetailPage> {
     try {
       final trxProvider = context.read<TransactionProvider>();
       final hasActiveTx = trxProvider.semuaTransaksi.any((t) =>
-          t.bukuId == book.id &&
+          ((t.bukuId.isNotEmpty && t.bukuId == book.id) ||
+              t.bukuBarter.trim().toLowerCase() ==
+                  book.judul.trim().toLowerCase() ||
+              t.judulBuku.trim().toLowerCase() ==
+                  book.judul.trim().toLowerCase()) &&
           t.status != 'selesai' &&
           t.status != 'ditolak' &&
           t.status != 'dibatalkan');

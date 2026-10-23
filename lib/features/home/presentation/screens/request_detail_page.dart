@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/book_cover_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../books/presentation/providers/book_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
@@ -11,6 +12,7 @@ import '../../../chat/presentation/screens/chat_room_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
 import '../../../profile/presentation/screens/profile_view_page.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
+import '../../../transactions/presentation/screens/transaction_detail_page.dart';
 import '../../domain/models/book_request_item.dart';
 
 class RequestDetailPage extends StatefulWidget {
@@ -240,11 +242,13 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
   }
 
   Future<void> _prosesStatus(String newStatus) async {
+    final prevStatus = _item.status;
     setState(() {
       _item.status = newStatus;
     });
 
-    widget.onStatusChanged?.call(newStatus);
+    bool success = true;
+    String? errorMsg;
 
     if (_item.transactionId != null) {
       try {
@@ -253,16 +257,48 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
         if (authProvider.token != null) {
           final backendStatus =
               newStatus == 'Accepted' ? 'DISETUJUI' : 'DITOLAK';
-          await trxProvider.updateStatusApi(
+          success = await trxProvider.updateStatusApi(
             authProvider.token!,
             _item.transactionId.toString(),
             backendStatus,
           );
+          if (!success) {
+            errorMsg = trxProvider.errorMessage;
+          } else {
+            try {
+              await context
+                  .read<BookProvider>()
+                  .fetchMyBooks(authProvider.token!);
+            } catch (_) {}
+          }
         }
-      } catch (_) {}
+      } catch (e) {
+        success = false;
+        errorMsg = e.toString().replaceFirst('Exception: ', '');
+      }
     }
 
     if (!mounted) return;
+
+    if (!success) {
+      setState(() {
+        _item.status = prevStatus;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg ?? 'Failed to update request status.'),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+
+    widget.onStatusChanged?.call(newStatus);
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -864,7 +900,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Action buttons (if still pending)
+                    // Action buttons (if still pending or accepted)
                     if (_item.isPending)
                       Row(
                         children: [
@@ -927,6 +963,75 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                             ),
                           ),
                         ],
+                      )
+                    else if (_item.isAccepted && _item.transactionId != null)
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6356FF),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 0,
+                          ),
+                          icon: const Icon(
+                            CupertinoIcons.arrow_right_circle_fill,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          label: const Text(
+                            'Open Transaction & Handover Details',
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          onPressed: () {
+                            final trxProvider =
+                                context.read<TransactionProvider>();
+                            final tx = trxProvider.getTransaksiById(
+                                _item.transactionId.toString());
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => TransactionDetailPage(
+                                  transactionId:
+                                      _item.transactionId.toString(),
+                                  bookTitle: _item.bookTitle,
+                                  bookAuthor: _item.bookAuthor,
+                                  coverPath: _item.bookCover,
+                                  status: tx?.status ?? 'disetujui',
+                                  depositAmount: tx != null
+                                      ? '${tx.depositSimulasi.toInt()} Rupiah'
+                                      : '20000 Rupiah',
+                                  handoverLocation: (tx != null &&
+                                          tx.lokasiPertemuan.isNotEmpty)
+                                      ? tx.lokasiPertemuan
+                                      : 'Set location',
+                                  ownerName: tx?.pemilikNama ?? 'Book Owner',
+                                  ownerId: tx?.pemilikId,
+                                  requesterName: _item.requesterName,
+                                  requesterId: _item.requesterUserId,
+                                  isOwner: true,
+                                  type: _item.isBarter ? 'Barter' : 'Borrow',
+                                  dueDate:
+                                      tx?.dueDate ?? tx?.effectiveDueDate,
+                                  isOverdue: tx?.isOverdue,
+                                  exchangeBookTitle: _item.exchangeBookTitle ??
+                                      tx?.bukuBarter,
+                                  exchangeBookAuthor:
+                                      _item.exchangeBookAuthor ??
+                                          tx?.barterPenulis,
+                                  exchangeBookCover: _item.exchangeBookCover ??
+                                      tx?.barterCover,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     const SizedBox(height: 24),
                   ],
