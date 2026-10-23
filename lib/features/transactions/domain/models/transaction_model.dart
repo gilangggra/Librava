@@ -118,6 +118,9 @@ class TransactionModel {
       case 'DALAM_PROSES':
         normalizedStatus = 'lokasi_ditentukan';
         break;
+      case 'SEDANG_DIPINJAM':
+        normalizedStatus = 'sedang_dipinjam';
+        break;
       case 'SELESAI':
         normalizedStatus = 'selesai';
         break;

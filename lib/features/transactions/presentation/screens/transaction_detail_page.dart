@@ -173,6 +173,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final tx = _getTrx(context);
+      final trxProvider = context.read<TransactionProvider>();
+      final txId = widget.transactionId ?? tx?.id ?? '';
+      if (txId.isNotEmpty && trxProvider.isOnLoan(txId)) {
+        setState(() {
+          _currentStatus = 'sedang_dipinjam';
+          _depositPaid = true;
+        });
+      }
       if (tx != null && tx.lokasiPertemuan.trim().isNotEmpty) {
         setState(() {
           _currentHandoverLocation = tx.lokasiPertemuan;
@@ -292,6 +300,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 _ownerConfirmed = true;
               }
             }
+            if (trxProvider.isOnLoan(tx.id)) {
+              _currentStatus = 'sedang_dipinjam';
+            } else if (tx.status.toLowerCase() == 'sedang_dipinjam') {
+              _currentStatus = 'sedang_dipinjam';
+            } else {
+              _currentStatus = tx.status;
+            }
           });
         }
       }
@@ -408,8 +423,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
                 setState(() {
                   if (partnerAlsoConfirmed ||
-                      txAfter?.status.toLowerCase() == 'selesai') {
+                      txAfter?.status.toLowerCase() == 'selesai' ||
+                      txAfter?.status.toLowerCase() == 'sedang_dipinjam') {
                     _currentStatus = isBarter ? 'selesai' : 'sedang_dipinjam';
+                    if (!isBarter && widget.transactionId != null) {
+                      context.read<TransactionProvider>().markAsOnLoan(widget.transactionId!);
+                    }
                   }
                 });
 
@@ -417,10 +436,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   SnackBar(
                     content: Text(
                       partnerAlsoConfirmed ||
-                              txAfter?.status.toLowerCase() == 'selesai'
+                              txAfter?.status.toLowerCase() == 'selesai' ||
+                              txAfter?.status.toLowerCase() == 'sedang_dipinjam'
                           ? (isBarter
                               ? 'Barter handover completed! Transaction is finished.'
-                              : 'Handover confirmed! The book is now actively on loan.')
+                              : 'Handover confirmed! The book is now actively on loan. Early return is available at any time.')
                           : 'Your handover confirmation has been recorded.',
                     ),
                     backgroundColor: const Color(0xFF2FD677),
@@ -1861,8 +1881,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           ),
           content: Text(
             isOwner
-                ? 'Have you received the physical book "${widget.bookTitle}" back from $partnerName in good condition?\n\nOnce confirmed, this transaction will be completed.'
-                : 'Have you returned the book "${widget.bookTitle}" to $partnerName?\n\nOnce confirmed, the transaction will be completed and your security deposit will be refunded.',
+                ? 'Have you received the physical book "${widget.bookTitle}" back from $partnerName in good condition? (Early return supported at any time before or on the due date).\n\nOnce confirmed, this transaction will be completed.'
+                : 'Have you returned the book "${widget.bookTitle}" to $partnerName? You can return the book early at any time before the due date.\n\nOnce confirmed, the transaction will be completed and your security deposit will be refunded immediately.',
             style: const TextStyle(
               fontSize: 14,
               color: Color(0xFF7E7A92),
@@ -1902,12 +1922,15 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
                 if (widget.transactionId != null && auth.token != null) {
                   try {
+                    trxProvider.markAsReturned(widget.transactionId!);
                     await trxProvider.confirmReturnApi(
                       auth.token!,
                       widget.transactionId!,
                     );
                     await auth.segarkanProfil();
                   } catch (_) {}
+                } else if (widget.transactionId != null) {
+                  trxProvider.markAsReturned(widget.transactionId!);
                 }
 
                 if (!mounted) return;
@@ -3101,10 +3124,41 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ],
             ),
             const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8FAF0),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFF2FD677).withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.bolt_rounded,
+                    color: Color(0xFF0C9A4B),
+                    size: 15,
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    'Early return supported at any time',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0C9A4B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
             Text(
               isOwner
-                  ? 'Book is currently borrowed by the student. Once the physical book is returned and received in good condition, confirm receipt to complete the transaction.'
-                  : 'Book is currently on loan. When finished reading, confirm return with the owner to complete the transaction and release your security deposit.',
+                  ? 'Book is currently on loan. The borrower can return it early at any time before the due date. Once you receive the physical book back in good condition, confirm receipt below to complete the loan.'
+                  : 'Book is currently on loan. You can return this book early at any time before the due date! Once returned to the owner, confirm return to complete the transaction and release your security deposit back immediately.',
               style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFF7E7A92),

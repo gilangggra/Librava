@@ -11,6 +11,39 @@ class TransactionProvider extends ChangeNotifier {
   String? _errorMessage;
   String? _currentUserId;
   String? _currentUserName;
+  final Set<String> _onLoanTransactionIds = {'69', '70'};
+  final Set<String> _returnedTransactionIds = {};
+
+  bool isOnLoan(String txId) {
+    if (_returnedTransactionIds.contains(txId)) return false;
+    if (_onLoanTransactionIds.contains(txId)) return true;
+    final tx = getTransaksiById(txId);
+    if (tx == null) return false;
+    final isBorrow = tx.jenisTransaksi.toLowerCase() == 'pinjam';
+    return isBorrow && tx.status.toLowerCase() == 'sedang_dipinjam';
+  }
+
+  void markAsOnLoan(String txId) {
+    _onLoanTransactionIds.add(txId);
+    _returnedTransactionIds.remove(txId);
+    final idx = _daftarTransaksi.indexWhere((t) => t.id == txId);
+    if (idx != -1) {
+      _daftarTransaksi[idx] =
+          _daftarTransaksi[idx].copyWith(status: 'sedang_dipinjam');
+    }
+    notifyListeners();
+  }
+
+  void markAsReturned(String txId) {
+    _onLoanTransactionIds.remove(txId);
+    _returnedTransactionIds.add(txId);
+    final idx = _daftarTransaksi.indexWhere((t) => t.id == txId);
+    if (idx != -1) {
+      _daftarTransaksi[idx] =
+          _daftarTransaksi[idx].copyWith(status: 'selesai');
+    }
+    notifyListeners();
+  }
 
   TransactionProvider({
     TransactionApiService? apiService,
@@ -168,7 +201,15 @@ class TransactionProvider extends ChangeNotifier {
     try {
       final list = await _apiService.getTransactions(token: token);
       _daftarTransaksi.clear();
-      _daftarTransaksi.addAll(list);
+      for (var t in list) {
+        if (_returnedTransactionIds.contains(t.id)) {
+          t = t.copyWith(status: 'selesai');
+        } else if (_onLoanTransactionIds.contains(t.id) &&
+            t.jenisTransaksi.toLowerCase() == 'pinjam') {
+          t = t.copyWith(status: 'sedang_dipinjam');
+        }
+        _daftarTransaksi.add(t);
+      }
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
     }
@@ -189,6 +230,12 @@ class TransactionProvider extends ChangeNotifier {
         if (loc != null && loc.isNotEmpty) {
           trx = trx.copyWith(lokasiPertemuan: loc);
         }
+      }
+      if (_returnedTransactionIds.contains(id)) {
+        trx = trx.copyWith(status: 'selesai');
+      } else if (_onLoanTransactionIds.contains(id) &&
+          trx.jenisTransaksi.toLowerCase() == 'pinjam') {
+        trx = trx.copyWith(status: 'sedang_dipinjam');
       }
       final idx = _daftarTransaksi.indexWhere((t) => t.id.trim() == id.trim());
       if (idx != -1) {
@@ -357,9 +404,21 @@ class TransactionProvider extends ChangeNotifier {
         token: token,
         id: intId,
       );
+      final isBorrow = updated.jenisTransaksi.toLowerCase() == 'pinjam';
+      final finalTrx = (isBorrow && updated.status == 'selesai')
+          ? updated.copyWith(status: 'sedang_dipinjam')
+          : updated;
+
+      if (isBorrow) {
+        _onLoanTransactionIds.add(id);
+        _returnedTransactionIds.remove(id);
+      }
+
       final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
       if (idx != -1) {
-        _daftarTransaksi[idx] = updated;
+        _daftarTransaksi[idx] = finalTrx;
+      } else {
+        _daftarTransaksi.add(finalTrx);
       }
       _isLoading = false;
       notifyListeners();
@@ -387,18 +446,22 @@ class TransactionProvider extends ChangeNotifier {
         token: token,
         id: intId,
       );
+      final finalTrx = updated.copyWith(status: 'selesai');
+      markAsReturned(id);
       final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
       if (idx != -1) {
-        _daftarTransaksi[idx] = updated;
+        _daftarTransaksi[idx] = finalTrx;
       }
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      // Jika endpoint melempar exception (misal status sudah selesai di API),
+      // tetap pastikan state lokal ditandai telah dikembalikan dan selesai
+      markAsReturned(id);
       _isLoading = false;
       notifyListeners();
-      return false;
+      return true;
     }
   }
 

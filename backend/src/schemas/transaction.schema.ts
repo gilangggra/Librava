@@ -17,6 +17,7 @@ export const updateTransactionStatusSchema = z.object({
     'DITOLAK',
     'DIBATALKAN',
     'DALAM_PROSES',
+    'SEDANG_DIPINJAM',
     'SELESAI',
   ] as const),
 });
