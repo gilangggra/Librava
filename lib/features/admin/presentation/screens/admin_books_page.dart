@@ -59,10 +59,13 @@ class _AdminBooksPageState extends State<AdminBooksPage> {
   }
 
   Color _warnaStatus(String status) {
-    if (status == 'Tersedia') {
+    final s = status.trim().toLowerCase();
+    if (s == 'tersedia' || s == 'available') {
       return const Color(0xFF22C55E);
-    } else if (status == 'Dipinjam') {
+    } else if (s == 'dipinjam' || s == 'borrowed') {
       return const Color(0xFFF59E0B);
+    } else if (s == 'dibarter' || s == 'bartered') {
+      return const Color(0xFF8B5CF6);
     }
     return AppColors.primary;
   }
