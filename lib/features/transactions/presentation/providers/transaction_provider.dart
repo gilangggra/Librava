@@ -251,9 +251,11 @@ class TransactionProvider extends ChangeNotifier {
         id: intId,
         status: backendStatus,
       );
-      final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
+      final idx = _daftarTransaksi.indexWhere((t) => t.id.trim() == id.trim());
       if (idx != -1) {
         _daftarTransaksi[idx] = updated;
+      } else {
+        _daftarTransaksi.add(updated);
       }
       _isLoading = false;
       notifyListeners();

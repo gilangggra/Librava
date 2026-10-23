@@ -302,6 +302,12 @@ class _BookDetailPageState extends State<BookDetailPage> {
             height: 42,
             child: ElevatedButton.icon(
               onPressed: () {
+                final auth = context.read<AuthProvider>();
+                final currentId = auth.currentUser?.id ?? '';
+                final currentName = auth.currentUser?.nama.trim().toLowerCase() ?? '';
+                final isOwner = (currentId.isNotEmpty && tx.pemilikId.isNotEmpty && tx.pemilikId == currentId) ||
+                    (currentName.isNotEmpty && tx.pemilikNama.trim().toLowerCase() == currentName);
+
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -314,7 +320,12 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       coverPath: _coverPath,
                       status: tx.status,
                       depositAmount: '${tx.depositSimulasi.toInt()} Rupiah',
+                      handoverLocation: tx.lokasiPertemuan.isNotEmpty
+                          ? tx.lokasiPertemuan
+                          : 'Tentukan lokasi',
                       ownerName: tx.pemilikNama,
+                      ownerId: tx.pemilikId,
+                      isOwner: isOwner,
                       type: tx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
                       dueDate: tx.dueDate ?? tx.effectiveDueDate,
                       isOverdue: tx.isOverdue,

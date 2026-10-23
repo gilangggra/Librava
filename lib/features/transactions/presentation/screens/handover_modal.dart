@@ -45,6 +45,7 @@ class HandoverModalContent extends StatefulWidget {
   final Function onHandoverConfirmed;
   final String initialLocation;
   final String buttonText;
+  final bool isOwner;
 
   const HandoverModalContent({
     super.key,
@@ -52,6 +53,7 @@ class HandoverModalContent extends StatefulWidget {
     required this.onHandoverConfirmed,
     this.initialLocation = 'Open Library Telkom University',
     this.buttonText = 'Set Handover',
+    this.isOwner = false,
   });
 
   @override
@@ -71,7 +73,14 @@ class _HandoverModalContentState extends State<HandoverModalContent> {
     super.initState();
     _dateController = TextEditingController(text: _formatDate(_selectedDate));
     _timeController = TextEditingController(text: _formatTime(_selectedTime));
-    _locationController = TextEditingController(text: widget.initialLocation);
+    final loc = widget.initialLocation.trim();
+    final isDefault = loc.isEmpty ||
+        loc == 'Set handover' ||
+        loc == 'Tentukan lokasi' ||
+        loc == 'Belum ditentukan';
+    _locationController = TextEditingController(
+      text: isDefault ? 'Open Library Telkom University' : loc,
+    );
   }
 
   @override
@@ -315,10 +324,12 @@ class _HandoverModalContentState extends State<HandoverModalContent> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Please make sure the details are correct. You and the book owner will meet at the selected location on the choosen date and time',
-                      style: TextStyle(
+                      widget.isOwner
+                          ? 'Please make sure the details are correct. You and the borrower will meet at the selected location on the choosen date and time'
+                          : 'Please make sure the details are correct. You and the book owner will meet at the selected location on the choosen date and time',
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF5A5671),

@@ -419,8 +419,15 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                 : 'Borrowed from ${trx.pemilikNama}');
 
         return InkWell(
-          onTap: () {
-            Navigator.push(
+          onTap: () async {
+            final auth = context.read<AuthProvider>();
+            final currentId = auth.currentUser?.id ?? '';
+            final currentName = auth.currentUser?.nama.trim().toLowerCase() ?? '';
+            final isOwner = (currentId.isNotEmpty && trx.pemilikId.isNotEmpty && trx.pemilikId == currentId) ||
+                (currentName.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == currentName) ||
+                (namaUser.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == namaUser.trim().toLowerCase());
+
+            await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => TransactionDetailPage(
@@ -433,13 +440,24 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                   coverPath: _getCoverForTransaction(trx),
                   status: trx.status,
                   depositAmount: '${trx.depositSimulasi.toInt()} Rupiah',
+                  handoverLocation: trx.lokasiPertemuan.isNotEmpty
+                      ? trx.lokasiPertemuan
+                      : 'Tentukan lokasi',
                   ownerName: trx.pemilikNama,
+                  ownerId: trx.pemilikId,
+                  isOwner: isOwner,
                   type: trx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
                   dueDate: trx.dueDate ?? trx.effectiveDueDate,
                   isOverdue: trx.isOverdue,
                 ),
               ),
             );
+            if (context.mounted) {
+              final auth = context.read<AuthProvider>();
+              if (auth.token != null) {
+                context.read<TransactionProvider>().fetchTransaksi(auth.token!);
+              }
+            }
           },
           borderRadius: BorderRadius.circular(18),
           child: Container(
@@ -492,6 +510,39 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                                     : const Color(0xFF1890FF),
                               ),
                             ),
+                          ),
+                          const SizedBox(width: 6),
+                          Builder(
+                            builder: (context) {
+                              final auth = context.watch<AuthProvider>();
+                              final currentId = auth.currentUser?.id ?? '';
+                              final currentName = auth.currentUser?.nama.trim().toLowerCase() ?? '';
+                              final isOwner = (currentId.isNotEmpty && trx.pemilikId.isNotEmpty && trx.pemilikId == currentId) ||
+                                  (currentName.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == currentName) ||
+                                  (namaUser.isNotEmpty && trx.pemilikNama.trim().toLowerCase() == namaUser.trim().toLowerCase());
+
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: isOwner ? const Color(0xFFF0EEFF) : const Color(0xFFE6F7FF),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: isOwner
+                                        ? AppColors.primary.withValues(alpha: 0.25)
+                                        : const Color(0xFF1890FF).withValues(alpha: 0.25),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Text(
+                                  isOwner ? 'Meminjamkan' : 'Meminjam',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: isOwner ? AppColors.primary : const Color(0xFF0070F3),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                           const SizedBox(width: 8),
                           Text(

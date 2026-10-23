@@ -33,6 +33,7 @@ class TransactionDetailPage extends StatefulWidget {
   final bool youConfirmed;
   final bool ownerConfirmed;
   final String? ownerId;
+  final bool? isOwner;
   final DateTime? dueDate;
   final bool? isOverdue;
 
@@ -40,6 +41,7 @@ class TransactionDetailPage extends StatefulWidget {
     super.key,
     this.transactionId,
     this.ownerId,
+    this.isOwner,
     this.bookTitle = 'Buku Kampus',
     this.bookAuthor = 'Penulis',
     this.coverPath = 'assets/images/bookshelf.jpg',
@@ -86,19 +88,78 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   String _myComment = '';
   bool _isLoadingAction = false;
 
+  bool get _isHandoverSet {
+    final loc = _currentHandoverLocation.trim().toLowerCase();
+    return loc.isNotEmpty &&
+        loc != 'tentukan lokasi' &&
+        loc != 'set handover' &&
+        loc != 'pilih lokasi' &&
+        loc != 'belum ditentukan';
+  }
+
   @override
   void initState() {
     super.initState();
-    _depositPaid = widget.isDepositPaid;
+    final s = widget.status.toLowerCase();
+    _depositPaid = widget.isDepositPaid ||
+        s == 'dalam_proses' ||
+        s == 'lokasi_ditentukan' ||
+        s == 'sedang_dipinjam' ||
+        s == 'selesai';
     _currentHandoverLocation = widget.handoverLocation;
     _currentStatus = widget.status;
     _youConfirmed = widget.youConfirmed;
     _ownerConfirmed = widget.ownerConfirmed;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshTransactionData();
+    });
+  }
+
+  Future<void> _refreshTransactionData() async {
+    if (widget.transactionId == null) return;
+    try {
+      final auth = context.read<AuthProvider>();
+      if (auth.token != null) {
+        final trxProvider = context.read<TransactionProvider>();
+        final tx = await trxProvider.fetchTransaksiById(
+          auth.token!,
+          widget.transactionId!,
+        );
+        if (mounted && tx != null) {
+          setState(() {
+            if (tx.lokasiPertemuan.trim().isNotEmpty) {
+              _currentHandoverLocation = tx.lokasiPertemuan;
+            }
+            final s = tx.status.toLowerCase();
+            if (s == 'dalam_proses' ||
+                s == 'lokasi_ditentukan' ||
+                s == 'sedang_dipinjam' ||
+                s == 'selesai') {
+              _depositPaid = true;
+            }
+            if (tx.requesterConfirmedAt != null) {
+              if (_isCurrentUserOwner(context)) {
+                _ownerConfirmed = true;
+              } else {
+                _youConfirmed = true;
+              }
+            }
+            if (tx.ownerConfirmedAt != null) {
+              if (_isCurrentUserOwner(context)) {
+                _youConfirmed = true;
+              } else {
+                _ownerConfirmed = true;
+              }
+            }
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   void _konfirmasiSerahTerima() {
-    if (_currentHandoverLocation == 'Set handover' ||
-        _currentHandoverLocation == 'Tentukan lokasi') {
+    if (!_isHandoverSet) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
@@ -110,7 +171,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           ),
         ),
       );
-      _bukaModalSetHandover();
+      _onTapHandover();
       return;
     }
 
@@ -248,7 +309,296 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
+  void _bukaModalCekDepositPemilik() {
+    final partnerName = _getPartnerName(context);
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _depositPaid
+                          ? const Color(0xFFE8FAF0)
+                          : const Color(0xFFFFF1F0),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        _depositPaid
+                            ? Icons.check_circle_rounded
+                            : Icons.info_outline_rounded,
+                        color: _depositPaid
+                            ? const Color(0xFF2FD677)
+                            : const Color(0xFFF05151),
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Status Deposit Peminjam',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _depositPaid
+                        ? 'Peminjam sudah melunasi uang deposit'
+                        : 'Peminjam belum membayar deposit',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _depositPaid
+                          ? const Color(0xFF0C9A4B)
+                          : const Color(0xFFDC2626),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7F6FA),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Peminjam',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                partnerName,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF130F26),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Nominal Deposit',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              widget.depositAmount,
+                              textAlign: TextAlign.end,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF130F26),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Status Pembayaran',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _depositPaid
+                                    ? const Color(0xFFE8FAF0)
+                                    : const Color(0xFFFFF1F0),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                _depositPaid ? 'Lunas' : 'Belum Dibayar',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: _depositPaid
+                                      ? const Color(0xFF0C9A4B)
+                                      : const Color(0xFFDC2626),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _depositPaid
+                        ? 'Dana jaminan sebesar ${widget.depositAmount} telah diamankan oleh sistem Librava.'
+                        : 'Harap pastikan $partnerName melunasi deposit sebelum melakukan serah terima fisik buku.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF7E7A92),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 42,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Tutup',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _onTapDeposit() {
+    final isOwner = _isCurrentUserOwner(context);
+    if (isOwner) {
+      _bukaModalCekDepositPemilik();
+    } else {
+      _bukaModalBayarDeposit();
+    }
+  }
+
   void _bukaModalBayarDeposit() {
+    // Yang meminjamkan (pemilik) tidak boleh mengisi form pembayaran deposit!
+    if (_isCurrentUserOwner(context)) {
+      _bukaModalCekDepositPemilik();
+      return;
+    }
+
+    if (widget.type.toLowerCase() == 'barter') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Barter transactions do not require a security deposit.',
+          ),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (_depositPaid) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Deposit Sudah Dibayar',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF130F26),
+            ),
+          ),
+          content: Text(
+            'Uang jaminan sebesar ${widget.depositAmount} sudah Anda bayarkan dan diamankan oleh sistem.\n\nDeposit akan dikembalikan penuh setelah buku dikembalikan ke pemilik.',
+            style: const TextStyle(
+              fontSize: 13.5,
+              color: Color(0xFF7E7A92),
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Tutup',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.45),
@@ -312,7 +662,461 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
+  Future<void> _prosesPersetujuanPemilik(bool setujui) async {
+    final auth = context.read<AuthProvider>();
+    final trxProvider = context.read<TransactionProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (widget.transactionId == null || auth.token == null) {
+      setState(() {
+        _currentStatus = setujui ? 'disetujui' : 'ditolak';
+      });
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            setujui
+                ? 'Borrow request accepted successfully!'
+                : 'Borrow request declined.',
+          ),
+          backgroundColor: setujui ? const Color(0xFF2FD677) : const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoadingAction = true);
+
+    try {
+      final backendStatus = setujui ? 'DISETUJUI' : 'DITOLAK';
+      final success = await trxProvider.updateStatusApi(
+        auth.token!,
+        widget.transactionId!,
+        backendStatus,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        setState(() {
+          _currentStatus = setujui ? 'disetujui' : 'ditolak';
+        });
+        await trxProvider.fetchTransaksiById(
+          auth.token!,
+          widget.transactionId!,
+        );
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              setujui
+                  ? 'Request approved! Waiting for borrower to secure deposit and arrange handover.'
+                  : 'Request declined.',
+            ),
+            backgroundColor: setujui ? const Color(0xFF2FD677) : const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              trxProvider.errorMessage ?? 'Failed to update transaction status.',
+            ),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingAction = false);
+      }
+    }
+  }
+
+  void _konfirmasiSetujuiPermintaan() {
+    final partnerName = _getPartnerName(context);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'Accept Request',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF130F26),
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to approve the borrow request from $partnerName for "${widget.bookTitle}"?\n\nThe borrower will then secure the deposit and coordinate book handover.',
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF7E7A92),
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF8A88A5),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _prosesPersetujuanPemilik(true);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2FD677),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Yes, Accept',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _konfirmasiTolakPermintaan() {
+    final partnerName = _getPartnerName(context);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text(
+          'Decline Request',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF130F26),
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to decline this borrow request from $partnerName for "${widget.bookTitle}"?',
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF7E7A92),
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF8A88A5),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _prosesPersetujuanPemilik(false);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Decline',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _bukaModalCekHandoverPemilik() {
+    final tx = _getTrx(context);
+    if (tx != null && tx.lokasiPertemuan.trim().isNotEmpty) {
+      _currentHandoverLocation = tx.lokasiPertemuan;
+    }
+    _refreshTransactionData();
+
+    final partnerName = _getPartnerName(context);
+    final isSet = _isHandoverSet;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSet
+                          ? const Color(0xFFE8FAF0)
+                          : const Color(0xFFFFF1F0),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        isSet
+                            ? Icons.place_rounded
+                            : Icons.location_off_rounded,
+                        color: isSet
+                            ? const Color(0xFF2FD677)
+                            : const Color(0xFFF05151),
+                        size: 30,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Status Serah Terima Buku',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF130F26),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    isSet
+                        ? 'Lokasi serah terima sudah ditentukan'
+                        : 'Peminjam belum menentukan lokasi',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isSet
+                          ? const Color(0xFF0C9A4B)
+                          : const Color(0xFFDC2626),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7F6FA),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Peminjam',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                partnerName,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF130F26),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Lokasi Handover',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                isSet ? _currentHandoverLocation : 'Belum ditentukan',
+                                textAlign: TextAlign.end,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSet
+                                      ? const Color(0xFF130F26)
+                                      : const Color(0xFFDC2626),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Status Handover',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isSet
+                                    ? const Color(0xFFE8FAF0)
+                                    : const Color(0xFFFFF1F0),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                isSet ? 'Sudah Ditentukan' : 'Belum Ditentukan',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSet
+                                      ? const Color(0xFF0C9A4B)
+                                      : const Color(0xFFDC2626),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    isSet
+                        ? 'Silakan temui $partnerName di $_currentHandoverLocation untuk melakukan serah terima fisik buku.'
+                        : 'Harap tunggu $partnerName menentukan lokasi dan waktu pertemuan setelah deposit diselesaikan.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF7E7A92),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 42,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Tutup',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _onTapHandover() {
+    _bukaModalSetHandover();
+  }
+
   void _bukaModalSetHandover() {
+    if (_isCurrentUserOwner(context)) {
+      _bukaModalCekHandoverPemilik();
+      return;
+    }
+    _bukaModalSetHandoverPeminjam();
+  }
+
+  void _bukaModalSetHandoverPeminjam() {
+    _bukaModalSetHandoverForm();
+  }
+
+  void _bukaModalSetHandoverForm() {
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.45),
@@ -324,38 +1128,48 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
             child: HandoverModalContent(
-              initialLocation: _currentHandoverLocation == 'Set handover'
-                  ? 'Open Library Telkom University'
-                  : _currentHandoverLocation,
+              initialLocation: _isHandoverSet
+                  ? _currentHandoverLocation
+                  : 'Open Library Telkom University',
+              isOwner: _isCurrentUserOwner(context),
               onClose: () => Navigator.pop(ctx),
-              onHandoverConfirmed: (selectedLocation, [meetingTime]) {
+              onHandoverConfirmed: (selectedLocation, [meetingTime]) async {
                 setState(() {
                   _currentHandoverLocation = selectedLocation;
                 });
+                Navigator.pop(ctx);
                 if (widget.transactionId != null) {
                   try {
                     final auth = context.read<AuthProvider>();
                     if (auth.token != null) {
-                      context.read<TransactionProvider>().setMeetingApi(
-                            auth.token!,
-                            widget.transactionId!,
-                            selectedLocation,
-                            meetingTime?.toIso8601String(),
-                          );
+                      final trxProv = context.read<TransactionProvider>();
+                      final ok = await trxProv.setMeetingApi(
+                        auth.token!,
+                        widget.transactionId!,
+                        selectedLocation,
+                        meetingTime?.toIso8601String(),
+                      );
+                      if (ok && mounted) {
+                        await trxProv.fetchTransaksiById(
+                          auth.token!,
+                          widget.transactionId!,
+                        );
+                      }
                     }
                   } catch (_) {}
                 }
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Handover set to $selectedLocation'),
-                    backgroundColor: AppColors.primary,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Handover set to $selectedLocation'),
+                      backgroundColor: AppColors.primary,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
               },
             ),
           ),
@@ -368,8 +1182,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     if (widget.transactionId == null) return null;
     try {
       final trxProvider = context.read<TransactionProvider>();
+      final txId = widget.transactionId!.trim().toLowerCase();
       return trxProvider.semuaTransaksi
-          .where((t) => t.id == widget.transactionId)
+          .where((t) => t.id.trim().toLowerCase() == txId)
           .firstOrNull;
     } catch (_) {
       return null;
@@ -377,27 +1192,75 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   bool _isCurrentUserOwner(BuildContext context) {
+    if (widget.isOwner != null) return widget.isOwner!;
     try {
       final auth = context.read<AuthProvider>();
-      final currentUserName = auth.currentUser?.nama.toLowerCase() ?? '';
-      final currentUserId = auth.currentUser?.id;
-      final tx = _getTrx(context);
+      final user = auth.currentUser;
+      if (user == null) return false;
+      final uid = user.id.trim();
+      final uname = user.nama.trim().toLowerCase();
+      final uusername = user.username.trim().toLowerCase();
 
-      if (tx != null) {
-        if (currentUserId != null &&
-            tx.pemilikId.isNotEmpty &&
-            tx.pemilikId == currentUserId) {
+      // 1. Cek parameter eksplisit widget
+      if (widget.ownerId != null && widget.ownerId!.trim().isNotEmpty) {
+        if (uid.isNotEmpty && widget.ownerId!.trim() == uid) return true;
+      }
+      if (widget.ownerName.trim().isNotEmpty &&
+          widget.ownerName.trim().toLowerCase() != 'pemilik buku') {
+        final wOwnerName = widget.ownerName.trim().toLowerCase();
+        if (uname.isNotEmpty &&
+            (wOwnerName == uname ||
+                wOwnerName.contains(uname) ||
+                uname.contains(wOwnerName))) {
           return true;
         }
-        if (currentUserName.isNotEmpty &&
-            tx.pemilikNama.toLowerCase() == currentUserName) {
+      }
+      if (widget.ownerUsername.trim().isNotEmpty &&
+          widget.ownerUsername.trim().toLowerCase() != '@pemilik') {
+        final cleanWidgetUsername =
+            widget.ownerUsername.replaceAll('@', '').trim().toLowerCase();
+        final cleanUserUsername =
+            uusername.replaceAll('@', '').trim().toLowerCase();
+        if (cleanWidgetUsername == cleanUserUsername) return true;
+      }
+
+      // 2. Cek transaksi dari provider jika ada transactionId
+      final tx = _getTrx(context);
+      if (tx != null) {
+        // Jika pemohon, pasti bukan owner
+        if (uid.isNotEmpty &&
+            tx.pemohonId.trim().isNotEmpty &&
+            tx.pemohonId.trim() == uid) {
+          return false;
+        }
+        if (uname.isNotEmpty &&
+            tx.pemohonNama.trim().isNotEmpty &&
+            tx.pemohonNama.trim().toLowerCase() == uname) {
+          return false;
+        }
+        // Jika pemilik, pasti owner
+        if (uid.isNotEmpty &&
+            tx.pemilikId.trim().isNotEmpty &&
+            tx.pemilikId.trim() == uid) {
+          return true;
+        }
+        if (uname.isNotEmpty &&
+            tx.pemilikNama.trim().isNotEmpty &&
+            tx.pemilikNama.trim().toLowerCase() == uname) {
           return true;
         }
       }
 
-      if (currentUserName.isNotEmpty &&
-          widget.ownerName.toLowerCase() == currentUserName) {
-        return true;
+      // 3. Cek daftar transaksi masuk di provider
+      if (widget.transactionId != null && widget.transactionId!.isNotEmpty) {
+        final trxProvider = context.read<TransactionProvider>();
+        final txId = widget.transactionId!.trim().toLowerCase();
+        final inMasuk = trxProvider.requestMasuk
+            .any((t) => t.id.trim().toLowerCase() == txId);
+        if (inMasuk) return true;
+        final inSaya = trxProvider.requestSaya
+            .any((t) => t.id.trim().toLowerCase() == txId);
+        if (inSaya) return false;
       }
     } catch (_) {}
     return false;
@@ -1112,6 +1975,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   Widget _buildBookHeader() {
     final cover = _getDisplayCover(context);
     final author = _getDisplayAuthor(context);
+    final isOwner = _isCurrentUserOwner(context);
 
     final imageWidget = BookCoverHelper.buildCoverImage(
       cover,
@@ -1165,6 +2029,39 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     color: Color(0xFF8A88A5),
                   ),
                 ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isOwner ? const Color(0xFFF0EEFF) : const Color(0xFFE8F1FD),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isOwner
+                          ? AppColors.primary.withValues(alpha: 0.25)
+                          : const Color(0xFF388AF6).withValues(alpha: 0.25),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isOwner ? Icons.share_rounded : Icons.bookmark_added_rounded,
+                        size: 13,
+                        color: isOwner ? AppColors.primary : const Color(0xFF388AF6),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        isOwner ? 'Anda: Pemilik (Meminjamkan)' : 'Anda: Peminjam (Meminjam)',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isOwner ? AppColors.primary : const Color(0xFF388AF6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -1181,17 +2078,25 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         'Your request has been sent. Please wait for a response from the owner';
 
     final s = _currentStatus.toLowerCase();
+    final isOwner = _isCurrentUserOwner(context);
+    final partnerName = _getPartnerName(context);
+
     if (s == 'selesai') {
       dotColor = const Color(0xFF2FD677);
       titleText = 'Completed';
-      descText =
-          'Transaction completed! The book has been successfully handed over and returned.';
+      descText = isOwner
+          ? 'Transaction completed! The book "${widget.bookTitle}" has been returned by $partnerName in good condition.'
+          : 'Transaction completed! The book has been successfully handed over and returned.';
     } else if (s == 'sedang_dipinjam') {
       dotColor = isOverdue ? const Color(0xFFDC2626) : const Color(0xFF388AF6);
       titleText = isOverdue ? 'Overdue Return' : 'Active Loan';
       descText = isOverdue
-          ? 'The book is past its return due date. Please return it to the owner immediately.'
-          : 'The book is currently on loan. Please keep it safe and return on time.';
+          ? (isOwner
+              ? 'The loan is past its due date. Please coordinate with $partnerName to return the book.'
+              : 'The book is past its return due date. Please return it to $partnerName immediately.')
+          : (isOwner
+              ? 'The book is currently borrowed by $partnerName. Please coordinate return when finished.'
+              : 'The book is currently on loan. Please keep it safe and return on time.');
     } else if (s == 'dibatalkan' || s == 'ditolak') {
       dotColor = const Color(0xFFFF4D4F);
       titleText = _currentStatus == 'ditolak' ? 'Rejected' : 'Cancelled';
@@ -1199,9 +2104,41 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     } else if (s == 'disetujui' || s == 'lokasi_ditentukan' || s == 'dalam_proses') {
       dotColor = isOverdue ? const Color(0xFFDC2626) : const Color(0xFF388AF6);
       titleText = isOverdue ? 'Overdue' : 'Approved / In Progress';
-      descText = isOverdue
-          ? 'Loan is past its due date. Please coordinate book return promptly.'
-          : 'Request approved. Complete the deposit payment and set the handover location.';
+      final txForBanner = _getTrx(context);
+      final effLoc = (txForBanner != null && txForBanner.lokasiPertemuan.trim().isNotEmpty)
+          ? txForBanner.lokasiPertemuan
+          : _currentHandoverLocation;
+      final effLocTrim = effLoc.trim().toLowerCase();
+      final effHandoverSet = effLocTrim.isNotEmpty &&
+          effLocTrim != 'tentukan lokasi' &&
+          effLocTrim != 'set handover' &&
+          effLocTrim != 'pilih lokasi' &&
+          effLocTrim != 'belum ditentukan';
+
+      if (isOwner) {
+        descText = _depositPaid
+            ? (effHandoverSet
+                ? 'Handover set at $effLoc. Please meet $partnerName to hand over the book.'
+                : 'Deposit secured. Waiting for $partnerName to arrange handover location and meeting time.')
+            : 'Request approved. Waiting for $partnerName to secure the deposit and set handover.';
+      } else {
+        descText = isOverdue
+            ? 'Loan is past its due date. Please coordinate book return promptly.'
+            : (_depositPaid
+                ? (effHandoverSet
+                    ? 'Handover set at $effLoc. Please meet $partnerName for book handover.'
+                    : 'Deposit payment secured! Please determine handover schedule & location.')
+                : 'Request approved. Complete the deposit payment and set the handover location.');
+      }
+    } else if (s == 'pending' || s == 'menunggu konfirmasi' || s == 'menunggu_konfirmasi') {
+      dotColor = const Color(0xFFFFD027);
+      if (isOwner) {
+        titleText = 'Permohonan Masuk';
+        descText = '$partnerName mengajukan permohonan untuk meminjam "${widget.bookTitle}". Silakan setujui atau tolak permintaan ini.';
+      } else {
+        titleText = _currentStatus;
+        descText = 'Your request has been sent. Please wait for a response from the owner';
+      }
     }
 
     return Padding(
@@ -1336,14 +2273,36 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               label: 'Deposit',
               value: widget.depositAmount,
               dotColor: _depositPaid ? const Color(0xFF2FD677) : const Color(0xFFF05151),
-              onTap: _bukaModalBayarDeposit,
+              onTap: _onTapDeposit,
             ),
             const SizedBox(height: 12),
-            _buildInteractiveInfoRow(
-              label: 'Handover',
-              value: _currentHandoverLocation,
-              dotColor: const Color(0xFF388AF6),
-              onTap: _bukaModalSetHandover,
+            Builder(
+              builder: (context) {
+                final tx = _getTrx(context);
+                final effectiveLoc = (tx != null && tx.lokasiPertemuan.trim().isNotEmpty)
+                    ? tx.lokasiPertemuan
+                    : _currentHandoverLocation;
+                final bool isOwner = _isCurrentUserOwner(context);
+                final locTrim = effectiveLoc.trim().toLowerCase();
+                final bool isHandoverSet = locTrim.isNotEmpty &&
+                    locTrim != 'tentukan lokasi' &&
+                    locTrim != 'set handover' &&
+                    locTrim != 'pilih lokasi' &&
+                    locTrim != 'belum ditentukan';
+                final String displayHandover = isOwner
+                    ? (isHandoverSet ? effectiveLoc : 'Belum ditentukan')
+                    : (isHandoverSet ? effectiveLoc : 'Tentukan lokasi');
+                final Color handoverDotColor = isHandoverSet
+                    ? const Color(0xFF2FD677)
+                    : const Color(0xFFF05151);
+
+                return _buildInteractiveInfoRow(
+                  label: 'Handover',
+                  value: displayHandover,
+                  dotColor: handoverDotColor,
+                  onTap: _onTapHandover,
+                );
+              },
             ),
           ],
         ),
@@ -2043,9 +3002,76 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     final isDone = s == 'selesai';
     final isBorrowing = s == 'sedang_dipinjam';
     final isCancelled = s == 'dibatalkan' || s == 'ditolak';
+    final isPending = s == 'pending' || s == 'menunggu konfirmasi' || s == 'menunggu_konfirmasi';
     final isOwner = _isCurrentUserOwner(context);
     final partnerName = _getPartnerName(context);
 
+    // 1. Jika Pemilik Buku dan status masih PENDING:
+    if (isOwner && isPending) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: _isLoadingAction ? null : _konfirmasiSetujuiPermintaan,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2FD677),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.check_rounded, color: Colors.white, size: 20),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Setujui',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: _isLoadingAction ? null : _konfirmasiTolakPermintaan,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFDC2626), width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  icon: const Icon(Icons.close_rounded, color: Color(0xFFDC2626), size: 18),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Tolak',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFDC2626),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 2. Tampilan Standar:
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Row(
@@ -2123,7 +3149,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             onPressed: _bukaModalReview,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _hasReviewed
-                                  ? const Color(0xFFE8FAF0)
+                                   ? const Color(0xFFE8FAF0)
                                   : const Color(0xFFFFF7E6),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),

@@ -199,5 +199,72 @@ void main() {
 
     expect(find.text('Your handover confirmation has been recorded.'), findsOneWidget);
   });
+
+  testWidgets('Yang meminjamkan (isOwner: true) menekan baris deposit hanya membuka modal cek status deposit dan TIDAK menampilkan modal isi deposit',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: TransactionDetailPage(
+          isOwner: true,
+          depositAmount: '20.000 Rupiah',
+          isDepositPaid: false,
+          ownerName: 'Gilang Ramadan',
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Deposit'));
+    await tester.pumpAndSettle();
+
+    // Memastikan modal cek status deposit pemilik yang muncul
+    expect(find.text('Status Deposit Peminjam'), findsOneWidget);
+    expect(find.text('Peminjam belum membayar deposit'), findsOneWidget);
+    expect(find.text('Belum Dibayar'), findsOneWidget);
+    expect(find.text('Tutup'), findsOneWidget);
+
+    // Memastikan modal isi deposit (QR & Virtual Account) SAMA SEKALI TIDAK MUNCUL
+    expect(find.text('Complete your deposit'), findsNothing);
+    expect(find.text("I've made the payment"), findsNothing);
+
+    // Menekan tombol Tutup menutup dialog
+    await tester.tap(find.text('Tutup'));
+    await tester.pumpAndSettle();
+    expect(find.text('Status Deposit Peminjam'), findsNothing);
+  });
+
+  testWidgets('Yang meminjamkan (isOwner: true) menekan baris handover hanya membuka modal cek status handover dan TIDAK menampilkan modal isi Set Handover',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: TransactionDetailPage(
+          isOwner: true,
+          handoverLocation: 'Tentukan lokasi',
+          ownerName: 'Gilang Ramadan',
+        ),
+      ),
+    );
+
+    // Untuk pemilik, teks belum ditentukan ditampilkan
+    expect(find.text('Belum ditentukan'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Belum ditentukan'));
+    await tester.tap(find.text('Belum ditentukan'));
+    await tester.pumpAndSettle();
+
+    // Memastikan modal cek status serah terima pemilik yang muncul
+    expect(find.text('Status Serah Terima Buku'), findsOneWidget);
+    expect(find.text('Peminjam belum menentukan lokasi'), findsOneWidget);
+    expect(find.text('Belum Ditentukan'), findsOneWidget);
+    expect(find.text('Tutup'), findsOneWidget);
+
+    // Memastikan modal form isi handover SAMA SEKALI TIDAK MUNCUL
+    expect(find.text('Set handover'), findsNothing);
+    expect(find.text('Choose the date, time, and location for the book handover'), findsNothing);
+
+    // Menekan tombol Tutup menutup dialog
+    await tester.tap(find.text('Tutup'));
+    await tester.pumpAndSettle();
+    expect(find.text('Status Serah Terima Buku'), findsNothing);
+  });
 }
 

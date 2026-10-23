@@ -94,4 +94,49 @@ void main() {
     expect(find.text('Type a message...'), findsOneWidget);
     expect(find.text('Start Conversation'), findsOneWidget);
   });
+
+  testWidgets('Mengetuk ikon kamera di ChatRoomPage membuka modal foto kondisi buku dan bisa mengirim foto',
+      (WidgetTester tester) async {
+    final tp = TransactionProvider();
+    tp.tambahTransaksi(
+      const TransactionModel(
+        id: 'tx_1',
+        bukuId: 'bk_1',
+        judulBuku: 'Clean Code',
+        pemilikNama: 'Budi Santoso',
+        pemohonNama: 'Sari Indah',
+        jenisTransaksi: 'pinjam',
+        status: 'dalam_proses',
+        tanggal: '17/10/2026',
+      ),
+    );
+
+    await tester.pumpWidget(buildTestableChatPage(transactionProvider: tp));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Budi Santoso'));
+    await tester.pumpAndSettle();
+
+    // Temukan tombol kamera di input bar
+    final cameraBtn = find.byTooltip('Send Book Condition Photo');
+    expect(cameraBtn, findsOneWidget);
+
+    await tester.tap(cameraBtn);
+    await tester.pumpAndSettle();
+
+    // Verifikasi modal terbuka dengan opsi kamera dan galeri
+    expect(find.text('Kirim Foto Kondisi Buku'), findsOneWidget);
+    expect(find.text('Ambil Foto'), findsOneWidget);
+    expect(find.text('Pilih dari Galeri'), findsOneWidget);
+    expect(find.text('Atau pilih dari contoh foto fisik:'), findsOneWidget);
+    expect(find.text('Kirim Foto'), findsOneWidget);
+
+    // Ketuk tombol Kirim Foto
+    await tester.tap(find.text('Kirim Foto'));
+    await tester.pumpAndSettle();
+
+    // Modal tertutup dan pesan foto muncul di percakapan
+    expect(find.text('Kirim Foto Kondisi Buku'), findsNothing);
+    expect(find.text('Foto kondisi buku'), findsOneWidget);
+  });
 }

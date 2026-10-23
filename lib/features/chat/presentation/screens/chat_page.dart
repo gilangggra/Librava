@@ -145,14 +145,21 @@ class _ChatPageState extends State<ChatPage> {
         }
       }
 
-      final String lastMsg;
+      final String rawLastMsg;
       if (mostRecentMsg != null && mostRecentMsg.text.isNotEmpty) {
-        lastMsg = mostRecentMsg.text;
+        rawLastMsg = mostRecentMsg.text;
       } else {
         final isBarter = primaryTrx.jenisTransaksi.toLowerCase() == 'barter';
-        lastMsg = isBarter
+        rawLastMsg = isBarter
             ? 'Book barter: ${primaryTrx.judulBuku}'
             : 'Loan: ${primaryTrx.judulBuku}';
+      }
+
+      String lastMsg = rawLastMsg;
+      if (lastMsg.startsWith('[FOTO:') && lastMsg.contains(']')) {
+        final closeIdx = lastMsg.indexOf(']');
+        final caption = lastMsg.substring(closeIdx + 1).trim();
+        lastMsg = caption.isNotEmpty ? '📷 $caption' : '📷 Foto kondisi buku';
       }
 
       String displayDate =

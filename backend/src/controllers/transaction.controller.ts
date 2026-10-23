@@ -146,6 +146,13 @@ export class TransactionController {
         meetingTime
       );
 
+      try {
+        const { getIO } = require('../socket');
+        const io = getIO();
+        io.to(`transaction_${id}`).emit('transaction_updated', updated);
+        io.to(`transaction_${id}`).emit('meeting_updated', updated);
+      } catch (_) {}
+
       res.status(200).json({
         success: true,
         message: 'Lokasi dan jadwal pertemuan berhasil ditentukan.',

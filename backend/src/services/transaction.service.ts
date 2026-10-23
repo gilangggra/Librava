@@ -344,8 +344,8 @@ export class TransactionService {
     waktu?: Date | string
   ): Promise<Transaction> {
     const tx = await this.getTransactionById(id, userId, userRole);
-    if (tx.status !== 'DISETUJUI') {
-      const error: any = new Error('Lokasi pertemuan hanya dapat ditentukan setelah transaksi disetujui.');
+    if (!['DISETUJUI', 'DALAM_PROSES', 'MENUNGGU_KONFIRMASI'].includes(tx.status)) {
+      const error: any = new Error('Lokasi pertemuan tidak dapat ditentukan untuk status transaksi ini.');
       error.statusCode = 400;
       throw error;
     }
@@ -355,7 +355,7 @@ export class TransactionService {
       data: {
         lokasiPertemuan: lokasi,
         waktuPertemuan: waktu ? new Date(waktu) : new Date(),
-        status: 'DALAM_PROSES',
+        status: tx.status === 'MENUNGGU_KONFIRMASI' ? 'MENUNGGU_KONFIRMASI' : 'DALAM_PROSES',
       },
     });
 
