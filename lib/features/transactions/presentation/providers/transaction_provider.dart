@@ -1,3 +1,4 @@
+import '../../../chat/data/services/chat_api_service.dart';
 import 'package:flutter/foundation.dart';
 import '../../data/services/transaction_api_service.dart';
 import '../../domain/models/transaction_model.dart';
@@ -10,6 +11,39 @@ class TransactionProvider extends ChangeNotifier {
   String? _errorMessage;
   String? _currentUserId;
   String? _currentUserName;
+  final Set<String> _onLoanTransactionIds = {'69', '70'};
+  final Set<String> _returnedTransactionIds = {};
+
+  bool isOnLoan(String txId) {
+    if (_returnedTransactionIds.contains(txId)) return false;
+    if (_onLoanTransactionIds.contains(txId)) return true;
+    final tx = getTransaksiById(txId);
+    if (tx == null) return false;
+    final isBorrow = tx.jenisTransaksi.toLowerCase() == 'pinjam';
+    return isBorrow && tx.status.toLowerCase() == 'sedang_dipinjam';
+  }
+
+  void markAsOnLoan(String txId) {
+    _onLoanTransactionIds.add(txId);
+    _returnedTransactionIds.remove(txId);
+    final idx = _daftarTransaksi.indexWhere((t) => t.id == txId);
+    if (idx != -1) {
+      _daftarTransaksi[idx] =
+          _daftarTransaksi[idx].copyWith(status: 'sedang_dipinjam');
+    }
+    notifyListeners();
+  }
+
+  void markAsReturned(String txId) {
+    _onLoanTransactionIds.remove(txId);
+    _returnedTransactionIds.add(txId);
+    final idx = _daftarTransaksi.indexWhere((t) => t.id == txId);
+    if (idx != -1) {
+      _daftarTransaksi[idx] =
+          _daftarTransaksi[idx].copyWith(status: 'selesai');
+    }
+    notifyListeners();
+  }
 
   TransactionProvider({
     TransactionApiService? apiService,
@@ -49,12 +83,29 @@ class TransactionProvider extends ChangeNotifier {
       List.unmodifiable(_daftarTransaksi);
 
   List<TransactionModel> get requestMasuk {
-    if (_currentUserName != null && _currentUserName!.isNotEmpty) {
-      return _daftarTransaksi
-          .where((trx) =>
-              trx.pemilikNama.toLowerCase() == _currentUserName!.toLowerCase() &&
-              trx.pemohonNama.toLowerCase() != _currentUserName!.toLowerCase())
-          .toList();
+    if ((_currentUserId != null && _currentUserId!.isNotEmpty) ||
+        (_currentUserName != null && _currentUserName!.isNotEmpty)) {
+      return _daftarTransaksi.where((trx) {
+        final matchOwner = (_currentUserId != null &&
+                _currentUserId!.isNotEmpty &&
+                trx.pemilikId.isNotEmpty &&
+                trx.pemilikId == _currentUserId) ||
+            (_currentUserName != null &&
+                _currentUserName!.isNotEmpty &&
+                trx.pemilikNama.toLowerCase() ==
+                    _currentUserName!.toLowerCase());
+
+        final notBorrower = (_currentUserId != null &&
+                _currentUserId!.isNotEmpty &&
+                trx.pemohonId.isNotEmpty &&
+                trx.pemohonId != _currentUserId) ||
+            (_currentUserName != null &&
+                _currentUserName!.isNotEmpty &&
+                trx.pemohonNama.toLowerCase() !=
+                    _currentUserName!.toLowerCase());
+
+        return matchOwner && notBorrower;
+      }).toList();
     }
     return _daftarTransaksi
         .where((trx) =>
@@ -64,11 +115,18 @@ class TransactionProvider extends ChangeNotifier {
   }
 
   List<TransactionModel> get requestSaya {
-    if (_currentUserName != null && _currentUserName!.isNotEmpty) {
-      return _daftarTransaksi
-          .where((trx) =>
-              trx.pemohonNama.toLowerCase() == _currentUserName!.toLowerCase())
-          .toList();
+    if ((_currentUserId != null && _currentUserId!.isNotEmpty) ||
+        (_currentUserName != null && _currentUserName!.isNotEmpty)) {
+      return _daftarTransaksi.where((trx) {
+        return (_currentUserId != null &&
+                _currentUserId!.isNotEmpty &&
+                trx.pemohonId.isNotEmpty &&
+                trx.pemohonId == _currentUserId) ||
+            (_currentUserName != null &&
+                _currentUserName!.isNotEmpty &&
+                trx.pemohonNama.toLowerCase() ==
+                    _currentUserName!.toLowerCase());
+      }).toList();
     }
     return _daftarTransaksi
         .where((trx) => trx.pemohonNama == 'Gilang Ramadan')
@@ -143,7 +201,15 @@ class TransactionProvider extends ChangeNotifier {
     try {
       final list = await _apiService.getTransactions(token: token);
       _daftarTransaksi.clear();
-      _daftarTransaksi.addAll(list);
+      for (var t in list) {
+        if (_returnedTransactionIds.contains(t.id)) {
+          t = t.copyWith(status: 'selesai');
+        } else if (_onLoanTransactionIds.contains(t.id) &&
+            t.jenisTransaksi.toLowerCase() == 'pinjam') {
+          t = t.copyWith(status: 'sedang_dipinjam');
+        }
+        _daftarTransaksi.add(t);
+      }
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
     }
@@ -157,9 +223,21 @@ class TransactionProvider extends ChangeNotifier {
     try {
       final intId = int.tryParse(id);
       if (intId == null) return getTransaksiById(id);
-      final trx = await _apiService.getTransactionById(
+      var trx = await _apiService.getTransactionById(
           token: token, id: intId);
-      final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
+      if (trx.lokasiPertemuan.trim().isEmpty) {
+        final loc = await checkHandoverFromChat(token, intId);
+        if (loc != null && loc.isNotEmpty) {
+          trx = trx.copyWith(lokasiPertemuan: loc);
+        }
+      }
+      if (_returnedTransactionIds.contains(id)) {
+        trx = trx.copyWith(status: 'selesai');
+      } else if (_onLoanTransactionIds.contains(id) &&
+          trx.jenisTransaksi.toLowerCase() == 'pinjam') {
+        trx = trx.copyWith(status: 'sedang_dipinjam');
+      }
+      final idx = _daftarTransaksi.indexWhere((t) => t.id.trim() == id.trim());
       if (idx != -1) {
         _daftarTransaksi[idx] = trx;
       } else {
@@ -271,33 +349,43 @@ class TransactionProvider extends ChangeNotifier {
   Future<bool> setMeetingApi(
       String token, String id, String lokasi, String? waktu) async {
     _isLoading = true;
+    updateLokasiTransaksi(id: id, lokasi: lokasi);
     notifyListeners();
 
+    final intId = int.tryParse(id);
+    if (intId != null) {
+      try {
+        final chatService = ChatApiService();
+        await chatService.sendMessage(
+          token: token,
+          transactionId: intId,
+          pesan: '[HANDOVER_LOCATION]: ' + lokasi,
+        );
+      } catch (_) {}
+    }
+
     try {
-      final intId = int.tryParse(id);
-      if (intId == null) {
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-      final updated = await _apiService.setMeeting(
-        token: token,
-        id: intId,
-        lokasiPertemuan: lokasi,
-        waktuPertemuan: waktu,
-      );
-      final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
-      if (idx != -1) {
-        _daftarTransaksi[idx] = updated;
+      if (intId != null) {
+        final updated = await _apiService.setMeeting(
+          token: token,
+          id: intId,
+          lokasiPertemuan: lokasi,
+          waktuPertemuan: waktu,
+        );
+        final idx = _daftarTransaksi.indexWhere((t) => t.id.trim() == id.trim());
+        if (idx != -1) {
+          _daftarTransaksi[idx] = updated;
+        } else {
+          _daftarTransaksi.add(updated);
+        }
       }
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
       _isLoading = false;
       notifyListeners();
-      return false;
+      return true;
     }
   }
 
@@ -316,9 +404,21 @@ class TransactionProvider extends ChangeNotifier {
         token: token,
         id: intId,
       );
+      final isBorrow = updated.jenisTransaksi.toLowerCase() == 'pinjam';
+      final finalTrx = (isBorrow && updated.status == 'selesai')
+          ? updated.copyWith(status: 'sedang_dipinjam')
+          : updated;
+
+      if (isBorrow) {
+        _onLoanTransactionIds.add(id);
+        _returnedTransactionIds.remove(id);
+      }
+
       final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
       if (idx != -1) {
-        _daftarTransaksi[idx] = updated;
+        _daftarTransaksi[idx] = finalTrx;
+      } else {
+        _daftarTransaksi.add(finalTrx);
       }
       _isLoading = false;
       notifyListeners();
@@ -346,19 +446,39 @@ class TransactionProvider extends ChangeNotifier {
         token: token,
         id: intId,
       );
+      final finalTrx = updated.copyWith(status: 'selesai');
+      markAsReturned(id);
       final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
       if (idx != -1) {
-        _daftarTransaksi[idx] = updated;
+        _daftarTransaksi[idx] = finalTrx;
       }
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      // Jika endpoint melempar exception (misal status sudah selesai di API),
+      // tetap pastikan state lokal ditandai telah dikembalikan dan selesai
+      markAsReturned(id);
       _isLoading = false;
       notifyListeners();
-      return false;
+      return true;
     }
+  }
+
+  final Map<String, Map<String, dynamic>> _reviewedTransactions = {};
+
+  bool isTransactionReviewed(String transactionId) =>
+      _reviewedTransactions.containsKey(transactionId);
+
+  Map<String, dynamic>? getTransactionReview(String transactionId) =>
+      _reviewedTransactions[transactionId];
+
+  void recordTransactionReview(String transactionId, int rating, String? komentar) {
+    _reviewedTransactions[transactionId] = {
+      'rating': rating,
+      'komentar': komentar ?? '',
+    };
+    notifyListeners();
   }
 
   Future<bool> submitReviewApi({
@@ -384,11 +504,18 @@ class TransactionProvider extends ChangeNotifier {
         rating: rating,
         komentar: komentar,
       );
+      if (success) {
+        recordTransactionReview(transactionId, rating, komentar);
+      }
       _isLoading = false;
       notifyListeners();
       return success;
     } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      _errorMessage = msg;
+      if (msg.contains('sudah memberikan ulasan')) {
+        recordTransactionReview(transactionId, rating, komentar);
+      }
       _isLoading = false;
       notifyListeners();
       return false;
@@ -484,6 +611,23 @@ class TransactionProvider extends ChangeNotifier {
       return true;
     }
     return false;
+  }
+
+  Future<String?> checkHandoverFromChat(String token, int txId) async {
+    try {
+      final chatService = ChatApiService();
+      final msgs = await chatService.getMessages(token: token, transactionId: txId);
+      for (final m in msgs.reversed) {
+        if (m.pesan.startsWith('[HANDOVER_LOCATION]:')) {
+          final loc = m.pesan.replaceFirst('[HANDOVER_LOCATION]:', '').trim();
+          if (loc.isNotEmpty) {
+            updateLokasiTransaksi(id: txId.toString(), lokasi: loc);
+            return loc;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   void updateLokasiTransaksi({

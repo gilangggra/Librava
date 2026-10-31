@@ -6,6 +6,7 @@ class UserReviewItem {
   final int reviewerId;
   final String reviewerNama;
   final String? reviewerFoto;
+  final int? transactionId;
 
   const UserReviewItem({
     required this.id,
@@ -15,6 +16,7 @@ class UserReviewItem {
     required this.reviewerId,
     required this.reviewerNama,
     this.reviewerFoto,
+    this.transactionId,
   });
 
   factory UserReviewItem.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,8 @@ class UserReviewItem {
           'Mahasiswa Librava',
       reviewerFoto: reviewer?['foto_profil'] as String? ??
           reviewer?['fotoProfil'] as String?,
+      transactionId: (json['transaction_id'] as num?)?.toInt() ??
+          (json['transactionId'] as num?)?.toInt(),
     );
   }
 }

@@ -248,7 +248,8 @@ export class TransactionService {
     const allowedTransitions: Record<string, TransactionStatus[]> = {
       MENUNGGU_KONFIRMASI: ['DISETUJUI', 'DITOLAK', 'DIBATALKAN'],
       DISETUJUI: ['DALAM_PROSES', 'DIBATALKAN'],
-      DALAM_PROSES: ['DIBATALKAN'],
+      DALAM_PROSES: ['SEDANG_DIPINJAM', 'SELESAI', 'DIBATALKAN'],
+      SEDANG_DIPINJAM: ['SELESAI', 'DIBATALKAN'],
     };
 
     if (userRole !== 'admin') {
@@ -363,19 +364,11 @@ export class TransactionService {
   }
 
   static async confirmHandover(id: number, userId: number, userRole: string): Promise<Transaction> {
-    return this.confirmCompletion(id, userId, userRole);
-  }
-
-  static async confirmReturn(id: number, userId: number, userRole: string): Promise<Transaction> {
-    return this.confirmCompletion(id, userId, userRole);
-  }
-
-  private static async confirmCompletion(id: number, userId: number, userRole: string): Promise<Transaction> {
     const tx = await this.getTransactionById(id, userId, userRole);
-    if (tx.status === 'SELESAI') {
+    if (tx.status === 'SELESAI' || tx.status === 'SEDANG_DIPINJAM') {
       return tx;
     }
-    if (tx.status !== 'DALAM_PROSES') {
+    if (!['DALAM_PROSES', 'DISETUJUI'].includes(tx.status)) {
       const error: any = new Error('Serah terima hanya dapat dikonfirmasi saat transaksi dalam proses.');
       error.statusCode = 400;
       throw error;
@@ -392,29 +385,64 @@ export class TransactionService {
       const confirmed = await prismaTx.transaction.findUniqueOrThrow({ where: { id } });
       if (!confirmed.requesterConfirmedAt || !confirmed.ownerConfirmedAt) return;
 
-      const durasiHari = tx.durasi_hari || 7;
-      const calculatedDueDate = tx.tipe_transaksi === 'BORROW'
-        ? (tx.due_date || new Date(now.getTime() + durasiHari * 24 * 60 * 60 * 1000))
-        : null;
-
-      await prismaTx.transaction.update({
-        where: { id },
-        data: {
-          status: 'SELESAI',
-          returnedAt: now,
-          ...(calculatedDueDate ? { dueDate: calculatedDueDate } : {}),
-        },
-      });
-
       if (tx.tipe_transaksi === 'BARTER') {
+        // Barter: serah terima menyelesaikan transaksi barter
+        await prismaTx.transaction.update({
+          where: { id },
+          data: {
+            status: 'SELESAI',
+            returnedAt: now,
+          },
+        });
         await prismaTx.book.update({ where: { id: tx.book_id }, data: { ownerId: tx.requester_id, status: 'Tersedia' } });
         if (tx.barter_book_id) {
           await prismaTx.book.update({ where: { id: tx.barter_book_id }, data: { ownerId: tx.owner_id, status: 'Tersedia' } });
         }
       } else {
-        await prismaTx.book.update({ where: { id: tx.book_id }, data: { status: 'Tersedia' } });
-      }
+        // Pinjam: serah terima mengubah status ke SEDANG_DIPINJAM (masa peminjaman aktif)
+        const durasiHari = tx.durasi_hari || 7;
+        const calculatedDueDate = tx.due_date || new Date(now.getTime() + durasiHari * 24 * 60 * 60 * 1000);
 
+        await prismaTx.transaction.update({
+          where: { id },
+          data: {
+            status: 'SEDANG_DIPINJAM',
+            dueDate: calculatedDueDate,
+          },
+        });
+        await prismaTx.book.update({ where: { id: tx.book_id }, data: { status: 'Dipinjam' } });
+      }
+    });
+
+    return this.getTransactionById(id, userId, userRole);
+  }
+
+  static async confirmReturn(id: number, userId: number, userRole: string): Promise<Transaction> {
+    const tx = await this.getTransactionById(id, userId, userRole);
+    if (tx.status === 'SELESAI') {
+      return tx;
+    }
+    // Pengembalian bisa dilakukan kapan saja selama masa pinjam aktif (bisa lebih cepat dari tanggal jatuh tempo)
+    if (!['SEDANG_DIPINJAM', 'DALAM_PROSES'].includes(tx.status)) {
+      const error: any = new Error('Pengembalian hanya dapat dikonfirmasi saat buku sedang dipinjam.');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await prisma.$transaction(async (prismaTx) => {
+      const now = new Date();
+      await prismaTx.transaction.update({
+        where: { id },
+        data: {
+          status: 'SELESAI',
+          returnedAt: now,
+        },
+      });
+
+      // Kembalikan status buku jadi Tersedia
+      await prismaTx.book.update({ where: { id: tx.book_id }, data: { status: 'Tersedia' } });
+
+      // Kembalikan saldo deposit dummy ke requester
       if (tx.deposit_dummy > 0) {
         await prismaTx.user.update({
           where: { id: tx.requester_id },

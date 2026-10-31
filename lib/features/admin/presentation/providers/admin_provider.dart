@@ -94,10 +94,18 @@ class AdminProvider extends ChangeNotifier {
   String get kataKunciRequest => _kataKunciRequest;
 
   List<AdminTransactionModel> get daftarRequestTampil {
-    const statusRequest = ['MENUNGGU_KONFIRMASI', 'DISETUJUI', 'DITOLAK'];
-    final semuaRequest = _daftarTransaksi
-        .where((tx) => statusRequest.contains(tx.status))
-        .toList();
+    final semuaRequest = _daftarTransaksi.where((tx) {
+      final s = tx.status.trim().toUpperCase();
+      return s == 'MENUNGGU_KONFIRMASI' ||
+          s == 'PENDING' ||
+          s == 'DISETUJUI' ||
+          s == 'ACCEPTED' ||
+          s == 'DEPOSIT_DIBAYAR' ||
+          s == 'LOKASI_DITENTUKAN' ||
+          s == 'DALAM_PROSES' ||
+          s == 'DITOLAK' ||
+          s == 'REJECTED';
+    }).toList();
     final kata = _kataKunciRequest.trim().toLowerCase();
     if (kata.isEmpty) {
       return semuaRequest;

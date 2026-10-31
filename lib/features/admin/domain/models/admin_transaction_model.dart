@@ -57,31 +57,46 @@ class AdminTransactionModel {
   }
 
   String get tipeTampil {
-    if (tipeTransaksi == 'PINJAM') return 'Borrow';
-    if (tipeTransaksi == 'BARTER') return 'Barter';
+    final t = tipeTransaksi.trim().toUpperCase();
+    if (t == 'PINJAM' || t == 'BORROW') return 'Borrow';
+    if (t == 'BARTER') return 'Barter';
     return tipeTransaksi;
   }
 
   String get statusTampil {
-    switch (status) {
+    final s = status.trim().toUpperCase();
+    switch (s) {
       case 'MENUNGGU_KONFIRMASI':
+      case 'PENDING':
         return 'Pending';
       case 'DISETUJUI':
+      case 'ACCEPTED':
         return 'Accepted';
+      case 'DEPOSIT_DIBAYAR':
+      case 'LOKASI_DITENTUKAN':
       case 'DALAM_PROSES':
         return 'In Progress';
+      case 'SEDANG_DIPINJAM':
+      case 'ON_LOAN':
+        return 'On Loan';
       case 'SELESAI':
+      case 'COMPLETED':
         return 'Completed';
       case 'DITOLAK':
+      case 'REJECTED':
         return 'Rejected';
       case 'DIBATALKAN':
+      case 'CANCELLED':
         return 'Cancelled';
       default:
-        return 'Incompleted';
+        return status.isNotEmpty ? status : 'Pending';
     }
   }
 
-  bool get isSelesai => status == 'SELESAI';
+  bool get isSelesai {
+    final s = status.trim().toUpperCase();
+    return s == 'SELESAI' || s == 'COMPLETED';
+  }
 
   String get tanggalDibuat {
     if (createdAt.isEmpty) return '-';

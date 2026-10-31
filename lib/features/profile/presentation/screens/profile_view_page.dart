@@ -12,6 +12,7 @@ import '../../../chat/presentation/screens/chat_room_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import 'profile_page.dart';
 
+import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../../../transactions/presentation/screens/transaction_history_page.dart';
 import '../../domain/models/user_review_model.dart';
 import '../../data/services/review_api_service.dart';
@@ -55,12 +56,44 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
   bool _isLoading = false;
   UserReviewsData? _reviewsData;
   bool _isLoadingReviews = false;
+  String? _resolvedUserId;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.userId != null && widget.user == null) {
+      if ((widget.userId == null || widget.userId!.isEmpty) &&
+          widget.transactionId != null &&
+          widget.transactionId!.isNotEmpty) {
+        try {
+          final trx = context
+              .read<TransactionProvider>()
+              .getTransaksiById(widget.transactionId!);
+          final myId = context.read<AuthProvider>().currentUser?.id ?? '';
+          final myName = context
+                  .read<AuthProvider>()
+                  .currentUser
+                  ?.nama
+                  .trim()
+                  .toLowerCase() ??
+              '';
+          if (trx != null) {
+            final isMeOwner = (myId.isNotEmpty && trx.pemilikId == myId) ||
+                (myName.isNotEmpty &&
+                    trx.pemilikNama.trim().toLowerCase() == myName);
+            final targetId = isMeOwner ? trx.pemohonId : trx.pemilikId;
+            if (targetId.isNotEmpty) {
+              _resolvedUserId = targetId;
+              _muatProfilDariDatabase();
+              _muatUlasanPengguna();
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+
+      final effectiveId = widget.userId ?? _resolvedUserId;
+      if (effectiveId != null && effectiveId.isNotEmpty && widget.user == null) {
         _muatProfilDariDatabase();
       }
       _muatUlasanPengguna();
@@ -68,7 +101,8 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
   }
 
   Future<void> _muatUlasanPengguna() async {
-    final int? targetUserId = int.tryParse(widget.userId ?? '') ??
+    final effectiveId = widget.userId ?? _resolvedUserId;
+    final int? targetUserId = int.tryParse(effectiveId ?? '') ??
         int.tryParse(widget.user?.id ?? '') ??
         int.tryParse(_fetchedUser?.id ?? '');
 
@@ -91,11 +125,12 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
   }
 
   Future<void> _muatProfilDariDatabase() async {
-    if (widget.userId == null) return;
+    final effectiveId = widget.userId ?? _resolvedUserId;
+    if (effectiveId == null || effectiveId.isEmpty) return;
     setState(() => _isLoading = true);
     try {
       final auth = context.read<AuthProvider>();
-      final userDb = await auth.ambilProfilPenggunaLain(widget.userId!);
+      final userDb = await auth.ambilProfilPenggunaLain(effectiveId);
       if (mounted) {
         setState(() {
           _fetchedUser = userDb;
@@ -461,54 +496,61 @@ class _ProfileViewPageState extends State<ProfileViewPage> {
     final authUser = auth?.currentUser;
     final activeUser = widget.user ?? _fetchedUser;
 
-    // Nilai tersinkronisasi dengan Database PostgreSQL
+    final targetId = widget.userId ?? _resolvedUserId ?? activeUser?.id;
+    final targetName = (widget.name ?? activeUser?.nama ?? '').trim().toLowerCase();
+    final bool isMyOwnProfile = authUser != null &&
+        ((targetId != null && targetId.isNotEmpty && targetId == authUser.id) ||
+         (targetName.isNotEmpty && authUser.nama.trim().toLowerCase() == targetName));
+
+    // Nilai tersinkronisasi dengan Database PostgreSQL (hanya fallback ke authUser jika melihat profil sendiri)
     final displayName = widget.name ??
         activeUser?.nama ??
-        authUser?.nama ??
+        (isMyOwnProfile ? authUser?.nama : null) ??
         'Pengguna';
 
     final displayRole = widget.role ??
         (activeUser?.username != null && activeUser!.username.isNotEmpty
             ? activeUser.username
-            : (authUser?.username != null && authUser!.username.isNotEmpty
+            : (isMyOwnProfile && authUser?.username != null && authUser!.username.isNotEmpty
                 ? authUser.username
                 : 'User'));
 
     final displayBio = widget.bio ??
         (activeUser?.bio != null && activeUser!.bio.isNotEmpty
             ? activeUser.bio
-            : (authUser?.bio != null && authUser!.bio.isNotEmpty
+            : (isMyOwnProfile && authUser?.bio != null && authUser!.bio.isNotEmpty
                 ? authUser.bio
                 : 'A casual reader'));
 
     final displayEmail = widget.email ??
         activeUser?.email ??
-        authUser?.email ??
+        (isMyOwnProfile ? authUser?.email : null) ??
         '-';
 
     final displayPhone = widget.phone ??
         (activeUser?.phone != null && activeUser!.phone.isNotEmpty
             ? activeUser.phone
-            : (authUser?.phone != null && authUser!.phone.isNotEmpty
+            : (isMyOwnProfile && authUser?.phone != null && authUser!.phone.isNotEmpty
                 ? authUser.phone
                 : '-'));
 
     final displayBooksRead = widget.booksRead ??
         activeUser?.booksRead ??
-        authUser?.booksRead ??
+        (isMyOwnProfile ? authUser?.booksRead : null) ??
         0;
 
     final displayBooksBorrowed = widget.booksBorrowed ??
         activeUser?.booksBorrowed ??
-        authUser?.booksBorrowed ??
+        (isMyOwnProfile ? authUser?.booksBorrowed : null) ??
         0;
 
     final displayFavorites = widget.favorites ??
         activeUser?.favorites ??
-        authUser?.favorites ??
+        (isMyOwnProfile ? authUser?.favorites : null) ??
         0;
 
-    final displayFoto = activeUser?.fotoProfil ?? authUser?.fotoProfil;
+    final displayFoto = activeUser?.fotoProfil ??
+        (isMyOwnProfile ? authUser?.fotoProfil : null);
 
     return Scaffold(
       backgroundColor: AppColors.background,

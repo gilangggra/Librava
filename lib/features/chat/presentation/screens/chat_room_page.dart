@@ -197,6 +197,29 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   ({String text, String? imageUrl}) _parseMessageContent(String raw) {
+    if (raw.startsWith('[HANDOVER_LOCATION]:')) {
+      final body = raw.replaceFirst('[HANDOVER_LOCATION]:', '').trim();
+      String loc = body;
+      String dt = '';
+      if (body.contains('| DATE:')) {
+        loc = body.split('| DATE:')[0].trim();
+        final after = body.split('| DATE:')[1].trim();
+        if (after.contains('| TIME:')) {
+          final d = after.split('| TIME:')[0].trim();
+          final t = after.split('| TIME:')[1].trim();
+          dt = '$d, $t';
+        } else {
+          dt = after;
+        }
+      } else if (body.contains('| JADWAL:')) {
+        loc = body.split('| JADWAL:').first.trim();
+        dt = body.split('| JADWAL:').last.trim();
+      }
+      final text = dt.isNotEmpty
+          ? '📍 Jadwal & Lokasi Serah Terima: $loc ($dt)'
+          : '📍 Jadwal & Lokasi Serah Terima: $loc';
+      return (text: text, imageUrl: null);
+    }
     if (raw.startsWith('[FOTO:') && raw.contains(']')) {
       final closeIdx = raw.indexOf(']');
       final imgUrl = raw.substring(6, closeIdx).trim();
@@ -1203,22 +1226,22 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         status == 'selesai';
 
     Color statusColor = const Color(0xFFFFD027);
-    String statusLabel = 'Menunggu Persetujuan';
+    String statusLabel = 'Waiting for Approval';
     if (status == 'selesai') {
       statusColor = const Color(0xFF2FD677);
-      statusLabel = 'Selesai';
+      statusLabel = 'Completed';
     } else if (status == 'sedang_dipinjam') {
       statusColor = const Color(0xFF388AF6);
-      statusLabel = 'Aktif Dipinjam';
+      statusLabel = 'On Loan';
     } else if (status == 'disetujui') {
       statusColor = const Color(0xFF10B981);
-      statusLabel = 'Disetujui';
+      statusLabel = 'Approved';
     } else if (status == 'dalam_proses' || status == 'lokasi_ditentukan') {
       statusColor = const Color(0xFF6356FF);
-      statusLabel = 'Dalam Proses';
+      statusLabel = 'In Progress';
     } else if (status == 'ditolak' || status == 'dibatalkan') {
       statusColor = const Color(0xFFDC2626);
-      statusLabel = status == 'ditolak' ? 'Ditolak' : 'Dibatalkan';
+      statusLabel = status == 'ditolak' ? 'Rejected' : 'Cancelled';
     }
 
     return Padding(
@@ -1245,6 +1268,8 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 handoverLocation: tx.lokasiPertemuan.isNotEmpty ? tx.lokasiPertemuan : 'Set handover',
                 ownerName: tx.pemilikNama,
                 ownerId: tx.pemilikId,
+                requesterName: tx.pemohonNama,
+                requesterId: tx.pemohonId,
                 isOwner: isOwner,
                 type: isBarter ? 'Barter' : 'Borrow',
                 dueDate: tx.dueDate ?? tx.effectiveDueDate,
@@ -1309,7 +1334,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                             borderRadius: BorderRadius.circular(5),
                           ),
                           child: Text(
-                            isOwner ? 'Pemilik (Meminjamkan)' : 'Peminjam',
+                            isBarter
+                                ? (isOwner ? 'Book Owner' : 'Barter Requester')
+                                : (isOwner ? 'Lender' : 'Borrower'),
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -1391,10 +1418,31 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(12),
                         onTap: () {
+                          TransactionModel? currentTx;
+                          try {
+                            final trxProvider =
+                                context.read<TransactionProvider>();
+                            currentTx = trxProvider.semuaTransaksi
+                                .where((t) => t.id == widget.transactionId)
+                                .firstOrNull;
+                          } catch (_) {}
+                          final auth = context.read<AuthProvider>();
+                          final myId = auth.currentUser?.id ?? '';
+                          final myName = auth.currentUser?.nama.trim().toLowerCase() ?? '';
+                          final bool isMeOwner = (myId.isNotEmpty &&
+                                  currentTx?.pemilikId.isNotEmpty == true &&
+                                  currentTx?.pemilikId == myId) ||
+                              (myName.isNotEmpty &&
+                                  currentTx?.pemilikNama.trim().toLowerCase() == myName);
+                          final partnerId = isMeOwner
+                              ? currentTx?.pemohonId
+                              : currentTx?.pemilikId;
+
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => ProfileViewPage(
+                                userId: partnerId,
                                 name: widget.userName,
                                 transactionId: widget.transactionId,
                               ),

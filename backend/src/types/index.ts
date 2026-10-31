@@ -53,6 +53,7 @@ export type TransactionStatus =
   | 'DISETUJUI' 
   | 'DITOLAK' 
   | 'DALAM_PROSES' 
+  | 'SEDANG_DIPINJAM'
   | 'SELESAI' 
   | 'DIBATALKAN';
 

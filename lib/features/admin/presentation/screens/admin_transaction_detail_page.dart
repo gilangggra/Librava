@@ -18,6 +18,7 @@ class AdminTransactionDetailPage extends StatelessWidget {
 
   Color _warnaStatus(String statusTampil) {
     if (statusTampil == 'Completed') return const Color(0xFF22C55E);
+    if (statusTampil == 'On Loan') return const Color(0xFF388AF6);
     if (statusTampil == 'Accepted' || statusTampil == 'In Progress') return AppColors.primary;
     if (statusTampil == 'Rejected' || statusTampil == 'Cancelled') return const Color(0xFFEF4444);
     return const Color(0xFFF59E0B);

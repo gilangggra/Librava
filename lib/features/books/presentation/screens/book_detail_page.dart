@@ -7,6 +7,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../home/presentation/screens/home_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
+import '../../../profile/presentation/screens/profile_view_page.dart';
 import '../../../transactions/domain/models/transaction_model.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
 import '../../../transactions/presentation/screens/transaction_detail_page.dart';
@@ -322,7 +323,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       depositAmount: '${tx.depositSimulasi.toInt()} Rupiah',
                       handoverLocation: tx.lokasiPertemuan.isNotEmpty
                           ? tx.lokasiPertemuan
-                          : 'Tentukan lokasi',
+                          : 'Set location',
                       ownerName: tx.pemilikNama,
                       ownerId: tx.pemilikId,
                       isOwner: isOwner,
@@ -359,19 +360,12 @@ class _BookDetailPageState extends State<BookDetailPage> {
   void _bukaModalPinjam(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final currentUser = auth.currentUser;
-    final bool isMyBook = currentUser != null &&
-        widget.book != null &&
-        ((widget.book!.pemilikId != null &&
-          widget.book!.pemilikId == currentUser.id) ||
-         (widget.book!.pemilikNama != null &&
-          currentUser.nama.isNotEmpty &&
-          widget.book!.pemilikNama!.trim().toLowerCase() ==
-              currentUser.nama.trim().toLowerCase()));
+    final bool isMyBook = _isBukuMilikSaya(context);
 
     if (isMyBook) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Anda tidak dapat meminjam buku milik Anda sendiri.'),
+          content: Text('You cannot borrow your own book.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -389,8 +383,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
         SnackBar(
           content: Text(
             activeTx.status == 'pending'
-                ? 'Anda sudah memiliki permohonan pinjam untuk buku ini yang sedang menunggu konfirmasi.'
-                : 'Anda saat ini sedang dalam proses transaksi aktif untuk buku ini.',
+                ? 'You already have a pending borrow request for this book.'
+                : 'You are currently in an active transaction for this book.',
           ),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
@@ -658,19 +652,12 @@ class _BookDetailPageState extends State<BookDetailPage> {
   void _bukaModalBarter(BuildContext context) {
     final auth = context.read<AuthProvider>();
     final currentUser = auth.currentUser;
-    final bool isMyBook = currentUser != null &&
-        widget.book != null &&
-        ((widget.book!.pemilikId != null &&
-          widget.book!.pemilikId == currentUser.id) ||
-         (widget.book!.pemilikNama != null &&
-          currentUser.nama.isNotEmpty &&
-          widget.book!.pemilikNama!.trim().toLowerCase() ==
-              currentUser.nama.trim().toLowerCase()));
+    final bool isMyBook = _isBukuMilikSaya(context);
 
     if (isMyBook) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Anda tidak dapat membarter buku milik Anda sendiri.'),
+          content: Text('You cannot barter your own book.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -688,8 +675,8 @@ class _BookDetailPageState extends State<BookDetailPage> {
         SnackBar(
           content: Text(
             activeTx.status == 'pending'
-                ? 'Anda sudah memiliki permohonan barter untuk buku ini yang sedang menunggu konfirmasi.'
-                : 'Anda saat ini sedang dalam proses transaksi aktif untuk buku ini.',
+                ? 'You already have a pending barter request for this book.'
+                : 'You are currently in an active transaction for this book.',
           ),
           backgroundColor: const Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
@@ -1098,9 +1085,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                           Consumer<AuthProvider>(
                             builder: (context, auth, _) {
                               final isOwnerOrAdmin = auth.currentUser?.role == 'admin' ||
-                                  (auth.currentUser != null &&
-                                      widget.book!.pemilikNama != null &&
-                                      widget.book!.pemilikNama == auth.currentUser!.nama);
+                                  _isBukuMilikSaya(context);
                               if (!isOwnerOrAdmin) return const SizedBox.shrink();
 
                               return Row(
@@ -1268,6 +1253,58 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                   ? '${_dynamicAverageRating.toStringAsFixed(1)} ★ ($_totalReviews)'
                                   : '${_rating.toStringAsFixed(1)} ★',
                             ),
+                            if (widget.book?.pemilikNama != null &&
+                                widget.book!.pemilikNama!.trim().isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Owner',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF8A88A5),
+                                    ),
+                                  ),
+                                  InkWell(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ProfileViewPage(
+                                            userId: widget.book?.pemilikId,
+                                            name: widget.book?.pemilikNama,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          widget.book!.pemilikNama!,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.primary,
+                                            decoration:
+                                                TextDecoration.underline,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Icon(
+                                          CupertinoIcons.chevron_right,
+                                          size: 13,
+                                          color: AppColors.primary,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -1308,17 +1345,61 @@ class _BookDetailPageState extends State<BookDetailPage> {
                 child: Consumer<AuthProvider>(
                   builder: (context, auth, _) {
                     final currentUser = auth.currentUser;
-                    final bool isMyBook = currentUser != null &&
-                        widget.book != null &&
-                        ((widget.book!.pemilikId != null &&
-                          widget.book!.pemilikId == currentUser.id) ||
-                         (widget.book!.pemilikNama != null &&
-                          currentUser.nama.isNotEmpty &&
-                          widget.book!.pemilikNama!.trim().toLowerCase() ==
-                              currentUser.nama.trim().toLowerCase()));
+                    final bool isMyBook = _isBukuMilikSaya(context);
 
                     if (isMyBook) {
-                      return const SizedBox.shrink();
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                              color: const Color(0xFF86EFAC), width: 1.5),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFDCFCE7),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                CupertinoIcons.checkmark_seal_fill,
+                                color: Color(0xFF16A34A),
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Your Book Collection',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF16A34A),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'This book belongs to your collection. You can manage or edit it using the edit button at the top right.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF15803D),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
                     }
 
                     TransactionProvider? trxProvider;
@@ -1535,7 +1616,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                'Buku "${book.judul}" sedang dipinjam atau dalam proses transaksi aktif sehingga tidak dapat dihapus.'),
+                'Book "${book.judul}" is currently borrowed or in an active transaction and cannot be deleted.'),
             backgroundColor: const Color(0xFFDC2626),
             behavior: SnackBarBehavior.floating,
           ),
@@ -1709,7 +1790,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     if (_isBukuMilikSaya(context)) {
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Anda tidak dapat memberikan ulasan untuk buku koleksi Anda sendiri.'),
+          content: Text('You cannot review your own collection book.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -1721,7 +1802,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
     if (bookIdNum == null) {
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Buku ini belum tersinkronisasi dengan server database.'),
+          content: Text('This book is not yet synchronized with the database server.'),
           backgroundColor: Color(0xFFDC2626),
           behavior: SnackBarBehavior.floating,
         ),
@@ -2024,7 +2105,7 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       ),
                       SizedBox(width: 4),
                       Text(
-                        'Koleksi Anda',
+                        'Your Collection',
                         style: TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,

@@ -15,6 +15,8 @@ import '../../domain/models/transaction_model.dart';
 import 'deposit_page.dart';
 import 'handover_modal.dart';
 import '../../../profile/presentation/screens/profile_view_page.dart';
+import '../../../profile/data/services/review_api_service.dart';
+import '../../../books/presentation/providers/book_provider.dart';
 
 class TransactionDetailPage extends StatefulWidget {
   final String? transactionId;
@@ -34,6 +36,8 @@ class TransactionDetailPage extends StatefulWidget {
   final bool ownerConfirmed;
   final String? ownerId;
   final bool? isOwner;
+  final String? requesterName;
+  final String? requesterId;
   final DateTime? dueDate;
   final bool? isOverdue;
 
@@ -42,23 +46,32 @@ class TransactionDetailPage extends StatefulWidget {
     this.transactionId,
     this.ownerId,
     this.isOwner,
-    this.bookTitle = 'Buku Kampus',
-    this.bookAuthor = 'Penulis',
-    this.coverPath = 'assets/images/bookshelf.jpg',
-    this.type = 'Borrow',
+    this.requesterName,
+    this.requesterId,
+    String? bookTitle,
+    String? bookAuthor,
+    String? coverPath,
+    String? type,
     this.requestedDate = 'Hari ini',
     this.preferredPeriod = '1 minggu',
-    this.depositAmount = '20.000 Rupiah',
+    String? depositAmount,
     this.isDepositPaid = false,
-    this.handoverLocation = 'Tentukan lokasi',
-    this.ownerName = 'Pemilik Buku',
+    String? handoverLocation,
+    String? ownerName,
     this.ownerUsername = '@pemilik',
-    this.status = 'Menunggu Konfirmasi',
+    String? status,
     this.youConfirmed = false,
     this.ownerConfirmed = false,
     this.dueDate,
     this.isOverdue,
-  });
+  })  : bookTitle = bookTitle ?? 'Campus Book',
+        bookAuthor = bookAuthor ?? 'Author',
+        coverPath = coverPath ?? 'assets/images/bookshelf.jpg',
+        type = type ?? 'Borrow',
+        status = status ?? 'Waiting for Confirmation',
+        depositAmount = depositAmount ?? '20.000 Rupiah',
+        handoverLocation = handoverLocation ?? 'Set location',
+        ownerName = ownerName ?? 'Book Owner';
 
   @override
   State<TransactionDetailPage> createState() => _TransactionDetailPageState();
@@ -68,11 +81,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   final int _selectedIndex = 2;
 
   bool get _isOverdue {
-    if (widget.isOverdue == true) return true;
     final s = _currentStatus.toLowerCase();
-    if (s == 'selesai' || s == 'ditolak' || s == 'dibatalkan' || s == 'pending' || s == 'menunggu konfirmasi') {
+    // Overdue HANYA berlaku jika buku sedang dalam masa peminjaman aktif (sedang_dipinjam)
+    if (s != 'sedang_dipinjam') {
       return false;
     }
+    if (widget.isOverdue == true) return true;
     if (widget.dueDate != null) {
       return DateTime.now().isAfter(widget.dueDate!);
     }
@@ -88,10 +102,56 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   String _myComment = '';
   bool _isLoadingAction = false;
 
+  String _parseDisplayLocation(String raw) {
+    if (raw.contains('| DATE:')) {
+      return raw.split('| DATE:').first.trim();
+    }
+    if (raw.contains('| JADWAL:')) {
+      return raw.split('| JADWAL:').first.trim();
+    }
+    return raw.trim();
+  }
+
+  String _parseDisplayDate(String raw) {
+    if (raw.contains('| DATE:')) {
+      final part = raw.split('| DATE:')[1];
+      if (part.contains('| TIME:')) {
+        return part.split('| TIME:')[0].trim();
+      }
+      return part.trim();
+    }
+    return 'Aug 23, 2026';
+  }
+
+  String _parseDisplayTimeOnly(String raw) {
+    if (raw.contains('| TIME:')) {
+      return raw.split('| TIME:')[1].trim();
+    }
+    if (raw.contains('| JADWAL:')) {
+      return raw.split('| JADWAL:')[1].trim();
+    }
+    return '14:00 WIB';
+  }
+
+  static String _formatHandoverDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  static String _formatHandoverTime(DateTime date) {
+    final hh = date.hour.toString().padLeft(2, '0');
+    final mm = date.minute.toString().padLeft(2, '0');
+    return '$hh:$mm WIB';
+  }
+
   bool get _isHandoverSet {
     final loc = _currentHandoverLocation.trim().toLowerCase();
     return loc.isNotEmpty &&
         loc != 'tentukan lokasi' &&
+        loc != 'set location' &&
         loc != 'set handover' &&
         loc != 'pilih lokasi' &&
         loc != 'belum ditentukan';
@@ -111,9 +171,84 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     _youConfirmed = widget.youConfirmed;
     _ownerConfirmed = widget.ownerConfirmed;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final tx = _getTrx(context);
+      final trxProvider = context.read<TransactionProvider>();
+      final txId = widget.transactionId ?? tx?.id ?? '';
+      if (txId.isNotEmpty && trxProvider.isOnLoan(txId)) {
+        setState(() {
+          _currentStatus = 'sedang_dipinjam';
+          _depositPaid = true;
+        });
+      }
+      if (tx != null && tx.lokasiPertemuan.trim().isNotEmpty) {
+        setState(() {
+          _currentHandoverLocation = tx.lokasiPertemuan;
+        });
+      }
+      try {
+        final auth = context.read<AuthProvider>();
+        final intId = int.tryParse(widget.transactionId ?? tx?.id ?? '');
+        if (auth.token != null && intId != null && !_isHandoverSet) {
+          final loc = await context.read<TransactionProvider>().checkHandoverFromChat(auth.token!, intId);
+          if (mounted && loc != null && loc.isNotEmpty) {
+            setState(() {
+              _currentHandoverLocation = loc;
+            });
+          }
+        }
+      } catch (_) {}
       _refreshTransactionData();
+      _checkExistingReview();
     });
+  }
+
+  Future<void> _checkExistingReview() async {
+    final txId = widget.transactionId;
+    if (txId == null || txId.isEmpty) return;
+
+    final trxProvider = context.read<TransactionProvider>();
+    if (trxProvider.isTransactionReviewed(txId)) {
+      final rev = trxProvider.getTransactionReview(txId);
+      if (mounted) {
+        setState(() {
+          _hasReviewed = true;
+          if (rev != null) {
+            _myRating = (rev['rating'] as num?)?.toInt() ?? 5;
+            _myComment = rev['komentar'] as String? ?? '';
+          }
+        });
+      }
+      return;
+    }
+
+    try {
+      final auth = context.read<AuthProvider>();
+      final currentUser = auth.currentUser;
+      final partnerId = _getPartnerId(context);
+      if (currentUser != null && partnerId != null && int.tryParse(partnerId) != null) {
+        final reviewService = ReviewApiService();
+        final userReviews = await reviewService.getUserReviews(int.parse(partnerId));
+        final myUid = int.tryParse(currentUser.id);
+        final txIntId = int.tryParse(txId);
+
+        for (final r in userReviews.reviews) {
+          final isMatchTx = txIntId != null && r.transactionId == txIntId;
+          final isMatchReviewer = myUid != null && r.reviewerId == myUid;
+          if (txIntId != null ? (isMatchTx && isMatchReviewer) : isMatchReviewer) {
+            trxProvider.recordTransactionReview(txId, r.rating, r.komentar);
+            if (mounted) {
+              setState(() {
+                _hasReviewed = true;
+                _myRating = r.rating;
+                _myComment = r.komentar;
+              });
+            }
+            break;
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _refreshTransactionData() async {
@@ -131,6 +266,19 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             if (tx.lokasiPertemuan.trim().isNotEmpty) {
               _currentHandoverLocation = tx.lokasiPertemuan;
             }
+          });
+        }
+        final intId = int.tryParse(widget.transactionId!);
+        if (intId != null && (_currentHandoverLocation.isEmpty || !_isHandoverSet)) {
+          final loc = await trxProvider.checkHandoverFromChat(auth.token!, intId);
+          if (mounted && loc != null && loc.isNotEmpty) {
+            setState(() {
+              _currentHandoverLocation = loc;
+            });
+          }
+        }
+        if (mounted && tx != null) {
+          setState(() {
             final s = tx.status.toLowerCase();
             if (s == 'dalam_proses' ||
                 s == 'lokasi_ditentukan' ||
@@ -152,6 +300,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 _ownerConfirmed = true;
               }
             }
+            if (trxProvider.isOnLoan(tx.id)) {
+              _currentStatus = 'sedang_dipinjam';
+            } else if (tx.status.toLowerCase() == 'sedang_dipinjam') {
+              _currentStatus = 'sedang_dipinjam';
+            } else {
+              _currentStatus = tx.status;
+            }
           });
         }
       }
@@ -163,7 +318,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
-              'Silakan tentukan jadwal & lokasi handover terlebih dahulu.'),
+              'Please arrange the handover schedule and location first.'),
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -264,11 +419,16 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     (isOwner
                         ? (txAfter?.requesterConfirmedAt != null)
                         : (txAfter?.ownerConfirmedAt != null));
+                final isBarter = widget.type.toLowerCase() == 'barter';
 
                 setState(() {
                   if (partnerAlsoConfirmed ||
-                      txAfter?.status.toLowerCase() == 'selesai') {
-                    _currentStatus = 'selesai';
+                      txAfter?.status.toLowerCase() == 'selesai' ||
+                      txAfter?.status.toLowerCase() == 'sedang_dipinjam') {
+                    _currentStatus = isBarter ? 'selesai' : 'sedang_dipinjam';
+                    if (!isBarter && widget.transactionId != null) {
+                      context.read<TransactionProvider>().markAsOnLoan(widget.transactionId!);
+                    }
                   }
                 });
 
@@ -276,8 +436,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   SnackBar(
                     content: Text(
                       partnerAlsoConfirmed ||
-                              txAfter?.status.toLowerCase() == 'selesai'
-                          ? 'Handover completed! Transaction is now completed.'
+                              txAfter?.status.toLowerCase() == 'selesai' ||
+                              txAfter?.status.toLowerCase() == 'sedang_dipinjam'
+                          ? (isBarter
+                              ? 'Barter handover completed! Transaction is finished.'
+                              : 'Handover confirmed! The book is now actively on loan. Early return is available at any time.')
                           : 'Your handover confirmation has been recorded.',
                     ),
                     backgroundColor: const Color(0xFF2FD677),
@@ -429,13 +592,15 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              widget.depositAmount,
-                              textAlign: TextAlign.end,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF130F26),
+                            Flexible(
+                              child: Text(
+                                widget.depositAmount,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF130F26),
+                                ),
                               ),
                             ),
                           ],
@@ -480,8 +645,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   const SizedBox(height: 12),
                   Text(
                     _depositPaid
-                        ? 'Dana jaminan sebesar ${widget.depositAmount} telah diamankan oleh sistem Librava.'
-                        : 'Harap pastikan $partnerName melunasi deposit sebelum melakukan serah terima fisik buku.',
+                        ? 'Deposit of ${widget.depositAmount} has been secured by the Librava system.'
+                        : 'Please ensure $partnerName completes the deposit before the physical book handover.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 12,
@@ -503,7 +668,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         elevation: 0,
                       ),
                       child: const Text(
-                        'Tutup',
+                        'Close',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -561,7 +726,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             borderRadius: BorderRadius.circular(20),
           ),
           title: const Text(
-            'Deposit Sudah Dibayar',
+            'Deposit Already Paid',
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
@@ -569,7 +734,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             ),
           ),
           content: Text(
-            'Uang jaminan sebesar ${widget.depositAmount} sudah Anda bayarkan dan diamankan oleh sistem.\n\nDeposit akan dikembalikan penuh setelah buku dikembalikan ke pemilik.',
+            'Deposit amount of ${widget.depositAmount} has been paid and secured by the system.\n\nDeposit will be fully refunded after the book is returned to the owner.',
             style: const TextStyle(
               fontSize: 13.5,
               color: Color(0xFF7E7A92),
@@ -586,7 +751,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ),
               ),
               child: const Text(
-                'Tutup',
+                'Close',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -876,13 +1041,29 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
-  void _bukaModalCekHandoverPemilik() {
+  void _bukaModalCekHandoverPemilik() async {
     final tx = _getTrx(context);
     if (tx != null && tx.lokasiPertemuan.trim().isNotEmpty) {
       _currentHandoverLocation = tx.lokasiPertemuan;
     }
+
+    if (!_isHandoverSet) {
+      try {
+        final auth = context.read<AuthProvider>();
+        final intId = int.tryParse(widget.transactionId ?? tx?.id ?? '');
+        if (auth.token != null && intId != null) {
+          final loc = await context.read<TransactionProvider>().checkHandoverFromChat(auth.token!, intId);
+          if (mounted && loc != null && loc.isNotEmpty) {
+            setState(() {
+              _currentHandoverLocation = loc;
+            });
+          }
+        }
+      } catch (_) {}
+    }
     _refreshTransactionData();
 
+    if (!mounted) return;
     final partnerName = _getPartnerName(context);
     final isSet = _isHandoverSet;
 
@@ -996,7 +1177,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                           children: [
                             const Expanded(
                               child: Text(
-                                'Lokasi Handover',
+                                'Date',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: Color(0xFF7E7A92),
@@ -1006,7 +1187,63 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             const SizedBox(width: 8),
                             Flexible(
                               child: Text(
-                                isSet ? _currentHandoverLocation : 'Belum ditentukan',
+                                isSet ? _parseDisplayDate(_currentHandoverLocation) : 'Belum ditentukan',
+                                textAlign: TextAlign.end,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSet
+                                      ? const Color(0xFF130F26)
+                                      : const Color(0xFFDC2626),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Time',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                isSet ? _parseDisplayTimeOnly(_currentHandoverLocation) : 'Belum ditentukan',
+                                textAlign: TextAlign.end,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSet
+                                      ? const Color(0xFF130F26)
+                                      : const Color(0xFFDC2626),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Location',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF7E7A92),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                isSet ? _parseDisplayLocation(_currentHandoverLocation) : 'Belum ditentukan',
                                 textAlign: TextAlign.end,
                                 style: TextStyle(
                                   fontSize: 13,
@@ -1059,8 +1296,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   const SizedBox(height: 12),
                   Text(
                     isSet
-                        ? 'Silakan temui $partnerName di $_currentHandoverLocation untuk melakukan serah terima fisik buku.'
-                        : 'Harap tunggu $partnerName menentukan lokasi dan waktu pertemuan setelah deposit diselesaikan.',
+                        ? 'Please meet $partnerName at ${_parseDisplayLocation(_currentHandoverLocation)} on ${_parseDisplayDate(_currentHandoverLocation)}, ${_parseDisplayTimeOnly(_currentHandoverLocation)} for the physical book handover.'
+                        : 'Please wait for $partnerName to set the handover date, time, and location after the deposit is completed.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 12,
@@ -1082,7 +1319,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         elevation: 0,
                       ),
                       child: const Text(
-                        'Tutup',
+                        'Close',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -1134,8 +1371,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               isOwner: _isCurrentUserOwner(context),
               onClose: () => Navigator.pop(ctx),
               onHandoverConfirmed: (selectedLocation, [meetingTime]) async {
+                final dt = meetingTime ?? DateTime(2026, 8, 23, 14, 0);
+                final String dateStr = _formatHandoverDate(dt);
+                final String timeStr = _formatHandoverTime(dt);
+                final combined = '$selectedLocation | DATE: $dateStr | TIME: $timeStr';
+
                 setState(() {
-                  _currentHandoverLocation = selectedLocation;
+                  _currentHandoverLocation = combined;
                 });
                 Navigator.pop(ctx);
 
@@ -1143,7 +1385,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 trxProv.updateLokasiTransaksi(
                   id: widget.transactionId,
                   judulBuku: widget.bookTitle,
-                  lokasi: selectedLocation,
+                  lokasi: combined,
                 );
 
                 try {
@@ -1154,7 +1396,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     await trxProv.setMeetingApi(
                       token,
                       txId,
-                      selectedLocation,
+                      combined,
                       meetingTime?.toIso8601String(),
                     );
                     if (mounted) {
@@ -1206,101 +1448,149 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   bool _isCurrentUserOwner(BuildContext context) {
-    if (widget.isOwner != null) return widget.isOwner!;
     try {
       final auth = context.read<AuthProvider>();
       final user = auth.currentUser;
-      if (user == null) return false;
-      final uid = user.id.trim();
-      final uname = user.nama.trim().toLowerCase();
-      final uusername = user.username.trim().toLowerCase();
+      if (user != null) {
+        final uid = user.id.trim();
+        final uname = user.nama.trim().toLowerCase();
+        final uusername = user.username.trim().toLowerCase();
 
-      // 1. Cek parameter eksplisit widget
-      if (widget.ownerId != null && widget.ownerId!.trim().isNotEmpty) {
-        if (uid.isNotEmpty && widget.ownerId!.trim() == uid) return true;
-      }
-      if (widget.ownerName.trim().isNotEmpty &&
-          widget.ownerName.trim().toLowerCase() != 'pemilik buku') {
-        final wOwnerName = widget.ownerName.trim().toLowerCase();
-        if (uname.isNotEmpty &&
-            (wOwnerName == uname ||
-                wOwnerName.contains(uname) ||
-                uname.contains(wOwnerName))) {
-          return true;
+        // 1. Cek terhadap transaksi di provider
+        final tx = _getTrx(context);
+        if (tx != null) {
+          // Jika ID pemohon cocok dengan user, pasti peminjam (bukan owner)
+          if (uid.isNotEmpty && tx.pemohonId.trim().isNotEmpty && tx.pemohonId.trim() == uid) {
+            return false;
+          }
+          // Jika ID pemilik cocok dengan user, pasti owner
+          if (uid.isNotEmpty && tx.pemilikId.trim().isNotEmpty && tx.pemilikId.trim() == uid) {
+            return true;
+          }
+          // Jika nama pemohon cocok, peminjam
+          if (uname.isNotEmpty && tx.pemohonNama.trim().isNotEmpty && tx.pemohonNama.trim().toLowerCase() == uname) {
+            return false;
+          }
+          // Jika nama pemilik cocok, owner
+          if (uname.isNotEmpty && tx.pemilikNama.trim().isNotEmpty && tx.pemilikNama.trim().toLowerCase() == uname) {
+            return true;
+          }
         }
-      }
-      if (widget.ownerUsername.trim().isNotEmpty &&
-          widget.ownerUsername.trim().toLowerCase() != '@pemilik') {
-        final cleanWidgetUsername =
-            widget.ownerUsername.replaceAll('@', '').trim().toLowerCase();
-        final cleanUserUsername =
-            uusername.replaceAll('@', '').trim().toLowerCase();
-        if (cleanWidgetUsername == cleanUserUsername) return true;
-      }
 
-      // 2. Cek transaksi dari provider jika ada transactionId
-      final tx = _getTrx(context);
-      if (tx != null) {
-        // Jika pemohon, pasti bukan owner
-        if (uid.isNotEmpty &&
-            tx.pemohonId.trim().isNotEmpty &&
-            tx.pemohonId.trim() == uid) {
-          return false;
+        // 2. Cek parameter eksplisit nama owner
+        if (widget.ownerId != null && widget.ownerId!.trim().isNotEmpty && uid.isNotEmpty) {
+          if (widget.ownerId!.trim() == uid) return true;
         }
-        if (uname.isNotEmpty &&
-            tx.pemohonNama.trim().isNotEmpty &&
-            tx.pemohonNama.trim().toLowerCase() == uname) {
-          return false;
+        if (widget.ownerName.trim().isNotEmpty &&
+            widget.ownerName.trim().toLowerCase() != 'pemilik buku') {
+          final wOwnerName = widget.ownerName.trim().toLowerCase();
+          if (uname.isNotEmpty &&
+              (wOwnerName == uname ||
+                  wOwnerName.contains(uname) ||
+                  uname.contains(wOwnerName))) {
+            return true;
+          }
         }
-        // Jika pemilik, pasti owner
-        if (uid.isNotEmpty &&
-            tx.pemilikId.trim().isNotEmpty &&
-            tx.pemilikId.trim() == uid) {
-          return true;
+        if (widget.ownerUsername.trim().isNotEmpty &&
+            widget.ownerUsername.trim().toLowerCase() != '@pemilik') {
+          final cleanWidgetUsername =
+              widget.ownerUsername.replaceAll('@', '').trim().toLowerCase();
+          final cleanUserUsername =
+              uusername.replaceAll('@', '').trim().toLowerCase();
+          if (cleanWidgetUsername == cleanUserUsername) return true;
         }
-        if (uname.isNotEmpty &&
-            tx.pemilikNama.trim().isNotEmpty &&
-            tx.pemilikNama.trim().toLowerCase() == uname) {
-          return true;
-        }
-      }
 
-      // 3. Cek daftar transaksi masuk di provider
-      if (widget.transactionId != null && widget.transactionId!.isNotEmpty) {
-        final trxProvider = context.read<TransactionProvider>();
-        final txId = widget.transactionId!.trim().toLowerCase();
-        final inMasuk = trxProvider.requestMasuk
-            .any((t) => t.id.trim().toLowerCase() == txId);
-        if (inMasuk) return true;
-        final inSaya = trxProvider.requestSaya
-            .any((t) => t.id.trim().toLowerCase() == txId);
-        if (inSaya) return false;
+        // 3. Cek daftar transaksi masuk di provider
+        if (widget.transactionId != null && widget.transactionId!.isNotEmpty) {
+          final trxProvider = context.read<TransactionProvider>();
+          final txId = widget.transactionId!.trim().toLowerCase();
+          final inMasuk = trxProvider.requestMasuk
+              .any((t) => t.id.trim().toLowerCase() == txId);
+          if (inMasuk) return true;
+          final inSaya = trxProvider.requestSaya
+              .any((t) => t.id.trim().toLowerCase() == txId);
+          if (inSaya) return false;
+        }
       }
     } catch (_) {}
+
+    if (widget.isOwner != null) return widget.isOwner!;
     return false;
   }
 
   String _getPartnerName(BuildContext context) {
     final tx = _getTrx(context);
     final isOwner = _isCurrentUserOwner(context);
+    String partner;
     if (isOwner) {
-      return (tx != null && tx.pemohonNama.isNotEmpty)
+      partner = (tx != null && tx.pemohonNama.isNotEmpty)
           ? tx.pemohonNama
-          : 'Pemohon Buku';
+          : ((widget.requesterName != null && widget.requesterName!.isNotEmpty)
+              ? widget.requesterName!
+              : 'Peminjam Buku');
+    } else {
+      partner = widget.ownerName.isNotEmpty
+          ? widget.ownerName
+          : (tx?.pemilikNama ?? 'Pemilik Buku');
     }
-    return widget.ownerName.isNotEmpty
-        ? widget.ownerName
-        : (tx?.pemilikNama ?? 'Pemilik Buku');
+
+    // Safety guard: Mitra transaksi tidak boleh nama diri sendiri
+    try {
+      final auth = context.read<AuthProvider>();
+      final myName = auth.currentUser?.nama.trim().toLowerCase() ?? '';
+      if (myName.isNotEmpty && partner.trim().toLowerCase() == myName) {
+        if (isOwner) {
+          if (widget.ownerName.isNotEmpty && widget.ownerName.toLowerCase() != myName) {
+            return widget.ownerName;
+          }
+          if (tx != null && tx.pemilikNama.isNotEmpty && tx.pemilikNama.toLowerCase() != myName) {
+            return tx.pemilikNama;
+          }
+          return (widget.requesterName != null && widget.requesterName!.isNotEmpty)
+              ? widget.requesterName!
+              : 'Peminjam Buku';
+        } else {
+          if (tx != null && tx.pemohonNama.isNotEmpty && tx.pemohonNama.toLowerCase() != myName) {
+            return tx.pemohonNama;
+          }
+          return widget.ownerName.isNotEmpty ? widget.ownerName : 'Pemilik Buku';
+        }
+      }
+    } catch (_) {}
+
+    return partner;
   }
 
   String? _getPartnerId(BuildContext context) {
     final tx = _getTrx(context);
     final isOwner = _isCurrentUserOwner(context);
+    String? pId;
     if (isOwner) {
-      return (tx != null && tx.pemohonId.isNotEmpty) ? tx.pemohonId : null;
+      pId = (tx != null && tx.pemohonId.isNotEmpty)
+          ? tx.pemohonId
+          : widget.requesterId;
+    } else {
+      pId = widget.ownerId ??
+          (tx != null && tx.pemilikId.isNotEmpty ? tx.pemilikId : null);
     }
-    return widget.ownerId ??
-        (tx != null && tx.pemilikId.isNotEmpty ? tx.pemilikId : null);
+
+    try {
+      final auth = context.read<AuthProvider>();
+      final myUid = auth.currentUser?.id.trim() ?? '';
+      if (myUid.isNotEmpty && pId != null && pId.trim() == myUid) {
+        if (isOwner) {
+          return (widget.ownerId != null && widget.ownerId!.trim() != myUid)
+              ? widget.ownerId
+              : (tx != null && tx.pemilikId != myUid ? tx.pemilikId : null);
+        } else {
+          return (tx != null && tx.pemohonId.isNotEmpty && tx.pemohonId != myUid)
+              ? tx.pemohonId
+              : null;
+        }
+      }
+    } catch (_) {}
+
+    return pId;
   }
 
   String _getDisplayAuthor(BuildContext context) {
@@ -1427,8 +1717,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   const SizedBox(height: 18),
                   Text(
                     isOwner
-                        ? 'Pengembalian Dikonfirmasi!'
-                        : 'Deposit Dikembalikan!',
+                        ? 'Return Confirmed!'
+                        : 'Deposit Refunded!',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 20,
@@ -1439,8 +1729,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   const SizedBox(height: 8),
                   Text(
                     isOwner
-                        ? 'Fisik buku "${widget.bookTitle}" telah diterima kembali dari $partnerName. Transaksi kini berstatus selesai.'
-                        : 'Buku "${widget.bookTitle}" telah dikembalikan kepada $partnerName. Jaminan peminjaman telah dikembalikan penuh ke saldo Anda.',
+                        ? 'Physical book "${widget.bookTitle}" has been received back from $partnerName. Transaction is now completed.'
+                        : 'Book "${widget.bookTitle}" has been returned to $partnerName. Security deposit has been fully refunded to your balance.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 13,
@@ -1551,7 +1841,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: const Text(
-                      'Tutup',
+                      'Close',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -1591,8 +1881,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           ),
           content: Text(
             isOwner
-                ? 'Have you received the physical book "${widget.bookTitle}" back from $partnerName in good condition?\n\nOnce confirmed, this transaction will be completed.'
-                : 'Have you returned the book "${widget.bookTitle}" to $partnerName?\n\nOnce confirmed, the transaction will be completed and your security deposit will be refunded.',
+                ? 'Have you received the physical book "${widget.bookTitle}" back from $partnerName in good condition? (Early return supported at any time before or on the due date).\n\nOnce confirmed, this transaction will be completed.'
+                : 'Have you returned the book "${widget.bookTitle}" to $partnerName? You can return the book early at any time before the due date.\n\nOnce confirmed, the transaction will be completed and your security deposit will be refunded immediately.',
             style: const TextStyle(
               fontSize: 14,
               color: Color(0xFF7E7A92),
@@ -1632,12 +1922,15 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
                 if (widget.transactionId != null && auth.token != null) {
                   try {
+                    trxProvider.markAsReturned(widget.transactionId!);
                     await trxProvider.confirmReturnApi(
                       auth.token!,
                       widget.transactionId!,
                     );
                     await auth.segarkanProfil();
                   } catch (_) {}
+                } else if (widget.transactionId != null) {
+                  trxProvider.markAsReturned(widget.transactionId!);
                 }
 
                 if (!mounted) return;
@@ -1693,6 +1986,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   void _bukaModalReview() {
+    if (_hasReviewed) return;
+    final isOwner = _isCurrentUserOwner(context);
+    final partnerName = _getPartnerName(context);
     int selectedRating = _myRating > 0 ? _myRating : 5;
     final commentController = TextEditingController(text: _myComment);
 
@@ -1728,9 +2024,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Text(
-                    'Leave Review & Rating',
-                    style: TextStyle(
+                  Text(
+                    isOwner ? 'Review Borrower' : 'Leave Review & Rating',
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF130F26),
@@ -1738,7 +2034,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Share your transaction experience with ${_getPartnerName(context)}',
+                    isOwner
+                        ? 'Share your review and rating for $partnerName regarding book return condition and communication'
+                        : 'Share your transaction experience with $partnerName',
                     style: const TextStyle(
                       fontSize: 13.5,
                       color: Color(0xFF7E7A92),
@@ -1827,22 +2125,45 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                           _myComment = comment;
                         });
 
-                        if (widget.transactionId != null && auth.token != null) {
-                          try {
-                            await trxProvider.submitReviewApi(
-                              token: auth.token!,
-                              transactionId: widget.transactionId!,
-                              rating: selectedRating,
-                              komentar: comment.isNotEmpty ? comment : null,
-                            );
-                          } catch (_) {}
+                        final txId = widget.transactionId;
+                        if (txId != null && txId.isNotEmpty) {
+                          trxProvider.recordTransactionReview(txId, selectedRating, comment);
+                          if (auth.token != null) {
+                            try {
+                              await trxProvider.submitReviewApi(
+                                token: auth.token!,
+                                transactionId: txId,
+                                rating: selectedRating,
+                                komentar: comment.isNotEmpty ? comment : null,
+                              );
+                            } catch (_) {}
+
+                            if (!isOwner) {
+                              try {
+                                final tx = _getTrx(context);
+                                final bId = tx != null ? int.tryParse(tx.bukuId) : null;
+                                if (bId != null) {
+                                  final bookProvider = context.read<BookProvider>();
+                                  await bookProvider.submitBookReview(
+                                    token: auth.token!,
+                                    bookId: bId,
+                                    rating: selectedRating,
+                                    komentar: comment.isNotEmpty ? comment : null,
+                                  );
+                                }
+                              } catch (_) {}
+                            }
+                          }
                         }
 
                         if (!mounted) return;
                         messenger.showSnackBar(
                           SnackBar(
-                            content:
-                                const Text('Your review has been submitted successfully!'),
+                            content: Text(
+                              isOwner
+                                  ? 'Your review for $partnerName has been submitted successfully!'
+                                  : 'Your review has been submitted successfully!',
+                            ),
                             backgroundColor: const Color(0xFF2FD677),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
@@ -2045,7 +2366,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
                   decoration: BoxDecoration(
                     color: isOwner ? const Color(0xFFF0EEFF) : const Color(0xFFE8F1FD),
                     borderRadius: BorderRadius.circular(8),
@@ -2061,16 +2382,20 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     children: [
                       Icon(
                         isOwner ? Icons.share_rounded : Icons.bookmark_added_rounded,
-                        size: 13,
+                        size: 12,
                         color: isOwner ? AppColors.primary : const Color(0xFF388AF6),
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        isOwner ? 'Anda: Pemilik (Meminjamkan)' : 'Anda: Peminjam (Meminjam)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isOwner ? AppColors.primary : const Color(0xFF388AF6),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          isOwner ? 'Anda: Pemilik (Meminjamkan)' : 'Anda: Peminjam (Meminjam)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: isOwner ? AppColors.primary : const Color(0xFF388AF6),
+                          ),
                         ),
                       ),
                     ],
@@ -2125,6 +2450,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       final effLocTrim = effLoc.trim().toLowerCase();
       final effHandoverSet = effLocTrim.isNotEmpty &&
           effLocTrim != 'tentukan lokasi' &&
+          effLocTrim != 'set location' &&
           effLocTrim != 'set handover' &&
           effLocTrim != 'pilih lokasi' &&
           effLocTrim != 'belum ditentukan';
@@ -2300,12 +2626,14 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 final locTrim = effectiveLoc.trim().toLowerCase();
                 final bool isHandoverSet = locTrim.isNotEmpty &&
                     locTrim != 'tentukan lokasi' &&
+                    locTrim != 'set location' &&
                     locTrim != 'set handover' &&
                     locTrim != 'pilih lokasi' &&
                     locTrim != 'belum ditentukan';
+                final cleanLoc = _parseDisplayLocation(effectiveLoc);
                 final String displayHandover = isOwner
-                    ? (isHandoverSet ? effectiveLoc : 'Belum ditentukan')
-                    : (isHandoverSet ? effectiveLoc : 'Tentukan lokasi');
+                    ? (isHandoverSet ? cleanLoc : 'Not set yet')
+                    : (isHandoverSet ? cleanLoc : 'Set location');
                 final Color handoverDotColor = isHandoverSet
                     ? const Color(0xFF2FD677)
                     : const Color(0xFFF05151);
@@ -2520,8 +2848,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 Expanded(
                   child: Text(
                     bothConfirmed
-                        ? 'Kedua pihak telah mengonfirmasi serah terima'
-                        : 'Transaction will complete after both parties confirm',
+                        ? 'Kedua pihak telah mengonfirmasi serah terima fisik buku'
+                        : 'Kedua pihak harus saling mengonfirmasi saat serah terima buku fisik',
                     style: const TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w400,
@@ -2796,10 +3124,41 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ],
             ),
             const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8FAF0),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFF2FD677).withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.bolt_rounded,
+                    color: Color(0xFF0C9A4B),
+                    size: 15,
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    'Early return supported at any time',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0C9A4B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
             Text(
               isOwner
-                  ? 'Book is currently borrowed by the student. Once the physical book is returned and received in good condition, confirm receipt to complete the transaction.'
-                  : 'Book is currently on loan. When finished reading, confirm return with the owner to complete the transaction and release your security deposit.',
+                  ? 'Book is currently on loan. The borrower can return it early at any time before the due date. Once you receive the physical book back in good condition, confirm receipt below to complete the loan.'
+                  : 'Book is currently on loan. You can return this book early at any time before the due date! Once returned to the owner, confirm return to complete the transaction and release your security deposit back immediately.',
               style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFF7E7A92),
@@ -2852,6 +3211,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   Widget _buildReviewSection() {
+    final isOwner = _isCurrentUserOwner(context);
+    final partnerName = _getPartnerName(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Container(
@@ -2889,10 +3251,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Transaction Review & Rating',
-                    style: TextStyle(
+                    isOwner
+                        ? 'Borrower Review & Rating'
+                        : 'Transaction Review & Rating',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFF130F26),
@@ -2904,7 +3268,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             const SizedBox(height: 10),
             if (!_hasReviewed) ...[
               Text(
-                'Transaction completed! Share a review and star rating for ${_getPartnerName(context)} to help build community trust.',
+                'Transaction completed! Share a review and star rating for $partnerName to help build community trust.',
                 style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF7E7A92),
@@ -2929,9 +3293,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     size: 18,
                     color: Colors.white,
                   ),
-                  label: const Text(
-                    'Leave Review Now',
-                    style: TextStyle(
+                  label: Text(
+                    isOwner ? 'Review Borrower Now' : 'Leave Review Now',
+                    style: const TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -3160,7 +3524,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       )
                     : isDone
                         ? ElevatedButton(
-                            onPressed: _bukaModalReview,
+                            onPressed: _hasReviewed ? null : _bukaModalReview,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _hasReviewed
                                    ? const Color(0xFFE8FAF0)
@@ -3174,7 +3538,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                _hasReviewed ? 'Edit Review' : 'Leave Review',
+                                _hasReviewed
+                                    ? 'Reviewed'
+                                    : (isOwner ? 'Review Borrower' : 'Leave Review'),
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,

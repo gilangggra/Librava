@@ -185,8 +185,22 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     VoidCallback? onTap,
   }) {
     final bool isBarter = type.toLowerCase() == 'barter';
-    final bool isAccepted = status.toLowerCase() == 'accepted';
-    final bool isRejected = status.toLowerCase() == 'rejected';
+    final s = status.toLowerCase();
+    final bool isAccepted = s == 'accepted';
+    final bool isRejected = s == 'rejected' || s == 'cancelled';
+    final bool isOnLoan = s == 'on loan';
+    final bool isCompleted = s == 'completed';
+
+    final Color chipBg = isCompleted || isAccepted
+        ? const Color(0xFFD1FADF)
+        : (isOnLoan
+            ? const Color(0xFFE0F2FE)
+            : (isRejected ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7)));
+    final Color chipFg = isCompleted || isAccepted
+        ? const Color(0xFF12B76A)
+        : (isOnLoan
+            ? const Color(0xFF0284C7)
+            : (isRejected ? const Color(0xFFDC2626) : const Color(0xFFD97706)));
 
     return InkWell(
       onTap: onTap,
@@ -279,9 +293,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: isAccepted
-                    ? const Color(0xFFD1FADF)
-                    : (isRejected ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7)),
+                color: chipBg,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -289,9 +301,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,
-                  color: isAccepted
-                      ? const Color(0xFF12B76A)
-                      : (isRejected ? const Color(0xFFDC2626) : const Color(0xFFD97706)),
+                  color: chipFg,
                 ),
               ),
             ),
@@ -319,7 +329,21 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     VoidCallback? onTap,
   }) {
     final bool isBarter = type.toLowerCase() == 'barter';
-    final bool isCompleted = status.toLowerCase() == 'completed';
+    final s = status.toLowerCase();
+    final bool isCompleted = s == 'completed';
+    final bool isOnLoan = s == 'on loan';
+    final bool isRejected = s == 'rejected' || s == 'cancelled';
+
+    final Color chipBg = isCompleted
+        ? const Color(0xFFD1FADF)
+        : (isOnLoan
+            ? const Color(0xFFE0F2FE)
+            : (isRejected ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7)));
+    final Color chipFg = isCompleted
+        ? const Color(0xFF12B76A)
+        : (isOnLoan
+            ? const Color(0xFF0284C7)
+            : (isRejected ? const Color(0xFFDC2626) : const Color(0xFFD97706)));
 
     return InkWell(
       onTap: onTap,
@@ -412,7 +436,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isCompleted ? const Color(0xFFD1FADF) : const Color(0xFFFEF3C7),
+                    color: chipBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -420,7 +444,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
-                      color: isCompleted ? const Color(0xFF12B76A) : const Color(0xFFD97706),
+                      color: chipFg,
                     ),
                   ),
                 ),
