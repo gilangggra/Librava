@@ -330,6 +330,9 @@ class _BookDetailPageState extends State<BookDetailPage> {
                       type: tx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
                       dueDate: tx.dueDate ?? tx.effectiveDueDate,
                       isOverdue: tx.isOverdue,
+                      exchangeBookTitle: tx.bukuBarter,
+                      exchangeBookAuthor: tx.barterPenulis,
+                      exchangeBookCover: tx.barterCover,
                     ),
                   ),
                 );

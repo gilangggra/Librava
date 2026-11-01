@@ -520,10 +520,12 @@ class _MyBookPageState extends State<MyBookPage> {
     showDialog(
       context: context,
       builder: (ctx) {
+        final bool isBarterTx = activeTx != null &&
+            activeTx.jenisTransaksi.toLowerCase() == 'barter';
         final bool isLent = !book.tersedia ||
             (activeTx != null &&
                 activeTx.status.toLowerCase() == 'sedang_dipinjam');
-        final bool isInProcess = activeTx != null && !isLent;
+        final bool isInProcess = activeTx != null && !isLent && !isBarterTx;
 
         return Dialog(
           shape: RoundedRectangleBorder(
@@ -584,7 +586,32 @@ class _MyBookPageState extends State<MyBookPage> {
                       ),
                     ),
                     _buildStatusModerasiBadge(book),
-                    if (isLent)
+                    if (isBarterTx)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3EAFF),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.swap_horiz_rounded,
+                                size: 12, color: Color(0xFF722ED1)),
+                            SizedBox(width: 4),
+                            Text(
+                              'Barter',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF722ED1),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (isLent)
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
@@ -660,7 +687,28 @@ class _MyBookPageState extends State<MyBookPage> {
                     ),
                   ),
                 ],
-                if (isLent || isInProcess) ...[
+                if (isBarterTx) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF3EAFF),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFD3ADF7)),
+                    ),
+                    child: const Text(
+                      'This book is currently in an active barter exchange process.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF722ED1),
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ] else if (isLent || isInProcess) ...[
                   const SizedBox(height: 10),
                   Container(
                     width: double.infinity,
@@ -693,15 +741,30 @@ class _MyBookPageState extends State<MyBookPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        side: const BorderSide(color: AppColors.primary),
+                        side: BorderSide(
+                          color: isBarterTx
+                              ? const Color(0xFF722ED1)
+                              : AppColors.primary,
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 10),
                       ),
-                      icon: const Icon(CupertinoIcons.arrow_right_circle,
-                          size: 16, color: AppColors.primary),
-                      label: const Text(
-                        'View Loan Transaction',
+                      icon: Icon(
+                        isBarterTx
+                            ? Icons.swap_horiz_rounded
+                            : CupertinoIcons.arrow_right_circle,
+                        size: 16,
+                        color: isBarterTx
+                            ? const Color(0xFF722ED1)
+                            : AppColors.primary,
+                      ),
+                      label: Text(
+                        isBarterTx
+                            ? 'View Barter Transaction'
+                            : 'View Loan Transaction',
                         style: TextStyle(
-                          color: AppColors.primary,
+                          color: isBarterTx
+                              ? const Color(0xFF722ED1)
+                              : AppColors.primary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -727,10 +790,13 @@ class _MyBookPageState extends State<MyBookPage> {
                               requesterName: activeTx.pemohonNama,
                               requesterId: activeTx.pemohonId,
                               isOwner: true,
-                              type: 'Borrow',
+                              type: isBarterTx ? 'Barter' : 'Borrow',
                               dueDate: activeTx.dueDate ??
                                   activeTx.effectiveDueDate,
                               isOverdue: activeTx.isOverdue,
+                              exchangeBookTitle: activeTx.bukuBarter,
+                              exchangeBookAuthor: activeTx.barterPenulis,
+                              exchangeBookCover: activeTx.barterCover,
                             ),
                           ),
                         );
@@ -954,10 +1020,12 @@ class _MyBookPageState extends State<MyBookPage> {
               (t.bukuId.isNotEmpty && t.bukuId == book.id) ||
               (t.judulBuku.trim().toLowerCase() ==
                   book.judul.trim().toLowerCase())).firstOrNull;
+          final bool isBarterTx = activeTx != null &&
+              activeTx.jenisTransaksi.toLowerCase() == 'barter';
           final bool isLent = !book.tersedia ||
               (activeTx != null &&
                   activeTx.status.toLowerCase() == 'sedang_dipinjam');
-          final bool isInProcess = activeTx != null && !isLent;
+          final bool isInProcess = activeTx != null && !isLent && !isBarterTx;
 
           Widget? badgeWidget;
           if (book.isPending) {
@@ -966,6 +1034,13 @@ class _MyBookPageState extends State<MyBookPage> {
           } else if (book.isDitolak) {
             badgeWidget = _buildMiniBadge('Rejected', const Color(0xFFFEE2E2),
                 const Color(0xFFB91C1C));
+          } else if (isBarterTx) {
+            badgeWidget = _buildMiniBadge(
+              'Barter',
+              const Color(0xFFF3EAFF),
+              const Color(0xFF722ED1),
+              icon: Icons.swap_horiz_rounded,
+            );
           } else if (isLent) {
             badgeWidget = _buildMiniBadge('Lent out', const Color(0xFFE0E7FF),
                 const Color(0xFF3730A3));
@@ -1053,7 +1128,39 @@ class _MyBookPageState extends State<MyBookPage> {
 
           Widget? statusBadge;
           final s = trx.status.toLowerCase();
-          if (trx.isOverdue) {
+          final isBarter = trx.jenisTransaksi.toLowerCase() == 'barter';
+
+          if (isBarter) {
+            if (s == 'lokasi_ditentukan' || s == 'dalam_proses') {
+              statusBadge = _buildMiniBadge(
+                'Barter: Handover',
+                const Color(0xFFEDE9FE),
+                const Color(0xFF6D28D9),
+                icon: Icons.swap_horiz_rounded,
+              );
+            } else if (s == 'disetujui') {
+              statusBadge = _buildMiniBadge(
+                'Barter: Approved',
+                const Color(0xFFDBEAFE),
+                const Color(0xFF1D4ED8),
+                icon: Icons.swap_horiz_rounded,
+              );
+            } else if (s == 'pending') {
+              statusBadge = _buildMiniBadge(
+                'Barter: Pending',
+                const Color(0xFFFEF3C7),
+                const Color(0xFFB45309),
+                icon: Icons.swap_horiz_rounded,
+              );
+            } else {
+              statusBadge = _buildMiniBadge(
+                'Barter',
+                const Color(0xFFF3EAFF),
+                const Color(0xFF722ED1),
+                icon: Icons.swap_horiz_rounded,
+              );
+            }
+          } else if (trx.isOverdue) {
             statusBadge = _buildMiniBadge('Overdue', const Color(0xFFDC2626),
                 Colors.white, icon: CupertinoIcons.clock_fill);
           } else if (s == 'sedang_dipinjam') {
@@ -1110,6 +1217,9 @@ class _MyBookPageState extends State<MyBookPage> {
                         : 'Borrow',
                     dueDate: trx.dueDate ?? trx.effectiveDueDate,
                     isOverdue: trx.isOverdue,
+                    exchangeBookTitle: trx.bukuBarter,
+                    exchangeBookAuthor: trx.barterPenulis,
+                    exchangeBookCover: trx.barterCover,
                   ),
                 ),
               );
@@ -1284,6 +1394,7 @@ class _MyBookPageState extends State<MyBookPage> {
         (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
             ? trxProvider.semuaTransaksi.where((t) {
                 final isBorrow = t.jenisTransaksi.toLowerCase() == 'pinjam';
+                final isBarter = t.jenisTransaksi.toLowerCase() == 'barter';
                 final isActive = t.status != 'selesai' &&
                     t.status != 'ditolak' &&
                     t.status != 'dibatalkan';
@@ -1297,7 +1408,7 @@ class _MyBookPageState extends State<MyBookPage> {
                             userNama.trim().toLowerCase()) ||
                     (authProvider?.currentUser == null &&
                         trxProvider?.currentUserId == null);
-                return isBorrow && isActive && matchUser;
+                return (isBorrow || isBarter) && isActive && matchUser;
               }).toList()
             : <TransactionModel>[];
 
@@ -1305,6 +1416,7 @@ class _MyBookPageState extends State<MyBookPage> {
         (trxProvider != null && trxProvider.semuaTransaksi.isNotEmpty)
             ? trxProvider.semuaTransaksi.where((t) {
                 final isBorrow = t.jenisTransaksi.toLowerCase() == 'pinjam';
+                final isBarter = t.jenisTransaksi.toLowerCase() == 'barter';
                 final isActive = t.status != 'selesai' &&
                     t.status != 'ditolak' &&
                     t.status != 'dibatalkan';
@@ -1318,7 +1430,7 @@ class _MyBookPageState extends State<MyBookPage> {
                             userNama.trim().toLowerCase()) ||
                     (authProvider?.currentUser == null &&
                         trxProvider?.currentUserId == null);
-                return isBorrow && isActive && matchOwner;
+                return (isBorrow || isBarter) && isActive && matchOwner;
               }).toList()
             : <TransactionModel>[];
 

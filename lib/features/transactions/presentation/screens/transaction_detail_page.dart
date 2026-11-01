@@ -40,6 +40,9 @@ class TransactionDetailPage extends StatefulWidget {
   final String? requesterId;
   final DateTime? dueDate;
   final bool? isOverdue;
+  final String? exchangeBookTitle;
+  final String? exchangeBookAuthor;
+  final String? exchangeBookCover;
 
   const TransactionDetailPage({
     super.key,
@@ -64,6 +67,9 @@ class TransactionDetailPage extends StatefulWidget {
     this.ownerConfirmed = false,
     this.dueDate,
     this.isOverdue,
+    this.exchangeBookTitle,
+    this.exchangeBookAuthor,
+    this.exchangeBookCover,
   })  : bookTitle = bookTitle ?? 'Campus Book',
         bookAuthor = bookAuthor ?? 'Author',
         coverPath = coverPath ?? 'assets/images/bookshelf.jpg',
@@ -157,11 +163,55 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         loc != 'belum ditentukan';
   }
 
+  bool get _isBarter {
+    if (widget.type.toLowerCase() == 'barter') return true;
+    final tx = _getTrx(context);
+    return tx?.jenisTransaksi.toLowerCase() == 'barter';
+  }
+
+  String? get _effectiveExchangeBookTitle {
+    if (widget.exchangeBookTitle != null &&
+        widget.exchangeBookTitle!.trim().isNotEmpty) {
+      return widget.exchangeBookTitle!.trim();
+    }
+    final tx = _getTrx(context);
+    if (tx != null && tx.bukuBarter.trim().isNotEmpty) {
+      return tx.bukuBarter.trim();
+    }
+    return null;
+  }
+
+  String? get _effectiveExchangeBookAuthor {
+    if (widget.exchangeBookAuthor != null &&
+        widget.exchangeBookAuthor!.trim().isNotEmpty) {
+      return widget.exchangeBookAuthor!.trim();
+    }
+    final tx = _getTrx(context);
+    if (tx != null && tx.barterPenulis.trim().isNotEmpty) {
+      return tx.barterPenulis.trim();
+    }
+    return null;
+  }
+
+  String? get _effectiveExchangeBookCover {
+    if (widget.exchangeBookCover != null &&
+        widget.exchangeBookCover!.trim().isNotEmpty) {
+      return widget.exchangeBookCover!.trim();
+    }
+    final tx = _getTrx(context);
+    if (tx != null && tx.barterCover.trim().isNotEmpty) {
+      return tx.barterCover.trim();
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
     final s = widget.status.toLowerCase();
-    _depositPaid = widget.isDepositPaid ||
+    final isBarter = widget.type.toLowerCase() == 'barter';
+    _depositPaid = isBarter ||
+        widget.isDepositPaid ||
         s == 'dalam_proses' ||
         s == 'lokasi_ditentukan' ||
         s == 'sedang_dipinjam' ||
@@ -330,6 +380,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       return;
     }
 
+    final partnerName = _getPartnerName(context);
+    final isBarterMode = _isBarter;
+
     showDialog(
       context: context,
       builder: (ctx) {
@@ -337,16 +390,18 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text(
-            'Confirm Handover',
-            style: TextStyle(
+          title: Text(
+            isBarterMode ? 'Confirm Barter Swap' : 'Confirm Handover',
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: Color(0xFF130F26),
             ),
           ),
           content: Text(
-            'Have you handed over or received "${widget.bookTitle}" at $_currentHandoverLocation?',
+            isBarterMode
+                ? 'Have you met $partnerName at $_currentHandoverLocation and physically swapped both books?'
+                : 'Have you handed over or received "${widget.bookTitle}" at $_currentHandoverLocation?',
             style: const TextStyle(
               fontSize: 14,
               color: Color(0xFF7E7A92),
@@ -383,6 +438,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                           auth.token!,
                           widget.transactionId!,
                         );
+                        if (isBarterMode) {
+                          try {
+                            await context.read<BookProvider>().fetchMyBooks(auth.token!);
+                          } catch (_) {}
+                        }
                       }
                     }
                   } catch (_) {
@@ -419,14 +479,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     (isOwner
                         ? (txAfter?.requesterConfirmedAt != null)
                         : (txAfter?.ownerConfirmedAt != null));
-                final isBarter = widget.type.toLowerCase() == 'barter';
 
                 setState(() {
                   if (partnerAlsoConfirmed ||
                       txAfter?.status.toLowerCase() == 'selesai' ||
                       txAfter?.status.toLowerCase() == 'sedang_dipinjam') {
-                    _currentStatus = isBarter ? 'selesai' : 'sedang_dipinjam';
-                    if (!isBarter && widget.transactionId != null) {
+                    _currentStatus = isBarterMode ? 'selesai' : 'sedang_dipinjam';
+                    if (!isBarterMode && widget.transactionId != null) {
                       context.read<TransactionProvider>().markAsOnLoan(widget.transactionId!);
                     }
                   }
@@ -438,8 +497,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       partnerAlsoConfirmed ||
                               txAfter?.status.toLowerCase() == 'selesai' ||
                               txAfter?.status.toLowerCase() == 'sedang_dipinjam'
-                          ? (isBarter
-                              ? 'Barter handover completed! Transaction is finished.'
+                          ? (isBarterMode
+                              ? 'Barter handover completed! Both books have been swapped successfully.'
                               : 'Handover confirmed! The book is now actively on loan. Early return is available at any time.')
                           : 'Your handover confirmation has been recorded.',
                     ),
@@ -923,22 +982,27 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
   void _konfirmasiSetujuiPermintaan() {
     final partnerName = _getPartnerName(context);
+    final isBarterMode = _isBarter;
+    final exchangeTitle = _effectiveExchangeBookTitle ?? 'offered book';
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        title: const Text(
-          'Accept Request',
-          style: TextStyle(
+        title: Text(
+          isBarterMode ? 'Accept Barter Request' : 'Accept Request',
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
             color: Color(0xFF130F26),
           ),
         ),
         content: Text(
-          'Are you sure you want to approve the borrow request from $partnerName for "${widget.bookTitle}"?\n\nThe borrower will then secure the deposit and coordinate book handover.',
+          isBarterMode
+              ? 'Are you sure you want to approve the barter request from $partnerName for "${widget.bookTitle}"?\n\nYou will exchange this book with "$exchangeTitle" upon handover.'
+              : 'Are you sure you want to approve the borrow request from $partnerName for "${widget.bookTitle}"?\n\nThe borrower will then secure the deposit and coordinate book handover.',
           style: const TextStyle(
             fontSize: 14,
             color: Color(0xFF7E7A92),
@@ -983,22 +1047,26 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
   void _konfirmasiTolakPermintaan() {
     final partnerName = _getPartnerName(context);
+    final isBarterMode = _isBarter;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        title: const Text(
-          'Decline Request',
-          style: TextStyle(
+        title: Text(
+          isBarterMode ? 'Decline Barter Request' : 'Decline Request',
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
             color: Color(0xFF130F26),
           ),
         ),
         content: Text(
-          'Are you sure you want to decline this borrow request from $partnerName for "${widget.bookTitle}"?',
+          isBarterMode
+              ? 'Are you sure you want to decline this barter request from $partnerName for "${widget.bookTitle}"?'
+              : 'Are you sure you want to decline this borrow request from $partnerName for "${widget.bookTitle}"?',
           style: const TextStyle(
             fontSize: 14,
             color: Color(0xFF7E7A92),
@@ -2388,7 +2456,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          isOwner ? 'Anda: Pemilik (Meminjamkan)' : 'Anda: Peminjam (Meminjam)',
+                          _isBarter
+                              ? (isOwner
+                                  ? 'You: Book Owner (Barter)'
+                                  : 'You: Barter Requester')
+                              : (isOwner
+                                  ? 'You: Book Owner (Lending)'
+                                  : 'You: Borrower'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -2409,6 +2483,190 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
+  Widget _buildBarterExchangeCard() {
+    final isOwner = _isCurrentUserOwner(context);
+    final mainCover = _getDisplayCover(context);
+    final mainAuthor = _getDisplayAuthor(context);
+    final mainTitle = widget.bookTitle;
+
+    final exchangeTitle = _effectiveExchangeBookTitle ?? 'Offered Book';
+    final exchangeAuthor = _effectiveExchangeBookAuthor ?? 'Author';
+    final exchangeCover =
+        _effectiveExchangeBookCover ?? 'assets/images/book_the_unknown.jpg';
+
+    final giveTitle = isOwner ? mainTitle : exchangeTitle;
+    final giveAuthor = isOwner ? mainAuthor : exchangeAuthor;
+    final giveCover = isOwner ? mainCover : exchangeCover;
+
+    final receiveTitle = isOwner ? exchangeTitle : mainTitle;
+    final receiveAuthor = isOwner ? exchangeAuthor : mainAuthor;
+    final receiveCover = isOwner ? exchangeCover : mainCover;
+
+    Widget buildBookMiniTile({
+      required String label,
+      required Color labelBg,
+      required Color labelColor,
+      required String title,
+      required String author,
+      required String cover,
+    }) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9F8FD),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFEBE8F6)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: labelBg,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: labelColor,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: BookCoverHelper.buildCoverImage(
+                  cover,
+                  width: 54,
+                  height: 76,
+                  fallbackJudul: title,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF130F26),
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                author,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF8A88A5),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF722ED1).withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(
+            color: const Color(0xFFEDE9FE),
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3EAFF),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.swap_horiz_rounded,
+                    size: 18,
+                    color: Color(0xFF722ED1),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'Barter Exchange Details',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF130F26),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                buildBookMiniTile(
+                  label: 'You Give',
+                  labelBg: const Color(0xFFFEE2E2),
+                  labelColor: const Color(0xFFDC2626),
+                  title: giveTitle,
+                  author: giveAuthor,
+                  cover: giveCover,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF3EAFF),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.swap_horiz_rounded,
+                      size: 20,
+                      color: Color(0xFF722ED1),
+                    ),
+                  ),
+                ),
+                buildBookMiniTile(
+                  label: 'You Receive',
+                  labelBg: const Color(0xFFDCFCE7),
+                  labelColor: const Color(0xFF15803D),
+                  title: receiveTitle,
+                  author: receiveAuthor,
+                  cover: receiveCover,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatusBanner() {
     final isOverdue = _isOverdue;
     Color dotColor = const Color(0xFFFFD027);
@@ -2422,10 +2680,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
     if (s == 'selesai') {
       dotColor = const Color(0xFF2FD677);
-      titleText = 'Completed';
-      descText = isOwner
-          ? 'Transaction completed! The book "${widget.bookTitle}" has been returned by $partnerName in good condition.'
-          : 'Transaction completed! The book has been successfully handed over and returned.';
+      titleText = _isBarter ? 'Barter Completed' : 'Completed';
+      descText = _isBarter
+          ? 'Transaction completed! Both books have been successfully swapped between you and $partnerName.'
+          : (isOwner
+              ? 'Transaction completed! The book "${widget.bookTitle}" has been returned by $partnerName in good condition.'
+              : 'Transaction completed! The book has been successfully handed over and returned.');
     } else if (s == 'sedang_dipinjam') {
       dotColor = isOverdue ? const Color(0xFFDC2626) : const Color(0xFF388AF6);
       titleText = isOverdue ? 'Overdue Return' : 'Active Loan';
@@ -2441,8 +2701,6 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       titleText = _currentStatus == 'ditolak' ? 'Rejected' : 'Cancelled';
       descText = 'This transaction has been closed.';
     } else if (s == 'disetujui' || s == 'lokasi_ditentukan' || s == 'dalam_proses') {
-      dotColor = isOverdue ? const Color(0xFFDC2626) : const Color(0xFF388AF6);
-      titleText = isOverdue ? 'Overdue' : 'Approved / In Progress';
       final txForBanner = _getTrx(context);
       final effLoc = (txForBanner != null && txForBanner.lokasiPertemuan.trim().isNotEmpty)
           ? txForBanner.lokasiPertemuan
@@ -2455,29 +2713,54 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           effLocTrim != 'pilih lokasi' &&
           effLocTrim != 'belum ditentukan';
 
-      if (isOwner) {
-        descText = _depositPaid
-            ? (effHandoverSet
-                ? 'Handover set at $effLoc. Please meet $partnerName to hand over the book.'
-                : 'Deposit secured. Waiting for $partnerName to arrange handover location and meeting time.')
-            : 'Request approved. Waiting for $partnerName to secure the deposit and set handover.';
+      if (_isBarter) {
+        dotColor = const Color(0xFF722ED1);
+        if (effHandoverSet) {
+          titleText = 'Ready for Book Swap';
+          descText =
+              'Handover location set at $effLoc. Please meet $partnerName to physically swap both books.';
+        } else {
+          titleText = 'Barter Approved';
+          descText = isOwner
+              ? 'You approved the barter request! Please coordinate with $partnerName to arrange handover location.'
+              : 'Barter request approved! Please determine handover schedule & location.';
+        }
       } else {
-        descText = isOverdue
-            ? 'Loan is past its due date. Please coordinate book return promptly.'
-            : (_depositPaid
-                ? (effHandoverSet
-                    ? 'Handover set at $effLoc. Please meet $partnerName for book handover.'
-                    : 'Deposit payment secured! Please determine handover schedule & location.')
-                : 'Request approved. Complete the deposit payment and set the handover location.');
+        dotColor = isOverdue ? const Color(0xFFDC2626) : const Color(0xFF388AF6);
+        titleText = isOverdue ? 'Overdue' : 'Approved / In Progress';
+        if (isOwner) {
+          descText = _depositPaid
+              ? (effHandoverSet
+                  ? 'Handover set at $effLoc. Please meet $partnerName to hand over the book.'
+                  : 'Deposit secured. Waiting for $partnerName to arrange handover location and meeting time.')
+              : 'Request approved. Waiting for $partnerName to secure the deposit and set handover.';
+        } else {
+          descText = isOverdue
+              ? 'Loan is past its due date. Please coordinate book return promptly.'
+              : (_depositPaid
+                  ? (effHandoverSet
+                      ? 'Handover set at $effLoc. Please meet $partnerName for book handover.'
+                      : 'Deposit payment secured! Please determine handover schedule & location.')
+                  : 'Request approved. Complete the deposit payment and set the handover location.');
+        }
       }
     } else if (s == 'pending' || s == 'menunggu konfirmasi' || s == 'menunggu_konfirmasi') {
       dotColor = const Color(0xFFFFD027);
-      if (isOwner) {
-        titleText = 'Permohonan Masuk';
-        descText = '$partnerName mengajukan permohonan untuk meminjam "${widget.bookTitle}". Silakan setujui atau tolak permintaan ini.';
+      if (_isBarter) {
+        titleText = 'Waiting for Barter Confirmation';
+        descText = isOwner
+            ? '$partnerName requested to barter a book with "${widget.bookTitle}". Please review the offered book and approve.'
+            : 'Your barter request has been sent. Please wait for $partnerName to respond.';
       } else {
-        titleText = _currentStatus;
-        descText = 'Your request has been sent. Please wait for a response from the owner';
+        if (isOwner) {
+          titleText = 'Incoming Request';
+          descText =
+              '$partnerName submitted a request to borrow "${widget.bookTitle}". Please approve or decline.';
+        } else {
+          titleText = _currentStatus;
+          descText =
+              'Your request has been sent. Please wait for a response from the owner';
+        }
       }
     }
 
@@ -2594,27 +2877,48 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildInfoRow(label: 'Type', value: widget.type),
+            _buildInfoRow(
+                label: 'Type', value: _isBarter ? 'Barter' : widget.type),
             const SizedBox(height: 12),
             _buildInfoRow(label: 'Requested on', value: widget.requestedDate),
-            const SizedBox(height: 12),
-            _buildInfoRow(label: 'Preferred period', value: widget.preferredPeriod),
-            if (widget.dueDate != null) ...[
+            if (!_isBarter) ...[
               const SizedBox(height: 12),
               _buildInfoRow(
-                label: 'Due date',
-                value:
-                    '${widget.dueDate!.day}/${widget.dueDate!.month}/${widget.dueDate!.year}${_isOverdue ? ' (Overdue)' : ''}',
-                valueColor: _isOverdue ? const Color(0xFFDC2626) : null,
+                  label: 'Preferred period', value: widget.preferredPeriod),
+              if (widget.dueDate != null) ...[
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                  label: 'Due date',
+                  value:
+                      '${widget.dueDate!.day}/${widget.dueDate!.month}/${widget.dueDate!.year}${_isOverdue ? ' (Overdue)' : ''}',
+                  valueColor: _isOverdue ? const Color(0xFFDC2626) : null,
+                ),
+              ],
+            ],
+            if (_isBarter && _effectiveExchangeBookTitle != null) ...[
+              const SizedBox(height: 12),
+              _buildInfoRow(
+                label: 'Exchange Book',
+                value: _effectiveExchangeBookTitle!,
+                valueColor: AppColors.primary,
               ),
             ],
             const SizedBox(height: 12),
-            _buildInteractiveInfoRow(
-              label: 'Deposit',
-              value: widget.depositAmount,
-              dotColor: _depositPaid ? const Color(0xFF2FD677) : const Color(0xFFF05151),
-              onTap: _onTapDeposit,
-            ),
+            if (_isBarter)
+              _buildInfoRow(
+                label: 'Deposit',
+                value: 'Not required (Barter)',
+                valueColor: const Color(0xFF2FD677),
+              )
+            else
+              _buildInteractiveInfoRow(
+                label: 'Deposit',
+                value: widget.depositAmount,
+                dotColor: _depositPaid
+                    ? const Color(0xFF2FD677)
+                    : const Color(0xFFF05151),
+                onTap: _onTapDeposit,
+              ),
             const SizedBox(height: 12),
             Builder(
               builder: (context) {
@@ -2744,7 +3048,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
   Widget _buildHandoverConfirmationCard() {
     final isOwner = _isCurrentUserOwner(context);
-    final partnerRole = isOwner ? 'Requester' : 'Owner';
+    final partnerRole = _isBarter
+        ? (isOwner ? 'Barter Requester' : 'Book Owner')
+        : (isOwner ? 'Requester' : 'Owner');
     final tx = _getTrx(context);
     final isDone = _currentStatus.toLowerCase() == 'selesai';
 
@@ -2780,9 +3086,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Handover confirmation',
-              style: TextStyle(
+            Text(
+              _isBarter ? 'Barter swap confirmation' : 'Handover confirmation',
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF4A4960),
@@ -2848,8 +3154,12 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 Expanded(
                   child: Text(
                     bothConfirmed
-                        ? 'Kedua pihak telah mengonfirmasi serah terima fisik buku'
-                        : 'Kedua pihak harus saling mengonfirmasi saat serah terima buku fisik',
+                        ? (_isBarter
+                            ? 'Both parties have confirmed the physical book swap.'
+                            : 'Both parties have confirmed the physical book handover.')
+                        : (_isBarter
+                            ? 'Both parties must confirm once books are physically swapped.'
+                            : 'Both parties must confirm once the book is physically handed over.'),
                     style: const TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w400,
@@ -2878,9 +3188,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     size: 18,
                     color: Colors.white,
                   ),
-                  label: const Text(
-                    'Confirm Handover',
-                    style: TextStyle(
+                  label: Text(
+                    _isBarter ? 'Confirm Book Swap' : 'Confirm Handover',
+                    style: const TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -2906,7 +3216,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'You have confirmed. Waiting for $partnerRole to confirm handover.',
+                        'You have confirmed. Waiting for $partnerRole to confirm ${_isBarter ? "swap" : "handover"}.',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -2926,17 +3236,19 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
-                  children: const [
-                    Icon(
+                  children: [
+                    const Icon(
                       Icons.check_circle_rounded,
                       size: 18,
                       color: Color(0xFF2FD677),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Book handover has been confirmed by both parties.',
-                        style: TextStyle(
+                        _isBarter
+                            ? 'Book barter swap has been confirmed by both parties.'
+                            : 'Book handover has been confirmed by both parties.',
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF0C9A4B),
@@ -2979,7 +3291,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              isOwner ? 'Requester information' : 'Owner information',
+              isOwner
+                  ? (_isBarter
+                      ? 'Barter Requester information'
+                      : 'Requester information')
+                  : (_isBarter ? 'Book Owner information' : 'Owner information'),
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -3253,9 +3569,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    isOwner
-                        ? 'Borrower Review & Rating'
-                        : 'Transaction Review & Rating',
+                    _isBarter
+                        ? 'Barter Partner Review & Rating'
+                        : (isOwner
+                            ? 'Borrower Review & Rating'
+                            : 'Transaction Review & Rating'),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -3268,7 +3586,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             const SizedBox(height: 10),
             if (!_hasReviewed) ...[
               Text(
-                'Transaction completed! Share a review and star rating for $partnerName to help build community trust.',
+                _isBarter
+                    ? 'Barter completed! Share a review and star rating for $partnerName to help build community trust.'
+                    : 'Transaction completed! Share a review and star rating for $partnerName to help build community trust.',
                 style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF7E7A92),
@@ -3294,7 +3614,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     color: Colors.white,
                   ),
                   label: Text(
-                    isOwner ? 'Review Borrower Now' : 'Leave Review Now',
+                    _isBarter
+                        ? 'Review Partner Now'
+                        : (isOwner
+                            ? 'Review Borrower Now'
+                            : 'Leave Review Now'),
                     style: const TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
@@ -3403,11 +3727,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                     elevation: 0,
                   ),
                   icon: const Icon(Icons.check_rounded, color: Colors.white, size: 20),
-                  label: const FittedBox(
+                  label: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'Setujui',
-                      style: TextStyle(
+                      _isBarter ? 'Approve Barter' : 'Approve',
+                      style: const TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
@@ -3433,7 +3757,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   label: const FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
-                      'Tolak',
+                      'Reject',
                       style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w700,
@@ -3481,7 +3805,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    isOwner ? 'Message Requester' : 'Message Owner',
+                    isOwner
+                        ? (_isBarter ? 'Message Partner' : 'Message Requester')
+                        : (_isBarter ? 'Message Partner' : 'Message Owner'),
                     style: const TextStyle(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w700,
@@ -3540,7 +3866,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                               child: Text(
                                 _hasReviewed
                                     ? 'Reviewed'
-                                    : (isOwner ? 'Review Borrower' : 'Leave Review'),
+                                    : (_isBarter
+                                        ? 'Review Partner'
+                                        : (isOwner
+                                            ? 'Review Borrower'
+                                            : 'Leave Review')),
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
@@ -3684,6 +4014,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ),
               const SizedBox(height: 12),
               _buildBookHeader(),
+              if (_isBarter) ...[
+                const SizedBox(height: 14),
+                _buildBarterExchangeCard(),
+              ],
               const SizedBox(height: 18),
               _buildStatusBanner(),
               const SizedBox(height: 14),

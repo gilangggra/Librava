@@ -452,6 +452,9 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                   type: trx.jenisTransaksi == 'barter' ? 'Barter' : 'Borrow',
                   dueDate: trx.dueDate ?? trx.effectiveDueDate,
                   isOverdue: trx.isOverdue,
+                  exchangeBookTitle: trx.bukuBarter,
+                  exchangeBookAuthor: trx.barterPenulis,
+                  exchangeBookCover: trx.barterCover,
                 ),
               ),
             );
@@ -538,8 +541,8 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                                 ),
                                 child: Text(
                                   trx.jenisTransaksi == 'barter'
-                                      ? (isOwner ? 'Pemilik Buku' : 'Pengaju Barter')
-                                      : (isOwner ? 'Meminjamkan' : 'Meminjam'),
+                                      ? (isOwner ? 'Book Owner' : 'Barter Requester')
+                                      : (isOwner ? 'Lending' : 'Borrowing'),
                                   style: TextStyle(
                                     fontSize: 9.5,
                                     fontWeight: FontWeight.w700,
