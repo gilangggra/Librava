@@ -175,7 +175,7 @@ class TransactionProvider extends ChangeNotifier {
       case 'pending':
         return 'Waiting for Confirmation';
       case 'disetujui':
-        return 'Approved (Deposit Required)';
+        return 'Approved';
       case 'ditolak':
         return 'Rejected';
       case 'dibatalkan':
