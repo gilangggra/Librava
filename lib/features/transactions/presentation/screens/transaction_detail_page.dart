@@ -377,7 +377,73 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     } catch (_) {}
   }
 
+  bool get _isRequestPending {
+    final s = _currentStatus.trim().toLowerCase();
+    return s == 'pending' ||
+        s == 'waiting for confirmation' ||
+        s == 'menunggu konfirmasi' ||
+        s == 'menunggu_konfirmasi';
+  }
+
+  bool get _isRequestClosed {
+    final s = _currentStatus.trim().toLowerCase();
+    return s == 'ditolak' ||
+        s == 'rejected' ||
+        s == 'dibatalkan' ||
+        s == 'cancelled';
+  }
+
+  bool get _isPostHandover {
+    final s = _currentStatus.trim().toLowerCase();
+    return s == 'sedang_dipinjam' || s == 'selesai';
+  }
+
   void _konfirmasiSerahTerima() {
+    if (_isRequestPending) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+              'Handover cannot be confirmed while the request is still waiting for owner approval.'),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (_isRequestClosed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('This transaction has already been closed.'),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (!_isBarter && !_depositPaid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+              'Please ensure the security deposit has been paid before confirming handover.'),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      _onTapDeposit();
+      return;
+    }
+
     if (!_isHandoverSet) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -452,11 +518,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                           auth.token!,
                           widget.transactionId!,
                         );
-                        if (isBarterMode) {
-                          try {
-                            await context.read<BookProvider>().fetchMyBooks(auth.token!);
-                          } catch (_) {}
-                        }
+                        try {
+                          await context.read<BookProvider>().fetchMyBooks(auth.token!);
+                        } catch (_) {}
                       }
                     }
                   } catch (_) {
@@ -760,6 +824,36 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   void _onTapDeposit() {
+    if (_isRequestPending) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isCurrentUserOwner(context)
+                ? 'Please approve this request first before checking deposit payment.'
+                : 'Please wait for the book owner to approve your request before paying the deposit.',
+          ),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+    if (_isRequestClosed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('This transaction has already been closed.'),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
     final isOwner = _isCurrentUserOwner(context);
     if (isOwner) {
       _bukaModalCekDepositPemilik();
@@ -1420,11 +1514,43 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   void _onTapHandover() {
+    if (_isRequestPending) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isCurrentUserOwner(context)
+                ? 'Please approve this request first before arranging handover.'
+                : 'Please wait for the book owner to approve your request before setting handover location.',
+          ),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+    if (_isRequestClosed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('This transaction has already been closed.'),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
     _bukaModalSetHandover();
   }
 
   void _bukaModalSetHandover() {
-    if (_isCurrentUserOwner(context)) {
+    if (_isCurrentUserOwner(context) ||
+        _isPostHandover ||
+        (_youConfirmed && _ownerConfirmed)) {
       _bukaModalCekHandoverPemilik();
       return;
     }
@@ -2027,15 +2153,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   _currentStatus = 'selesai';
                 });
 
-                if (!isOwner) {
-                  final updatedSaldo =
-                      auth.currentUser?.saldoDummy ?? 100000.0;
-                  _tampilkanDialogPengembalianDepositSukses(
-                    context: context,
-                    depositAmount: widget.depositAmount,
-                    updatedSaldo: updatedSaldo,
-                  );
-                }
+                final updatedSaldo =
+                    auth.currentUser?.saldoDummy ?? 100000.0;
+                _tampilkanDialogPengembalianDepositSukses(
+                  context: context,
+                  depositAmount: widget.depositAmount,
+                  updatedSaldo: updatedSaldo,
+                );
 
                 messenger.showSnackBar(
                   SnackBar(
@@ -2287,6 +2411,21 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   void _konfirmasiBatalkanPermintaan() {
+    if (_isPostHandover || (_youConfirmed && _ownerConfirmed)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+              'Transaction cannot be cancelled after physical book handover is completed.'),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) {
@@ -2334,6 +2473,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                   trxProvider = context.read<TransactionProvider>();
                 } catch (_) {}
 
+                BookProvider? bookProvider;
+                try {
+                  bookProvider = context.read<BookProvider>();
+                } catch (_) {}
+
                 final messenger = ScaffoldMessenger.of(context);
                 final navigator = Navigator.of(context);
                 final depositNominal = double.tryParse(
@@ -2358,6 +2502,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       'DIBATALKAN',
                     );
                     await auth.segarkanProfil();
+                    await bookProvider?.fetchMyBooks(auth.token!);
+                    await trxProvider.fetchTransaksi(auth.token!);
                   } catch (_) {}
                 }
 
@@ -4009,9 +4155,19 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     } catch (_) {}
 
     final currentTx = _getTrx(context);
-    if (currentTx != null && currentTx.lokasiPertemuan.trim().isNotEmpty) {
-      _currentHandoverLocation = currentTx.lokasiPertemuan;
+    if (currentTx != null) {
+      if (currentTx.lokasiPertemuan.trim().isNotEmpty) {
+        _currentHandoverLocation = currentTx.lokasiPertemuan;
+      }
+      final txStat = currentTx.status.toLowerCase();
+      if (txStat == 'sedang_dipinjam' && _currentStatus.toLowerCase() != 'selesai') {
+        _currentStatus = 'sedang_dipinjam';
+      } else if (txStat == 'selesai' && currentTx.tanggalPengembalian.isNotEmpty) {
+        _currentStatus = 'selesai';
+      }
     }
+
+    final showHandoverCard = !_isRequestPending && !_isRequestClosed;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -4043,8 +4199,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               _buildStatusBanner(),
               const SizedBox(height: 14),
               _buildTransactionInfoCard(),
-              const SizedBox(height: 14),
-              _buildHandoverConfirmationCard(),
+              if (showHandoverCard) ...[
+                const SizedBox(height: 14),
+                _buildHandoverConfirmationCard(),
+              ],
               if (_currentStatus.toLowerCase() == 'sedang_dipinjam') ...[
                 const SizedBox(height: 14),
                 _buildReturnCard(),

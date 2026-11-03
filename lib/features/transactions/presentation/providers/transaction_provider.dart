@@ -1,10 +1,14 @@
 import '../../../chat/data/services/chat_api_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/services/transaction_api_service.dart';
 import '../../domain/models/transaction_model.dart';
 import '../../../profile/data/services/review_api_service.dart';
 
 class TransactionProvider extends ChangeNotifier {
+  static const String _prefsOnLoanKey = 'librava_on_loan_tx_ids';
+  static const String _prefsReturnedKey = 'librava_returned_tx_ids';
+
   final TransactionApiService _apiService;
   final List<TransactionModel> _daftarTransaksi = [];
   bool _isLoading = false;
@@ -13,6 +17,28 @@ class TransactionProvider extends ChangeNotifier {
   String? _currentUserName;
   final Set<String> _onLoanTransactionIds = {'69', '70'};
   final Set<String> _returnedTransactionIds = {};
+  bool _prefsLoaded = false;
+
+  Future<void> _ensurePrefsLoaded() async {
+    if (_prefsLoaded) return;
+    _prefsLoaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final onLoan = prefs.getStringList(_prefsOnLoanKey) ?? [];
+      final returned = prefs.getStringList(_prefsReturnedKey) ?? [];
+      _onLoanTransactionIds.addAll(onLoan);
+      _returnedTransactionIds.addAll(returned);
+      _onLoanTransactionIds.removeAll(_returnedTransactionIds);
+    } catch (_) {}
+  }
+
+  Future<void> _saveLoanPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_prefsOnLoanKey, _onLoanTransactionIds.toList());
+      await prefs.setStringList(_prefsReturnedKey, _returnedTransactionIds.toList());
+    } catch (_) {}
+  }
 
   bool isOnLoan(String txId) {
     if (_returnedTransactionIds.contains(txId)) return false;
@@ -26,6 +52,7 @@ class TransactionProvider extends ChangeNotifier {
   void markAsOnLoan(String txId) {
     _onLoanTransactionIds.add(txId);
     _returnedTransactionIds.remove(txId);
+    _saveLoanPrefs();
     final idx = _daftarTransaksi.indexWhere((t) => t.id == txId);
     if (idx != -1) {
       _daftarTransaksi[idx] =
@@ -37,6 +64,7 @@ class TransactionProvider extends ChangeNotifier {
   void markAsReturned(String txId) {
     _onLoanTransactionIds.remove(txId);
     _returnedTransactionIds.add(txId);
+    _saveLoanPrefs();
     final idx = _daftarTransaksi.indexWhere((t) => t.id == txId);
     if (idx != -1) {
       _daftarTransaksi[idx] =
@@ -49,6 +77,7 @@ class TransactionProvider extends ChangeNotifier {
     TransactionApiService? apiService,
     bool isiDataAwal = false,
   }) : _apiService = apiService ?? TransactionApiService() {
+    _ensurePrefsLoaded();
     if (isiDataAwal) {
       _daftarTransaksi.add(
         const TransactionModel(
@@ -198,11 +227,14 @@ class TransactionProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    await _ensurePrefsLoaded();
+
     try {
       final list = await _apiService.getTransactions(token: token);
       _daftarTransaksi.clear();
       for (var t in list) {
-        if (_returnedTransactionIds.contains(t.id)) {
+        if (_returnedTransactionIds.contains(t.id) ||
+            t.tanggalPengembalian.isNotEmpty) {
           t = t.copyWith(status: 'selesai');
         } else if (_onLoanTransactionIds.contains(t.id) &&
             t.jenisTransaksi.toLowerCase() == 'pinjam') {
@@ -220,18 +252,18 @@ class TransactionProvider extends ChangeNotifier {
 
   Future<TransactionModel?> fetchTransaksiById(
       String token, String id) async {
+    await _ensurePrefsLoaded();
     try {
       final intId = int.tryParse(id);
       if (intId == null) return getTransaksiById(id);
       var trx = await _apiService.getTransactionById(
           token: token, id: intId);
-      if (trx.lokasiPertemuan.trim().isEmpty) {
-        final loc = await checkHandoverFromChat(token, intId);
-        if (loc != null && loc.isNotEmpty) {
-          trx = trx.copyWith(lokasiPertemuan: loc);
-        }
+      final loc = await checkHandoverFromChat(token, intId);
+      if (trx.lokasiPertemuan.trim().isEmpty && loc != null && loc.isNotEmpty) {
+        trx = trx.copyWith(lokasiPertemuan: loc);
       }
-      if (_returnedTransactionIds.contains(id)) {
+      if (_returnedTransactionIds.contains(id) ||
+          trx.tanggalPengembalian.isNotEmpty) {
         trx = trx.copyWith(status: 'selesai');
       } else if (_onLoanTransactionIds.contains(id) &&
           trx.jenisTransaksi.toLowerCase() == 'pinjam') {
@@ -264,12 +296,16 @@ class TransactionProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final trx = await _apiService.createTransaction(
+      var trx = await _apiService.createTransaction(
         token: token,
         bookId: bookId,
         tipeTransaksi: 'BORROW',
         depositDummy: depositDummy,
+        durasiHari: durasiHari,
       );
+      if (trx.durasiHari != durasiHari) {
+        trx = trx.copyWith(durasiHari: durasiHari);
+      }
       _daftarTransaksi.insert(0, trx);
       _isLoading = false;
       notifyListeners();
@@ -409,9 +445,13 @@ class TransactionProvider extends ChangeNotifier {
           ? updated.copyWith(status: 'sedang_dipinjam')
           : updated;
 
-      if (isBorrow) {
+      if (isBorrow &&
+          (finalTrx.status == 'sedang_dipinjam' ||
+              (updated.requesterConfirmedAt != null &&
+                  updated.ownerConfirmedAt != null))) {
         _onLoanTransactionIds.add(id);
         _returnedTransactionIds.remove(id);
+        _saveLoanPrefs();
       }
 
       final idx = _daftarTransaksi.indexWhere((t) => t.id == id);
@@ -435,8 +475,19 @@ class TransactionProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
+    final intId = int.tryParse(id);
+    if (intId != null) {
+      try {
+        final chatService = ChatApiService();
+        await chatService.sendMessage(
+          token: token,
+          transactionId: intId,
+          pesan: '[BOOK_RETURNED]',
+        );
+      } catch (_) {}
+    }
+
     try {
-      final intId = int.tryParse(id);
       if (intId == null) {
         _isLoading = false;
         notifyListeners();
@@ -617,15 +668,20 @@ class TransactionProvider extends ChangeNotifier {
     try {
       final chatService = ChatApiService();
       final msgs = await chatService.getMessages(token: token, transactionId: txId);
+      String? foundLoc;
       for (final m in msgs.reversed) {
-        if (m.pesan.startsWith('[HANDOVER_LOCATION]:')) {
+        if (m.pesan.trim() == '[BOOK_RETURNED]') {
+          markAsReturned(txId.toString());
+        }
+        if (foundLoc == null && m.pesan.startsWith('[HANDOVER_LOCATION]:')) {
           final loc = m.pesan.replaceFirst('[HANDOVER_LOCATION]:', '').trim();
           if (loc.isNotEmpty) {
             updateLokasiTransaksi(id: txId.toString(), lokasi: loc);
-            return loc;
+            foundLoc = loc;
           }
         }
       }
+      return foundLoc;
     } catch (_) {}
     return null;
   }
@@ -642,9 +698,15 @@ class TransactionProvider extends ChangeNotifier {
       final matchBuku = bukuId != null && bukuId.trim().isNotEmpty && trx.bukuId.trim().toLowerCase() == bukuId.trim().toLowerCase();
       final matchJudul = judulBuku != null && judulBuku.trim().isNotEmpty && trx.judulBuku.trim().toLowerCase() == judulBuku.trim().toLowerCase();
       if (matchId || matchBuku || matchJudul) {
+        final currStatus = trx.status.toLowerCase();
+        final preserveStatus = currStatus == 'sedang_dipinjam' ||
+            currStatus == 'selesai' ||
+            currStatus == 'ditolak' ||
+            currStatus == 'dibatalkan' ||
+            currStatus == 'pending';
         _daftarTransaksi[i] = trx.copyWith(
           lokasiPertemuan: lokasi,
-          status: 'lokasi_ditentukan',
+          status: preserveStatus ? trx.status : 'lokasi_ditentukan',
         );
       }
     }

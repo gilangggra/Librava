@@ -69,6 +69,7 @@ class TransactionApiService {
     required String tipeTransaksi,
     int? barterBookId,
     double depositDummy = 0,
+    int? durasiHari,
     String? lokasiPertemuan,
     String? waktuPertemuan,
   }) async {
@@ -81,6 +82,7 @@ class TransactionApiService {
       'deposit_dummy': depositDummy,
     };
     if (barterBookId != null) body['barter_book_id'] = barterBookId;
+    if (durasiHari != null) body['durasi_hari'] = durasiHari;
     if (lokasiPertemuan != null && lokasiPertemuan.isNotEmpty) {
       body['lokasi_pertemuan'] = lokasiPertemuan;
     }

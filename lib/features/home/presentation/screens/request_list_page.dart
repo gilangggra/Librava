@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/book_cover_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../books/presentation/providers/book_provider.dart';
 import '../../../books/presentation/screens/my_book_page.dart';
 import '../../../books/presentation/screens/search_page.dart';
 import '../../../chat/presentation/screens/chat_page.dart';
 import '../../../profile/presentation/screens/profile_page.dart';
 import '../../../transactions/presentation/providers/transaction_provider.dart';
+import '../../../transactions/presentation/screens/transaction_detail_page.dart';
 import '../../domain/models/book_request_item.dart';
 import 'request_detail_page.dart';
 
@@ -351,11 +353,14 @@ class _RequestListPageState extends State<RequestListPage> {
     );
   }
 
-  void _updateItemStatus(BookRequestItem item, String newStatus) {
+  Future<void> _updateItemStatus(BookRequestItem item, String newStatus) async {
+    final prevStatus = item.status;
     setState(() {
       item.status = newStatus;
     });
 
+    bool success = true;
+    String? errorMsg;
     if (item.transactionId != null) {
       try {
         final authProvider = context.read<AuthProvider>();
@@ -363,13 +368,44 @@ class _RequestListPageState extends State<RequestListPage> {
         if (authProvider.token != null) {
           final backendStatus =
               newStatus == 'Accepted' ? 'DISETUJUI' : 'DITOLAK';
-          trxProvider.updateStatusApi(
+          success = await trxProvider.updateStatusApi(
             authProvider.token!,
             item.transactionId.toString(),
             backendStatus,
           );
+          if (!success) {
+            errorMsg = trxProvider.errorMessage;
+          } else {
+            try {
+              await context
+                  .read<BookProvider>()
+                  .fetchMyBooks(authProvider.token!);
+            } catch (_) {}
+          }
         }
-      } catch (_) {}
+      } catch (e) {
+        success = false;
+        errorMsg = e.toString().replaceFirst('Exception: ', '');
+      }
+    }
+
+    if (!mounted) return;
+
+    if (!success) {
+      setState(() {
+        item.status = prevStatus;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg ?? 'Failed to update request status.'),
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -391,6 +427,45 @@ class _RequestListPageState extends State<RequestListPage> {
   }
 
   void _bukaDetailRequest(BookRequestItem item) async {
+    if (item.isAccepted && item.transactionId != null) {
+      final trxProvider = context.read<TransactionProvider>();
+      final tx = trxProvider.getTransaksiById(item.transactionId.toString());
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TransactionDetailPage(
+            transactionId: item.transactionId.toString(),
+            bookTitle: item.bookTitle,
+            bookAuthor: item.bookAuthor,
+            coverPath: item.bookCover,
+            status: tx?.status ?? 'disetujui',
+            depositAmount: tx != null
+                ? '${tx.depositSimulasi.toInt()} Rupiah'
+                : '20000 Rupiah',
+            handoverLocation:
+                (tx != null && tx.lokasiPertemuan.isNotEmpty)
+                    ? tx.lokasiPertemuan
+                    : 'Set location',
+            ownerName: tx?.pemilikNama ?? 'Book Owner',
+            ownerId: tx?.pemilikId,
+            requesterName: item.requesterName,
+            requesterId: item.requesterUserId,
+            isOwner: true,
+            type: item.isBarter ? 'Barter' : 'Borrow',
+            dueDate: tx?.dueDate ?? tx?.effectiveDueDate,
+            isOverdue: tx?.isOverdue,
+            exchangeBookTitle: item.exchangeBookTitle ?? tx?.bukuBarter,
+            exchangeBookAuthor: item.exchangeBookAuthor ?? tx?.barterPenulis,
+            exchangeBookCover: item.exchangeBookCover ?? tx?.barterCover,
+          ),
+        ),
+      );
+      if (mounted) {
+        _loadRealRequests();
+      }
+      return;
+    }
+
     final updatedStatus = await Navigator.push<String>(
       context,
       MaterialPageRoute(

@@ -122,34 +122,6 @@ class TransactionModel {
   }
 
   factory TransactionModel.fromApiJson(Map<String, dynamic> json) {
-    final rawStatus = (json['status'] as String? ?? 'MENUNGGU_KONFIRMASI');
-    final String normalizedStatus;
-    switch (rawStatus) {
-      case 'MENUNGGU_KONFIRMASI':
-        normalizedStatus = 'pending';
-        break;
-      case 'DISETUJUI':
-        normalizedStatus = 'disetujui';
-        break;
-      case 'DITOLAK':
-        normalizedStatus = 'ditolak';
-        break;
-      case 'DIBATALKAN':
-        normalizedStatus = 'dibatalkan';
-        break;
-      case 'DALAM_PROSES':
-        normalizedStatus = 'lokasi_ditentukan';
-        break;
-      case 'SEDANG_DIPINJAM':
-        normalizedStatus = 'sedang_dipinjam';
-        break;
-      case 'SELESAI':
-        normalizedStatus = 'selesai';
-        break;
-      default:
-        normalizedStatus = rawStatus.toLowerCase();
-    }
-
     final rawTipe = (json['tipe_transaksi'] as String? ?? 'BORROW').trim().toUpperCase();
     final String jenis = rawTipe == 'BARTER' ? 'barter' : 'pinjam';
 
@@ -175,6 +147,42 @@ class TransactionModel {
     DateTime? ownerConfirmedAt;
     if (rawOwnConf != null) {
       ownerConfirmedAt = DateTime.tryParse(rawOwnConf);
+    }
+
+    final rawStatus = (json['status'] as String? ?? 'MENUNGGU_KONFIRMASI');
+    final String normalizedStatus;
+    switch (rawStatus) {
+      case 'MENUNGGU_KONFIRMASI':
+        normalizedStatus = 'pending';
+        break;
+      case 'DISETUJUI':
+        normalizedStatus = 'disetujui';
+        break;
+      case 'DITOLAK':
+        normalizedStatus = 'ditolak';
+        break;
+      case 'DIBATALKAN':
+        normalizedStatus = 'dibatalkan';
+        break;
+      case 'DALAM_PROSES':
+        normalizedStatus = 'lokasi_ditentukan';
+        break;
+      case 'SEDANG_DIPINJAM':
+        normalizedStatus = 'sedang_dipinjam';
+        break;
+      case 'SELESAI':
+        // Jika transaksi pinjam baru selesai serah terima (handover) di backend lama
+        // dan belum ada tanggal pengembalian (returned_at == null), maka buku masih sedang dipinjam
+        if (jenis == 'pinjam' &&
+            tanggalPengembalian.isEmpty &&
+            (requesterConfirmedAt != null || ownerConfirmedAt != null)) {
+          normalizedStatus = 'sedang_dipinjam';
+        } else {
+          normalizedStatus = 'selesai';
+        }
+        break;
+      default:
+        normalizedStatus = rawStatus.toLowerCase();
     }
 
     return TransactionModel(
