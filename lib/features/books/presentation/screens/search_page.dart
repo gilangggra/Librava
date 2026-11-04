@@ -569,6 +569,7 @@ class _SearchPageState extends State<SearchPage> {
               height: 98,
               borderRadius: 14,
               iconSize: 28,
+              fallbackJudul: title,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -616,26 +617,52 @@ class _SearchPageState extends State<SearchPage> {
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
-                    children: genres.map((genre) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEBE7FD),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Text(
-                          genre,
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
+                    runSpacing: 4,
+                    children: [
+                      ...genres.map((genre) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEBE7FD),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            genre,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        );
+                      }),
+                      if (book != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: book.tersedia
+                                ? const Color(0xFFE8FAF0)
+                                : const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            book.tersedia ? 'Available' : 'Borrowed',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: book.tersedia
+                                  ? const Color(0xFF0C9A4B)
+                                  : const Color(0xFFD97706),
+                            ),
                           ),
                         ),
-                      );
-                    }).toList(),
+                    ],
                   ),
                 ],
               ),
@@ -658,65 +685,73 @@ class _SearchPageState extends State<SearchPage> {
     required String bookCount,
     required String genre,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: const Color(0xFFEBE7FD),
-            child: Text(
-              name.substring(0, 1),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primary,
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _searchController.text = name;
+          _selectedSegment = 0;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 26,
+              backgroundColor: const Color(0xFFEBE7FD),
+              child: Text(
+                name.substring(0, 1).toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF130F26),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF130F26),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$bookCount Books • $genre',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF8A88A5),
-                    fontWeight: FontWeight.w500,
+                  const SizedBox(height: 2),
+                  Text(
+                    '$bookCount Books • $genre',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF8A88A5),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const Icon(
-            CupertinoIcons.chevron_right,
-            color: AppColors.primary,
-            size: 22,
-          ),
-        ],
+            const Icon(
+              CupertinoIcons.chevron_right,
+              color: AppColors.primary,
+              size: 22,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1336,7 +1371,20 @@ class _SearchPageState extends State<SearchPage> {
                       : Column(
                           children: () {
                             final allBooks = bookProvider?.allBooks ?? [];
+                            final q =
+                                _searchController.text.toLowerCase().trim();
                             final authors = allBooks
+                                .where((b) {
+                                  final matchQuery = q.isEmpty ||
+                                      b.penulis.toLowerCase().contains(q) ||
+                                      b.judul.toLowerCase().contains(q) ||
+                                      b.kategori.toLowerCase().contains(q);
+                                  final matchGenre =
+                                      _selectedGenreFilter == 'All' ||
+                                          b.kategori.toLowerCase() ==
+                                              _selectedGenreFilter.toLowerCase();
+                                  return matchQuery && matchGenre;
+                                })
                                 .map((b) => b.penulis.trim())
                                 .where((p) => p.isNotEmpty)
                                 .toSet()
@@ -1347,7 +1395,7 @@ class _SearchPageState extends State<SearchPage> {
                                   padding: EdgeInsets.symmetric(vertical: 32),
                                   child: Center(
                                     child: Text(
-                                      'No registered authors found.',
+                                      'No authors match your search.',
                                       style: TextStyle(
                                         color: Color(0xFF7E7A92),
                                         fontSize: 14,
